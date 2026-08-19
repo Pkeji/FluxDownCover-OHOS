@@ -1,0 +1,108 @@
+{
+  "string": [
+    {
+      "name": "app_name",
+      "value": "FluxDown"
+    },
+    {
+      "name": "module_desc",
+      "value": "FluxDown download manager module"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "FluxDown main ability"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "FluxDown"
+    },
+    {
+      "name": "perm_internet_reason",
+      "value": "需要访问网络以下载文件"
+    },
+    {
+      "name": "perm_network_reason",
+      "value": "需要读取网络状态以管理下载任务"
+    },
+    {
+      "name": "page_title",
+      "value": "下载"
+    },
+    {
+      "name": "btn_add",
+      "value": "新建下载"
+    },
+    {
+      "name": "btn_pause",
+      "value": "暂停"
+    },
+    {
+      "name": "btn_resume",
+      "value": "继续"
+    },
+    {
+      "name": "btn_remove",
+      "value": "移除"
+    },
+    {
+      "name": "btn_start_all",
+      "value": "全部开始"
+    },
+    {
+      "name": "btn_pause_all",
+      "value": "全部暂停"
+    },
+    {
+      "name": "tab_downloading",
+      "value": "下载中"
+    },
+    {
+      "name": "tab_completed",
+      "value": "已完成"
+    },
+    {
+      "name": "settings_title",
+      "value": "设置"
+    },
+    {
+      "name": "setting_max_segments",
+      "value": "最大线程数"
+    },
+    {
+      "name": "setting_theme",
+      "value": "主题"
+    },
+    {
+      "name": "setting_save_dir",
+      "value": "保存路径"
+    },
+    {
+      "name": "setting_verify",
+      "value": "下载完成后校验完整性"
+    },
+    {
+      "name": "setting_mcp",
+      "value": "MCP 本地服务"
+    },
+    {
+      "name": "dialog_url",
+      "value": "下载链接"
+    },
+    {
+      "name": "dialog_file_name",
+      "value": "文件名"
+    },
+    {
+      "name": "dialog_ok",
+      "value": "确定"
+    },
+    {
+      "name": "dialog_cancel",
+      "value": "取消"
+    },
+    {
+      "name": "empty_hint",
+      "value": "暂无下载任务"
+    }
+  ]
+}

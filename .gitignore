@@ -1,0 +1,11 @@
+# HarmonyOS / DevEco build artifacts
+node_modules/
+oh_modules/
+.hvigor/
+**/build/
+.cxx/
+*.hap
+*.app
+*.map
+.idea/
+.vscode/
