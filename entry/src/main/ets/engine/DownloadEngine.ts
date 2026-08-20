@@ -347,7 +347,7 @@ export class DownloadEngine implements EngineHooks {
   }
 
   private async downloadSegment(task: DownloadTask, seg: Segment, ctrl: Ctrl): Promise<void> {
-    const file = fs.openSync(task.filePath, fs.OpenMode.READ_WRITE);
+    const file = fs.openSync(task.filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
     let offset = seg.start + seg.downloaded;
     const req = http.createHttp();
     let writeChain: Promise<void> = Promise.resolve();
@@ -362,6 +362,7 @@ export class DownloadEngine implements EngineHooks {
     req.on('dataReceive', (chunk: ArrayBuffer) => {
       if (ctrl.aborted) {
         req.destroy();
+        segResolve();
         return;
       }
       const cur = offset;
@@ -403,7 +404,11 @@ export class DownloadEngine implements EngineHooks {
           connectTimeout: 30000,
           readTimeout: 30000
         })
-        .catch(() => {});
+        .catch((e: BusinessError) => {
+          if (!ctrl.aborted) {
+            segReject(e as Error);
+          }
+        });
       await segDone;
       await reqPromise;
     } catch (e) {
@@ -413,6 +418,8 @@ export class DownloadEngine implements EngineHooks {
       } else {
         segReject(e as Error);
       }
+    } finally {
+      fs.closeSync(file.fd);
     }
   }
 

@@ -121,23 +121,26 @@ export async function downloadFtp(task: DownloadTask, ctrl: Ctrl, hooks: EngineH
 
   await dataSock.connect({ address: { address: dataHost, port: dataPort }, timeout: 15000 });
   await cmd('RETR ' + path);
-  await dataDone;
-  fs.closeSync(file);
+  try {
+    await dataDone;
 
-  try {
-    await readReply();
-  } catch (e) {
-    // ignore trailing control reply errors
-  }
-  try {
-    ctrlSock.close();
-  } catch (e) {
-    // ignore
-  }
-  try {
-    dataSock.close();
-  } catch (e) {
-    // ignore
+    try {
+      await readReply();
+    } catch (e) {
+      // ignore trailing control reply errors
+    }
+  } finally {
+    fs.closeSync(file);
+    try {
+      ctrlSock.close();
+    } catch (e) {
+      // ignore
+    }
+    try {
+      dataSock.close();
+    } catch (e) {
+      // ignore
+    }
   }
 }
 
