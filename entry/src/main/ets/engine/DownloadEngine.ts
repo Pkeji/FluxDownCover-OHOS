@@ -13,6 +13,7 @@ import { EngineHooks } from './EngineHooks';
 import { hashFile } from './HashTask';
 import { buildHlsSegments, downloadHls } from './protocols/HlsProtocol';
 import { downloadFtp } from './protocols/FtpProtocol';
+import { downloadBittorrent } from './protocols/BittorrentProtocol';
 
 /**
  * Core download engine. Implements FluxDown's headline features:
@@ -112,14 +113,18 @@ export class DownloadEngine implements EngineHooks {
     if (task.status === TaskStatus.Downloading) {
       return;
     }
-    if (task.protocol === ProtocolType.BITTORRENT || task.protocol === ProtocolType.ED2K) {
+    if (task.protocol === ProtocolType.ED2K) {
       task.status = TaskStatus.Error;
-      task.errorMessage = 'BitTorrent / eD2K 协议在本移植版本中尚未实现（详见 README 的已知限制）。';
+      task.errorMessage = 'eD2K 协议在本移植版本中尚未实现（详见 README 的已知限制）。';
       this.listener?.onTaskError(task, task.errorMessage);
       return;
     }
 
-    this.ensureFile(task);
+    // BitTorrent: skip ensureFile — the output filename comes from .torrent metadata,
+    // not from the URL. downloadBittorrent will set filePath after parsing.
+    if (task.protocol !== ProtocolType.BITTORRENT) {
+      this.ensureFile(task);
+    }
 
     if (task.protocol === ProtocolType.HLS) {
       if (task.segments.length === 0) {
@@ -127,6 +132,8 @@ export class DownloadEngine implements EngineHooks {
       }
     } else if (task.protocol === ProtocolType.FTP) {
       // handled entirely by downloadFtp
+    } else if (task.protocol === ProtocolType.BITTORRENT) {
+      // handled entirely by downloadBittorrent
     } else {
       if (task.totalBytes === 0 && task.segments.length === 0) {
         const info = await this.probe(task);
@@ -151,6 +158,8 @@ export class DownloadEngine implements EngineHooks {
         await downloadFtp(task, ctrl, this);
       } else if (task.protocol === ProtocolType.HLS) {
         await downloadHls(task, ctrl, this);
+      } else if (task.protocol === ProtocolType.BITTORRENT) {
+        await downloadBittorrent(task, ctrl, this);
       } else {
         const pending = task.segments.filter((s) => !s.done);
         if (pending.length === 0) {
@@ -252,6 +261,12 @@ export class DownloadEngine implements EngineHooks {
 
   private ensureFile(task: DownloadTask): void {
     task.dirPath = task.dirPath || this.defaultDir();
+    // Ensure the target directory exists (may be a custom dirPath).
+    try {
+      fs.accessSync(task.dirPath);
+    } catch (e) {
+      fs.mkdirSync(task.dirPath, true);
+    }
     task.filePath = `${task.dirPath}/${task.fileName}`;
     try {
       fs.accessSync(task.filePath);

@@ -1,6 +1,7 @@
 /**
  * Supported transfer protocols. HTTP/HTTPS and HLS are fully implemented in this port;
- * FTP is implemented (passive mode); BitTorrent / eD2K are scaffolded (see README).
+ * FTP is implemented (passive mode); BitTorrent is implemented (HTTP tracker, peer wire
+ * protocol, SHA-1 piece verification); eD2K is scaffolded (see README).
  */
 export enum ProtocolType {
   HTTP = 'http',

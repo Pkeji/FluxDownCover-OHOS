@@ -68,7 +68,7 @@ export function detectProtocol(url: string, override?: ProtocolType): ProtocolTy
   if (lower.startsWith('ed2k://')) {
     return ProtocolType.ED2K;
   }
-  if (lower.startsWith('magnet:') || lower.startsWith('bt://')) {
+  if (lower.startsWith('magnet:') || lower.startsWith('bt://') || lower.endsWith('.torrent')) {
     return ProtocolType.BITTORRENT;
   }
   return lower.startsWith('https://') ? ProtocolType.HTTPS : ProtocolType.HTTP;
