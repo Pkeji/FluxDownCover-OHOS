@@ -12,6 +12,7 @@ import { EngineListener, Ctrl } from './types';
 import { EngineHooks } from './EngineHooks';
 import { hashFile } from './HashTask';
 import { buildHlsSegments, downloadHls } from './protocols/HlsProtocol';
+import { buildDashSegments, downloadDash } from './protocols/DashProtocol';
 import { downloadFtp } from './protocols/FtpProtocol';
 import { downloadBittorrent } from './protocols/BittorrentProtocol';
 import { downloadEd2k } from './protocols/Ed2kProtocol';
@@ -139,6 +140,10 @@ export class DownloadEngine implements EngineHooks {
       if (task.segments.length === 0) {
         await buildHlsSegments(task);
       }
+    } else if (task.protocol === ProtocolType.DASH) {
+      if (task.segments.length === 0) {
+        await buildDashSegments(task);
+      }
     } else if (task.protocol === ProtocolType.FTP) {
       // handled entirely by downloadFtp
     } else if (task.protocol === ProtocolType.BITTORRENT) {
@@ -167,6 +172,8 @@ export class DownloadEngine implements EngineHooks {
         await downloadFtp(task, ctrl, this);
       } else if (task.protocol === ProtocolType.HLS) {
         await downloadHls(task, ctrl, this);
+      } else if (task.protocol === ProtocolType.DASH) {
+        await downloadDash(task, ctrl, this);
       } else if (task.protocol === ProtocolType.BITTORRENT) {
         await downloadBittorrent(task, ctrl, this);
       } else if (task.protocol === ProtocolType.ED2K) {

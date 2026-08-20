@@ -20,7 +20,8 @@ export class TaskRepository {
     return [
       'id', 'url', 'fileName', 'dirPath', 'filePath', 'protocol', 'totalBytes',
       'downloadedBytes', 'status', 'segments', 'createdAt', 'finishedAt',
-      'errorMessage', 'sha256', 'isHls', 'verifyIntegrity'
+      'errorMessage', 'sha256', 'isHls', 'verifyIntegrity',
+      'category', 'priority', 'queueId', 'speedLimit', 'scheduledAt', 'authHeader', 'proxyUrl', 'isDash'
     ];
   }
 
@@ -84,7 +85,15 @@ export class TaskRepository {
       errorMessage: task.errorMessage,
       sha256: task.sha256,
       isHls: task.isHls ? 1 : 0,
-      verifyIntegrity: task.verifyIntegrity ? 1 : 0
+      verifyIntegrity: task.verifyIntegrity ? 1 : 0,
+      category: task.category,
+      priority: task.priority,
+      queueId: task.queueId,
+      speedLimit: task.speedLimit,
+      scheduledAt: task.scheduledAt,
+      authHeader: task.authHeader,
+      proxyUrl: task.proxyUrl,
+      isDash: task.isDash ? 1 : 0
     };
   }
 
@@ -107,6 +116,15 @@ export class TaskRepository {
     task.sha256 = rs.getString(col('sha256'));
     task.isHls = rs.getLong(col('isHls')) === 1;
     task.verifyIntegrity = rs.getLong(col('verifyIntegrity')) === 1;
+    // Extended fields (safe-read for migrated rows)
+    try { task.category = rs.getString(col('category')) || '默认'; } catch (_) { }
+    try { task.priority = rs.getLong(col('priority')); } catch (_) { }
+    try { task.queueId = rs.getString(col('queueId')) || ''; } catch (_) { }
+    try { task.speedLimit = rs.getLong(col('speedLimit')); } catch (_) { }
+    try { task.scheduledAt = rs.getLong(col('scheduledAt')); } catch (_) { }
+    try { task.authHeader = rs.getString(col('authHeader')) || ''; } catch (_) { }
+    try { task.proxyUrl = rs.getString(col('proxyUrl')) || ''; } catch (_) { }
+    try { task.isDash = rs.getLong(col('isDash')) === 1; } catch (_) { }
     task.liveBytes = task.downloadedBytes;
     return task;
   }

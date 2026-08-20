@@ -45,6 +45,85 @@ const TOOLS = [
       properties: { id: { type: 'string' } },
       required: ['id']
     }
+  },
+  {
+    name: 'getDownload',
+    description: 'Get details of a single download by task id.',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'string' } },
+      required: ['id']
+    }
+  },
+  {
+    name: 'pauseAllDownloads',
+    description: 'Pause all active downloads.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'resumeAllDownloads',
+    description: 'Resume all paused downloads.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'batchAddDownloads',
+    description: 'Add multiple downloads by URL list.',
+    inputSchema: {
+      type: 'object',
+      properties: { urls: { type: 'array', items: { type: 'string' } } },
+      required: ['urls']
+    }
+  },
+  {
+    name: 'listQueues',
+    description: 'List all download queues.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'startQueue',
+    description: 'Start all tasks in a queue (respects maxConcurrent & priority).',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'string' } },
+      required: ['id']
+    }
+  },
+  {
+    name: 'pauseQueue',
+    description: 'Pause all downloading tasks in a queue.',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'string' } },
+      required: ['id']
+    }
+  },
+  {
+    name: 'listRss',
+    description: 'List all RSS subscriptions.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'addRss',
+    description: 'Add an RSS subscription.',
+    inputSchema: {
+      type: 'object',
+      properties: { url: { type: 'string' }, name: { type: 'string' }, filter: { type: 'string' } },
+      required: ['url', 'name']
+    }
+  },
+  {
+    name: 'removeRss',
+    description: 'Remove an RSS subscription by id.',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'string' } },
+      required: ['id']
+    }
+  },
+  {
+    name: 'getStats',
+    description: 'Get download statistics summary.',
+    inputSchema: { type: 'object', properties: {} }
   }
 ];
 
@@ -230,6 +309,49 @@ export class McpServer {
       case 'removeDownload':
         b.removeTask(String(args['id'] ?? ''));
         return { ok: true };
+      case 'getDownload': {
+        const t = b.getTask(String(args['id'] ?? ''));
+        if (!t) return { error: 'Task not found' };
+        return {
+          id: t.id, name: t.fileName, url: t.url, protocol: t.protocol,
+          status: t.status, percent: t.percent, speed: t.speed,
+          downloadedBytes: t.downloadedBytes, totalBytes: t.totalBytes,
+          category: t.category, priority: t.priority, queueId: t.queueId,
+          errorMessage: t.errorMessage, createdAt: t.createdAt, finishedAt: t.finishedAt
+        };
+      }
+      case 'pauseAllDownloads':
+        (b as any).pauseAllTasks?.();
+        return { ok: true };
+      case 'resumeAllDownloads':
+        (b as any).resumeAllTasks?.();
+        return { ok: true };
+      case 'batchAddDownloads': {
+        const urls = args['urls'] as string[];
+        (b as any).addBatchDownloads?.(urls);
+        return { added: urls.length };
+      }
+      case 'listQueues':
+        return (b as any).listQueues?.() ?? [];
+      case 'startQueue':
+        (b as any).startQueue?.(String(args['id'] ?? ''));
+        return { ok: true };
+      case 'pauseQueue':
+        (b as any).pauseQueue?.(String(args['id'] ?? ''));
+        return { ok: true };
+      case 'listRss':
+        return (b as any).listRss?.() ?? [];
+      case 'addRss': {
+        (b as any).addRss?.(
+          String(args['url'] ?? ''), String(args['name'] ?? ''), String(args['filter'] ?? '')
+        );
+        return { ok: true };
+      }
+      case 'removeRss':
+        (b as any).removeRss?.(String(args['id'] ?? ''));
+        return { ok: true };
+      case 'getStats':
+        return (b as any).getStats?.() ?? {};
       default:
         throw new Error(`Unknown tool: ${name}`);
     }

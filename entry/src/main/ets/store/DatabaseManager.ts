@@ -54,11 +54,33 @@ export class DatabaseManager {
       errorMessage TEXT,
       sha256 TEXT,
       isHls INTEGER,
-      verifyIntegrity INTEGER
+      verifyIntegrity INTEGER,
+      category TEXT DEFAULT '默认',
+      priority INTEGER DEFAULT 0,
+      queueId TEXT DEFAULT '',
+      speedLimit INTEGER DEFAULT 0,
+      scheduledAt INTEGER DEFAULT 0,
+      authHeader TEXT DEFAULT '',
+      proxyUrl TEXT DEFAULT '',
+      isDash INTEGER DEFAULT 0
     )`;
     this.rdbStore
       ?.executeSql(sql)
       .then(() => {
+        // Migrate: add new columns if upgrading from old schema
+        const migrations = [
+          `ALTER TABLE ${TABLE_NAME} ADD COLUMN category TEXT DEFAULT '默认'`,
+          `ALTER TABLE ${TABLE_NAME} ADD COLUMN priority INTEGER DEFAULT 0`,
+          `ALTER TABLE ${TABLE_NAME} ADD COLUMN queueId TEXT DEFAULT ''`,
+          `ALTER TABLE ${TABLE_NAME} ADD COLUMN speedLimit INTEGER DEFAULT 0`,
+          `ALTER TABLE ${TABLE_NAME} ADD COLUMN scheduledAt INTEGER DEFAULT 0`,
+          `ALTER TABLE ${TABLE_NAME} ADD COLUMN authHeader TEXT DEFAULT ''`,
+          `ALTER TABLE ${TABLE_NAME} ADD COLUMN proxyUrl TEXT DEFAULT ''`,
+          `ALTER TABLE ${TABLE_NAME} ADD COLUMN isDash INTEGER DEFAULT 0`,
+        ];
+        for (const m of migrations) {
+          this.rdbStore?.executeSql(m).catch(() => { /* column already exists */ });
+        }
         console.info('FluxDown: tasks table ready');
       })
       .catch((err: BusinessError) => {

@@ -5,6 +5,9 @@ import { DownloadTask } from '../model/DownloadTask';
 import { TaskStatus } from '../model/TaskStatus';
 import { ProtocolType } from '../model/ProtocolType';
 import { formatBytes, formatSpeed, detectProtocol, protocolMeta, ALL_PROTOCOLS, fileNameFromUrl } from '../utils/common';
+import { COLOR_SCHEMES, getScheme, ColorScheme } from '../utils/ColorSchemes';
+import { DownloadQueue } from '../model/DownloadQueue';
+import { RssSubscription } from '../model/RssSubscription';
 
 interface Palette {
   bg: string;
@@ -13,10 +16,15 @@ interface Palette {
   text: string;
   textSecondary: string;
   primary: string;
+  primaryDark: string;
   border: string;
+  success: string;
+  warning: string;
+  error: string;
 }
 
-function palette(theme: 'light' | 'dark'): Palette {
+function palette(theme: 'light' | 'dark', colorSchemeId: string = 'cyan'): Palette {
+  const scheme = getScheme(colorSchemeId);
   if (theme === 'dark') {
     return {
       bg: '#0F1015',
@@ -24,8 +32,12 @@ function palette(theme: 'light' | 'dark'): Palette {
       surfaceSolid: '#1E2128',
       text: '#E6E8EC',
       textSecondary: '#9CA3AF',
-      primary: '#60A5FA',
-      border: '#222630'
+      primary: scheme.primary,
+      primaryDark: scheme.primaryDark,
+      border: '#222630',
+      success: scheme.success,
+      warning: scheme.warning,
+      error: scheme.error
     };
   }
   return {
@@ -33,9 +45,13 @@ function palette(theme: 'light' | 'dark'): Palette {
     surface: '#66FFFFFF',
     surfaceSolid: '#FFFFFF',
     text: '#1A1C20',
-    textSecondary: '#6B7280',
-    primary: '#3B82F6',
-    border: '#0000000F'
+    textSecondary: '#59616E',
+    primary: scheme.primary,
+    primaryDark: scheme.primaryDark,
+    border: '#0000000F',
+    success: scheme.success,
+    warning: scheme.warning,
+    error: scheme.error
   };
 }
 
@@ -67,7 +83,7 @@ struct IndexPage {
 
   @Computed
   get p(): Palette {
-    return palette(this.vm.theme);
+    return palette(this.vm.theme, this.vm.colorScheme);
   }
 
   aboutToAppear(): void {
@@ -108,6 +124,13 @@ struct IndexPage {
         }
       },
       {
+        value: '统计',
+        icon: $r('app.media.ic_stats'),
+        action: () => {
+          this.navPathStack.pushPath({ name: 'stats' });
+        }
+      },
+      {
         value: '设置',
         icon: $r('app.media.ic_settings'),
         action: () => {
@@ -143,6 +166,12 @@ struct IndexPage {
         AboutContent({ vm: this.vm })
       }
       .title('关于')
+      .mode(NavDestinationMode.STANDARD)
+    } else if (name === 'stats') {
+      NavDestination() {
+        StatsContent({ vm: this.vm })
+      }
+      .title('下载统计')
       .mode(NavDestinationMode.STANDARD)
     }
   }
@@ -186,6 +215,7 @@ struct IndexPage {
         .width('100%')
         .divider({ strokeWidth: 1, color: this.p.border })
         .transition(TransitionEffect.OPACITY.animation({ duration: 300, curve: Curve.EaseInOut }))
+        .edgeEffect(EdgeEffect.Spring)
       }
     }
     .width('100%')
@@ -237,7 +267,7 @@ struct IndexPage {
         Row() {
           Text(statusText(task.status)).fontSize(12).fontColor(this.p.textSecondary)
           if (task.status === TaskStatus.Downloading) {
-            Text('  ' + formatSpeed(task.speed)).fontSize(12).fontColor(this.p.primary)
+            Text('  ' + formatSpeed(task.speed)).fontSize(12).fontColor(this.p.primaryDark)
           }
           Text(
             '  ' +
@@ -260,7 +290,7 @@ struct IndexPage {
         if (task.status === TaskStatus.Error) {
           Text(task.errorMessage)
             .fontSize(11)
-            .fontColor('#EF4444')
+            .fontColor(this.p.error)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .margin({ top: 4 })
@@ -323,10 +353,11 @@ struct AddContent {
   @Local detectedDesc: string = '';
   @Local detectedImpl: boolean = true;
   @Local hasDetection: boolean = false;
+  @Local batchUrls: string = '';
 
   @Computed
   get p(): Palette {
-    return palette(this.vm.theme);
+    return palette(this.vm.theme, this.vm.colorScheme);
   }
 
   @Builder
@@ -379,7 +410,7 @@ struct AddContent {
           .layoutWeight(1)
 
           if (!this.detectedImpl) {
-            Text('未实现').fontSize(10).fontColor('#FF6B6B')
+            Text('未实现').fontSize(10).fontColor('#DC2626')
           }
         }
         .width('100%')
@@ -443,6 +474,39 @@ struct AddContent {
           promptAction.showToast({ message: '已添加下载任务' });
           this.navStack.pop();
         })
+
+      // ── 批量下载 ──
+      Divider().color(this.p.border).margin({ top: 24, bottom: 16 })
+
+      Text('批量下载').fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.p.text)
+        .margin({ bottom: 8 })
+      Text('每行一个 URL（仅支持 http/https）').fontSize(12).fontColor(this.p.textSecondary)
+        .margin({ bottom: 8 })
+
+      TextArea({ text: this.batchUrls, placeholder: 'https://example.com/file1.zip\nhttps://example.com/file2.zip' })
+        .width('100%')
+        .height(120)
+        .fontSize(13)
+        .backgroundColor(this.p.bg)
+        .borderRadius(8)
+        .onChange((v: string) => { this.batchUrls = v; })
+
+      Button('批量添加')
+        .width('100%')
+        .height(44)
+        .backgroundColor(this.p.surfaceSolid)
+        .fontColor(this.p.text)
+        .borderRadius(10)
+        .margin({ top: 12 })
+        .enabled(this.batchUrls.trim().length > 0)
+        .onClick(() => {
+          const urls = this.batchUrls.split('\n').map(u => u.trim()).filter(u => u.length > 0);
+          this.vm.addBatchDownloads(urls).then((n: number) => {
+            promptAction.showToast({ message: `已添加 ${n} 个下载` });
+            this.batchUrls = '';
+            this.navStack.pop();
+          });
+        })
     }
     .padding(20)
     .width('100%')
@@ -457,10 +521,13 @@ struct AddContent {
 struct SettingsContent {
   @Param vm: DownloadViewModel = new DownloadViewModel();
   @Param navStack: NavPathStack = new NavPathStack();
+  @Local rssUrl: string = '';
+  @Local rssName: string = '';
+  @Local rssFilter: string = '';
 
   @Computed
   get p(): Palette {
-    return palette(this.vm.theme);
+    return palette(this.vm.theme, this.vm.colorScheme);
   }
 
   build() {
@@ -489,7 +556,7 @@ struct SettingsContent {
         Column() {
           Row() {
             Text('最大线程数').fontColor(this.p.text).layoutWeight(1).fontSize(15)
-            Text(String(this.vm.maxSegments)).fontColor(this.p.primary).fontSize(15)
+            Text(String(this.vm.maxSegments)).fontColor(this.p.primaryDark).fontSize(15)
           }
           .width('100%')
           .padding({ left: 16, right: 16, top: 14, bottom: 6 })
@@ -604,6 +671,195 @@ struct SettingsContent {
         .borderRadius(12)
         .margin({ left: 16, right: 16 })
 
+        // ── 高级设置 (FluxDown 扩展) ──
+        Text('高级设置').fontSize(13).fontColor(this.p.textSecondary)
+          .margin({ left: 20, top: 24, bottom: 6 })
+          .width('100%')
+
+        Column() {
+          // Global speed limit
+          Row() {
+            Text('全局限速').fontColor(this.p.text).layoutWeight(1).fontSize(15)
+            Text(this.vm.globalSpeedLimit > 0 ? formatSpeed(this.vm.globalSpeedLimit) : '不限')
+              .fontColor(this.p.primaryDark).fontSize(15)
+          }
+          .width('100%')
+          .padding({ left: 16, right: 16, top: 14, bottom: 6 })
+
+          Slider({
+            value: this.vm.globalSpeedLimit > 0 ? Math.log10(this.vm.globalSpeedLimit / 1024) : 0,
+            min: 0,
+            max: 4,
+            step: 0.1,
+            style: SliderStyle.OutSet
+          })
+            .onChange((v: number) => {
+              this.vm.setGlobalSpeedLimit(v > 0 ? Math.round(Math.pow(10, v) * 1024) : 0);
+            })
+            .width('100%')
+            .padding({ left: 12, right: 12, bottom: 8 })
+            .blockColor(this.p.primary)
+
+          Divider().color(this.p.border).margin({ left: 16, right: 16 })
+
+          // Proxy
+          Column() {
+            Text('代理地址').fontColor(this.p.textSecondary).fontSize(13)
+            TextInput({ text: this.vm.proxyUrl, placeholder: 'http://host:port 或留空' })
+              .onChange((v: string) => { this.vm.setProxyUrl(v); })
+              .width('100%')
+              .margin({ top: 8 })
+              .backgroundColor(this.p.bg)
+              .borderRadius(8)
+          }
+          .width('100%')
+          .padding(16)
+          .alignItems(HorizontalAlign.Start)
+
+          Divider().color(this.p.border).margin({ left: 16, right: 16 })
+
+          // Clipboard monitoring
+          Row() {
+            Text('剪贴板监听').fontColor(this.p.text).layoutWeight(1).fontSize(15)
+            Toggle({ isOn: this.vm.clipboardMonitor, type: ToggleType.Switch })
+              .onChange((v: boolean) => { this.vm.setClipboardMonitor(v); })
+          }
+          .width('100%')
+          .padding(16)
+        }
+        .width('100%')
+        .backgroundColor(this.p.surface)
+        .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
+        .borderRadius(12)
+        .margin({ left: 16, right: 16 })
+
+        // ── 配色方案 ──
+        Text('配色方案').fontSize(13).fontColor(this.p.textSecondary)
+          .margin({ left: 20, top: 24, bottom: 6 })
+          .width('100%')
+
+        Column() {
+          Flex({ wrap: FlexWrap.Wrap }) {
+            ForEach(COLOR_SCHEMES, (scheme: ColorScheme) => {
+              Column() {
+                Column()
+                  .width(36)
+                  .height(36)
+                  .borderRadius(18)
+                  .backgroundColor(scheme.primary)
+                  .border({
+                    width: this.vm.colorScheme === scheme.id ? 3 : 0,
+                    color: this.p.text
+                  })
+              }
+              .margin(8)
+              .onClick(() => { this.vm.setColorScheme(scheme.id); })
+            })
+          }
+          .width('100%')
+          .padding(16)
+        }
+        .width('100%')
+        .backgroundColor(this.p.surface)
+        .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
+        .borderRadius(12)
+        .margin({ left: 16, right: 16, bottom: 16 })
+
+        // ── RSS 订阅 ──
+        Row() {
+          Image($r('app.media.ic_rss'))
+            .width(18)
+            .height(18)
+            .fillColor(this.p.primary)
+            .margin({ right: 8 })
+          Text('RSS 订阅')
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.p.textSecondary)
+            .layoutWeight(1)
+        }
+        .width('100%')
+        .margin({ left: 16, top: 24, bottom: 8 })
+
+        Column() {
+          TextInput({ text: this.rssUrl, placeholder: 'RSS 订阅地址' })
+            .fontSize(14)
+            .onChange((v: string) => { this.rssUrl = v; })
+          TextInput({ text: this.rssName, placeholder: '名称' })
+            .fontSize(14)
+            .margin({ top: 8 })
+            .onChange((v: string) => { this.rssName = v; })
+          TextInput({ text: this.rssFilter, placeholder: '关键词过滤 (逗号分隔)' })
+            .fontSize(14)
+            .margin({ top: 8 })
+            .onChange((v: string) => { this.rssFilter = v; })
+          Button('添加订阅')
+            .fontSize(14)
+            .backgroundColor(this.p.primary)
+            .fontColor('#FFFFFF')
+            .width('100%')
+            .margin({ top: 8 })
+            .onClick(() => {
+              if (this.rssUrl.trim().length > 0 && this.rssName.trim().length > 0) {
+                this.vm.addRss(this.rssUrl.trim(), this.rssName.trim(), this.rssFilter.trim());
+                this.rssUrl = '';
+                this.rssName = '';
+                this.rssFilter = '';
+              }
+            })
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor(this.p.surface)
+        .borderRadius(12)
+        .margin({ left: 16, right: 16, bottom: 12 })
+
+        Button('立即检查所有订阅')
+          .fontSize(14)
+          .backgroundColor(this.p.primary)
+          .fontColor('#FFFFFF')
+          .width('80%')
+          .margin({ bottom: 12 })
+          .onClick(() => {
+            this.vm.pollRss().then((n: number) => {
+              promptAction.showToast({ message: `新增 ${n} 个下载` });
+            });
+          })
+
+        ForEach(this.vm.rssSubs, (sub: RssSubscription) => {
+          Column() {
+            Row() {
+              Text(sub.name).fontSize(16).fontColor(this.p.text).layoutWeight(1)
+              Toggle({ type: ToggleType.Switch, isOn: sub.enabled })
+                .onChange((on: boolean) => { this.vm.toggleRss(sub.id, on); })
+            }
+            .width('100%')
+            .padding(12)
+
+            Text(sub.url).fontSize(12).fontColor(this.p.textSecondary).maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .padding({ left: 12, right: 12 })
+
+            Row() {
+              Text(sub.filter ? `过滤: ${sub.filter}` : '无过滤').fontSize(11).fontColor(this.p.textSecondary).layoutWeight(1)
+              Text(`已下载: ${sub.downloadedUrls.length}`).fontSize(11).fontColor(this.p.textSecondary)
+            }
+            .width('100%')
+            .padding({ left: 12, right: 12, bottom: 12 })
+
+            Button('删除')
+              .fontSize(12)
+              .backgroundColor(this.p.error)
+              .fontColor('#FFFFFF')
+              .margin({ left: 12, right: 12, bottom: 12 })
+              .onClick(() => { this.vm.removeRss(sub.id); })
+          }
+          .width('100%')
+          .backgroundColor(this.p.surface)
+          .borderRadius(12)
+          .margin({ left: 16, right: 16, bottom: 8 })
+        })
+
       }
       .width('100%')
     }
@@ -611,6 +867,7 @@ struct SettingsContent {
     .width('100%')
     .height('100%')
     .backgroundColor(this.p.bg)
+    .edgeEffect(EdgeEffect.Spring)
   }
 }
 
@@ -621,7 +878,7 @@ struct AboutContent {
 
   @Computed
   get p(): Palette {
-    return palette(this.vm.theme);
+    return palette(this.vm.theme, this.vm.colorScheme);
   }
 
   build() {
@@ -703,7 +960,7 @@ struct AboutContent {
               .height(40)
               .borderRadius(20)
             Column() {
-              Text('原作者').fontSize(12).fontColor(this.p.textSecondary)
+              Text('原开发').fontSize(12).fontColor(this.p.textSecondary)
               Text('zerx-lab').fontSize(14).fontColor(this.p.text).fontWeight(FontWeight.Medium)
             }
             .layoutWeight(1)
@@ -724,7 +981,7 @@ struct AboutContent {
               .height(40)
               .borderRadius(20)
             Column() {
-              Text('移植者').fontSize(12).fontColor(this.p.textSecondary)
+              Text('移植开发').fontSize(12).fontColor(this.p.textSecondary)
               Text('Pkeji').fontSize(14).fontColor(this.p.text).fontWeight(FontWeight.Medium)
             }
             .layoutWeight(1)
@@ -756,12 +1013,13 @@ struct AboutContent {
     .width('100%')
     .height('100%')
     .backgroundColor(this.p.bg)
+    .edgeEffect(EdgeEffect.Spring)
   }
 
   @Builder
   ProtocolItem(name: string, desc: string) {
     Row() {
-      Text('•').fontSize(14).fontColor(this.p.primary).margin({ right: 8 })
+      Text('•').fontSize(14).fontColor(this.p.primaryDark).margin({ right: 8 })
       Column() {
         Text(name).fontSize(13).fontColor(this.p.text).fontWeight(FontWeight.Medium)
         Text(desc).fontSize(12).fontColor(this.p.textSecondary).margin({ top: 2 })
@@ -782,7 +1040,7 @@ struct TaskDetailContent {
 
   @Computed
   get p(): Palette {
-    return palette(this.vm.theme);
+    return palette(this.vm.theme, this.vm.colorScheme);
   }
 
   build() {
@@ -813,6 +1071,7 @@ struct TaskDetailContent {
       .layoutWeight(1)
       .width('100%')
       .divider({ strokeWidth: 1, color: this.p.border })
+      .edgeEffect(EdgeEffect.Spring)
     }
     .width('100%')
     .height('100%')
@@ -834,5 +1093,83 @@ struct TaskDetailContent {
       .padding(10)
       .width('100%')
     }
+  }
+}
+
+// ── 下载队列页面 ──
+// ── 下载统计页面 ──
+@ComponentV2
+struct StatsContent {
+  @Param vm: DownloadViewModel = new DownloadViewModel();
+
+  @Computed
+  get p(): Palette {
+    return palette(this.vm.theme, this.vm.colorScheme);
+  }
+
+  build() {
+    Scroll() {
+      Column() {
+        Column() {
+          Text('下载概览').fontSize(18).fontWeight(FontWeight.Bold).fontColor(this.p.text)
+            .margin({ bottom: 16 })
+
+          this.StatRow('总任务数', `${this.vm.getStats().totalTasks}`)
+          this.StatRow('下载中', `${this.vm.getStats().activeCount}`)
+          this.StatRow('已完成', `${this.vm.getStats().completedCount}`)
+          this.StatRow('已暂停', `${this.vm.getStats().pausedCount}`)
+          this.StatRow('错误', `${this.vm.getStats().errorCount}`)
+          this.StatRow('已下载', formatBytes(this.vm.getStats().totalDownloaded))
+          this.StatRow('总大小', formatBytes(this.vm.getStats().totalSize))
+          this.StatRow('当前速度', formatSpeed(this.vm.getStats().currentSpeed))
+          this.StatRow('平均速度', formatSpeed(this.vm.getStats().avgSpeed))
+          this.StatRow('完成率', `${this.vm.getStats().completionRate.toFixed(1)}%`)
+          this.StatRow('预计剩余',
+            this.vm.getStats().estimatedTimeRemaining > 0 ?
+            `${Math.ceil(this.vm.getStats().estimatedTimeRemaining)}秒` : '未知')
+        }
+        .width('100%')
+        .padding(20)
+        .backgroundColor(this.p.surface)
+        .borderRadius(12)
+        .margin({ left: 16, right: 16, bottom: 16 })
+
+        // Category breakdown
+        Column() {
+          Text('分类统计').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.p.text)
+            .margin({ bottom: 12 })
+          ForEach(this.vm.getCategories(), (cat: string) => {
+            Row() {
+              Text(cat).fontSize(13).fontColor(this.p.text).layoutWeight(1)
+              Text(`${this.vm.tasks.filter(t => t.category === cat).length} 个`)
+                .fontSize(13).fontColor(this.p.textSecondary)
+            }
+            .width('100%')
+            .padding(8)
+          })
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor(this.p.surface)
+        .borderRadius(12)
+        .margin({ left: 16, right: 16 })
+      }
+      .width('100%')
+    }
+    .scrollBar(BarState.Off)
+    .width('100%')
+    .height('100%')
+    .backgroundColor(this.p.bg)
+    .edgeEffect(EdgeEffect.Spring)
+  }
+
+  @Builder
+  StatRow(label: string, value: string) {
+    Row() {
+      Text(label).fontSize(13).fontColor(this.p.textSecondary).width('40%')
+      Text(value).fontSize(14).fontColor(this.p.text).layoutWeight(1)
+    }
+    .width('100%')
+    .padding(8)
   }
 }

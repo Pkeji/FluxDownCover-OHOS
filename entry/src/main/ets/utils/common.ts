@@ -68,6 +68,9 @@ export function detectProtocol(url: string, override?: ProtocolType): ProtocolTy
   if (lower.includes('.m3u8') || lower.includes('m3u8')) {
     return ProtocolType.HLS;
   }
+  if (lower.includes('.mpd') || lower.includes('dash')) {
+    return ProtocolType.DASH;
+  }
   if (lower.startsWith('ed2k://')) {
     return ProtocolType.ED2K;
   }
@@ -107,6 +110,7 @@ const PROTOCOL_META: Record<string, ProtocolMeta> = {
   [ProtocolType.FTP]: { label: 'FTP', desc: '文件传输', color: '#FF9800', implemented: true },
   [ProtocolType.SFTP]: { label: 'SFTP', desc: 'SSH 文件传输', color: '#795548', implemented: false },
   [ProtocolType.HLS]: { label: 'HLS', desc: '流媒体 m3u8', color: '#9C27B0', implemented: true },
+  [ProtocolType.DASH]: { label: 'DASH', desc: '流媒体 mpd', color: '#AB47BC', implemented: true },
   [ProtocolType.BITTORRENT]: { label: 'BT', desc: 'P2P / 磁力', color: '#00BCD4', implemented: true },
   [ProtocolType.THUNDER]: { label: '迅雷', desc: 'thunder://', color: '#FF5722', implemented: false },
   [ProtocolType.ED2K]: { label: 'eD2K', desc: 'eDonkey 网络', color: '#607D8B', implemented: true },
@@ -123,6 +127,7 @@ export const ALL_PROTOCOLS: ProtocolType[] = [
   ProtocolType.FTP,
   ProtocolType.SFTP,
   ProtocolType.HLS,
+  ProtocolType.DASH,
   ProtocolType.BITTORRENT,
   ProtocolType.THUNDER,
   ProtocolType.ED2K,

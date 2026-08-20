@@ -9,6 +9,7 @@ export enum ProtocolType {
   FTP = 'ftp',
   SFTP = 'sftp',
   HLS = 'hls',
+  DASH = 'dash',
   BITTORRENT = 'bittorrent',
   THUNDER = 'thunder',
   ED2K = 'ed2k'

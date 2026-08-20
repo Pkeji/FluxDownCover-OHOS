@@ -5,13 +5,26 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "/Users/Zhuanz/.ohos/config/default_FluxDownOHOS_uczUCa4FGgDqkEL7bPXYMMxO_PS4Lol1CE_1aBnke2o=.cer",
-          "keyAlias": "debugKey",
-          "keyPassword": "0000001B7F1967FB14AE23A4840C9A091A2A5E8A84819B5C1EA90E4CA63AFD0006E8DBE050CF64F829D945",
-          "profile": "/Users/Zhuanz/.ohos/config/default_FluxDownOHOS_uczUCa4FGgDqkEL7bPXYMMxO_PS4Lol1CE_1aBnke2o=.p7b",
+          "storeFile": "/Users/Zhuanz/Downloads/fluxdown.p12",
+          "storePassword": "0000001847144B54B5DEA0F3CDC08A17B89552F9AA275605783F342F5C37AD5504AD4FC80A073B48",
+          "keyAlias": "fluxdownohos",
+          "keyPassword": "00000018FAAF74CB2B09C0484155754C5F9D84E2959BABE4A3DFADE5CE01CB733D2A977C5B61C3EC",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "/Users/Zhuanz/.ohos/config/default_FluxDownOHOS_uczUCa4FGgDqkEL7bPXYMMxO_PS4Lol1CE_1aBnke2o=.p12",
-          "storePassword": "0000001B343ADC2D17C7F87FD1EFDBA91255799D58E961F79A5514C68B1A0472511F9663318507F35BAE0B"
+          "profile": "/Users/Zhuanz/Downloads/fluxdownRelease.p7b",
+          "certpath": "/Users/Zhuanz/Downloads/fluxdown.cer"
+        }
+      },
+      {
+        "name": "ceshi",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "/Users/Zhuanz/.ohos/config/ceshi_FluxDownOHOS_uczUCa4FGgDqkEL7bPXYMMxO_PS4Lol1CE_1aBnke2o=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B4C64DA534F6E978577AD5D487B079EB4B170F6745E1F587600BE94276D1A520B5AA61BCF05B47B",
+          "profile": "/Users/Zhuanz/.ohos/config/ceshi_FluxDownOHOS_uczUCa4FGgDqkEL7bPXYMMxO_PS4Lol1CE_1aBnke2o=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "/Users/Zhuanz/.ohos/config/ceshi_FluxDownOHOS_uczUCa4FGgDqkEL7bPXYMMxO_PS4Lol1CE_1aBnke2o=.p12",
+          "storePassword": "0000001B3D0D78CF6C2A45EDBBCE96E276D574D8246AE84F8F444D83FC50E988440310417439FD4D37E788"
         }
       }
     ],

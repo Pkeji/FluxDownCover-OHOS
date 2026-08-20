@@ -37,9 +37,19 @@ export class DownloadTask {
   @Trace finishedAt: number = 0;
   @Trace createdAt: number = 0;
 
+  // ── Extended fields (FluxDown feature parity) ──
+  @Trace category: string = '默认'; // task category/tag for grouping & filtering
+  @Trace priority: number = 0; // higher = started first (0 = normal)
+  @Trace queueId: string = ''; // associated named-queue ID (empty = none)
+  @Trace speedLimit: number = 0; // per-task speed limit in bytes/sec (0 = unlimited)
+  @Trace scheduledAt: number = 0; // scheduled start timestamp (0 = immediate)
+  @Trace authHeader: string = ''; // HTTP Authorization header for protected downloads
+  @Trace proxyUrl: string = ''; // per-task proxy URL (empty = use global)
+
   // Non-observed state
   segments: Segment[] = [];
   isHls: boolean = false;
+  isDash: boolean = false; // DASH (MPD) streaming flag
   liveBytes: number = 0; // high-frequency accumulator updated per chunk
   verifyIntegrity: boolean = true;
 

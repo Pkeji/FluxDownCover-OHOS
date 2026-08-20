@@ -2,9 +2,9 @@
   "app": {
     "bundleName": "com.fluxdown.fluxdownohos",
     "vendor": "example",
-    "versionCode": 1000000,
-    "versionName": "1.0.0",
-    "icon": "$media:app_icon",
+    "versionCode": 1020260821,
+    "versionName": "1.1.2",
+    "icon": "$media:layered_image",
     "label": "$string:app_name"
   }
 }
