@@ -1,6 +1,7 @@
 import { AbilityConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
+import { deviceInfo } from '@kit.BasicServicesKit';
 import { DatabaseManager } from '../store/DatabaseManager';
 import { DownloadEngine } from '../engine/DownloadEngine';
 
@@ -19,6 +20,14 @@ export default class EntryAbility extends UIAbility {
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
+    // 仅 PC（2in1）设备设置沉浸式全屏布局，不影响手机端
+    if (deviceInfo.deviceType === '2in1') {
+      const mainWindow = windowStage.getMainWindowSync();
+      mainWindow.setWindowLayoutFullScreen(true).catch((e: Error) => {
+        hilog.error(DOMAIN, 'FluxDown', 'setWindowLayoutFullScreen failed: %{public}s', e.message);
+      });
+    }
+
     windowStage.loadContent('pages/Index', (err) => {
       if (err.code) {
         hilog.error(DOMAIN, 'FluxDown', 'Failed to load pages/Index: %{public}s', JSON.stringify(err));

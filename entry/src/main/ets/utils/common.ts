@@ -62,11 +62,17 @@ export function detectProtocol(url: string, override?: ProtocolType): ProtocolTy
   if (lower.startsWith('ftp://')) {
     return ProtocolType.FTP;
   }
+  if (lower.startsWith('sftp://')) {
+    return ProtocolType.SFTP;
+  }
   if (lower.includes('.m3u8') || lower.includes('m3u8')) {
     return ProtocolType.HLS;
   }
   if (lower.startsWith('ed2k://')) {
     return ProtocolType.ED2K;
+  }
+  if (lower.startsWith('thunder://')) {
+    return ProtocolType.THUNDER;
   }
   if (lower.startsWith('magnet:') || lower.startsWith('bt://') || lower.endsWith('.torrent')) {
     return ProtocolType.BITTORRENT;
@@ -86,3 +92,38 @@ export function parseFtpUrl(url: string): { host: string; port: number; path: st
     path: m[3] ? `/${m[3]}` : '/'
   };
 }
+
+/** Display metadata for each protocol, used by UI chips and badges. */
+export interface ProtocolMeta {
+  label: string;
+  desc: string;
+  color: string;
+  implemented: boolean;
+}
+
+const PROTOCOL_META: Record<string, ProtocolMeta> = {
+  [ProtocolType.HTTP]: { label: 'HTTP', desc: '网页直链', color: '#4CAF50', implemented: true },
+  [ProtocolType.HTTPS]: { label: 'HTTPS', desc: '加密直链', color: '#2196F3', implemented: true },
+  [ProtocolType.FTP]: { label: 'FTP', desc: '文件传输', color: '#FF9800', implemented: true },
+  [ProtocolType.SFTP]: { label: 'SFTP', desc: 'SSH 文件传输', color: '#795548', implemented: false },
+  [ProtocolType.HLS]: { label: 'HLS', desc: '流媒体 m3u8', color: '#9C27B0', implemented: true },
+  [ProtocolType.BITTORRENT]: { label: 'BT', desc: 'P2P / 磁力', color: '#00BCD4', implemented: true },
+  [ProtocolType.THUNDER]: { label: '迅雷', desc: 'thunder://', color: '#FF5722', implemented: false },
+  [ProtocolType.ED2K]: { label: 'eD2K', desc: 'eDonkey 网络', color: '#607D8B', implemented: true },
+};
+
+export function protocolMeta(type: ProtocolType): ProtocolMeta {
+  return PROTOCOL_META[type] ?? PROTOCOL_META[ProtocolType.HTTP];
+}
+
+/** All supported protocol types in display order. */
+export const ALL_PROTOCOLS: ProtocolType[] = [
+  ProtocolType.HTTP,
+  ProtocolType.HTTPS,
+  ProtocolType.FTP,
+  ProtocolType.SFTP,
+  ProtocolType.HLS,
+  ProtocolType.BITTORRENT,
+  ProtocolType.THUNDER,
+  ProtocolType.ED2K,
+];

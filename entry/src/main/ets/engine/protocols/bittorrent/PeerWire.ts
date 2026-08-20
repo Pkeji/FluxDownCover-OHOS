@@ -63,6 +63,9 @@ export class PeerConnection {
   private handler: PeerMessageHandler | null = null;
   private disposed: boolean = false;
 
+  /** Optional callback invoked when the connection is closed/disposed. */
+  onDispose: (() => void) | null = null;
+
   // Resolvers for async handshake
   private handshakeResolve: (() => void) | null = null;
   private handshakeReject: ((e: Error) => void) | null = null;
@@ -163,11 +166,17 @@ export class PeerConnection {
 
   /** Close the connection. */
   close(): void {
+    if (this.disposed) {
+      return;
+    }
     this.disposed = true;
     try {
       this.sock.close();
     } catch (e) {
       // ignore
+    }
+    if (this.onDispose) {
+      this.onDispose();
     }
   }
 

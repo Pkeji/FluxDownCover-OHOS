@@ -5,6 +5,8 @@ import { EngineListener } from '../engine/types';
 import { TaskRepository } from '../store/TaskRepository';
 import { McpServer } from '../mcp/McpServer';
 import { McpBackend } from '../mcp/McpBackend';
+import { SettingsStore } from '../store/SettingsStore';
+import { common } from '@kit.AbilityKit';
 
 /**
  * Single owner of the task list and app settings. The UI observes its @Trace
@@ -25,8 +27,18 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   private engine: DownloadEngine = DownloadEngine.getInstance();
   private mcp: McpServer = McpServer.getInstance();
   private repo: TaskRepository = new TaskRepository();
+  private settings = SettingsStore.getInstance();
 
-  async init(): Promise<void> {
+  async init(context: common.UIAbilityContext): Promise<void> {
+    // Load persisted settings before anything else
+    await this.settings.init(context);
+    this.theme = await this.settings.getString('theme', 'light') as 'light' | 'dark';
+    this.maxSegments = await this.settings.getNumber('maxSegments', 8);
+    this.verifyIntegrity = await this.settings.getBoolean('verifyIntegrity', false);
+    this.autoExport = await this.settings.getBoolean('autoExport', false);
+    this.mcpEnabled = await this.settings.getBoolean('mcpEnabled', false);
+    this.mcpToken = await this.settings.getString('mcpToken', 'fluxdown-local');
+
     this.engine.setListener(this);
     this.engine.setMaxSegments(this.maxSegments);
     this.tasks = await this.engine.restore();
@@ -63,6 +75,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
 
   setAutoExport(enabled: boolean): void {
     this.autoExport = enabled;
+    this.settings.put('autoExport', enabled);
   }
 
   async startAll(): Promise<void> {
@@ -88,14 +101,17 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   setMaxSegments(n: number): void {
     this.maxSegments = n;
     this.engine.setMaxSegments(n);
+    this.settings.put('maxSegments', n);
   }
 
   setVerify(v: boolean): void {
     this.verifyIntegrity = v;
+    this.settings.put('verifyIntegrity', v);
   }
 
   setTheme(t: 'light' | 'dark'): void {
     this.theme = t;
+    this.settings.put('theme', t);
   }
 
   async setMcp(enabled: boolean, token?: string): Promise<void> {
@@ -103,11 +119,20 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     if (token) {
       this.mcpToken = token;
     }
+    this.settings.put('mcpEnabled', enabled);
+    if (token) {
+      this.settings.put('mcpToken', token);
+    }
     if (enabled) {
       await this.mcp.start(this.mcpToken, this);
     } else {
       this.mcp.stop();
     }
+  }
+
+  setMcpToken(token: string): void {
+    this.mcpToken = token;
+    this.settings.put('mcpToken', token);
   }
 
   // ---- EngineListener ----

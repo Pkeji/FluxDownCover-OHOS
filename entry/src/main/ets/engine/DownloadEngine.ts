@@ -14,6 +14,7 @@ import { hashFile } from './HashTask';
 import { buildHlsSegments, downloadHls } from './protocols/HlsProtocol';
 import { downloadFtp } from './protocols/FtpProtocol';
 import { downloadBittorrent } from './protocols/BittorrentProtocol';
+import { downloadEd2k } from './protocols/Ed2kProtocol';
 
 /**
  * Core download engine. Implements FluxDown's headline features:
@@ -113,15 +114,23 @@ export class DownloadEngine implements EngineHooks {
     if (task.status === TaskStatus.Downloading) {
       return;
     }
-    if (task.protocol === ProtocolType.ED2K) {
+    if (task.protocol === ProtocolType.SFTP) {
       task.status = TaskStatus.Error;
-      task.errorMessage = 'eD2K 协议在本移植版本中尚未实现（详见 README 的已知限制）。';
+      task.errorMessage = 'SFTP 协议尚未实现，敬请期待。';
+      this.listener?.onTaskError(task, task.errorMessage);
+      return;
+    }
+    if (task.protocol === ProtocolType.THUNDER) {
+      task.status = TaskStatus.Error;
+      task.errorMessage = '迅雷链接 (thunder://) 尚未实现，敬请期待。';
       this.listener?.onTaskError(task, task.errorMessage);
       return;
     }
 
     // BitTorrent: skip ensureFile — the output filename comes from .torrent metadata,
     // not from the URL. downloadBittorrent will set filePath after parsing.
+    // Ensure dirPath is valid (may be empty when restored from older DB records).
+    task.dirPath = task.dirPath || this.defaultDir();
     if (task.protocol !== ProtocolType.BITTORRENT) {
       this.ensureFile(task);
     }
@@ -160,6 +169,8 @@ export class DownloadEngine implements EngineHooks {
         await downloadHls(task, ctrl, this);
       } else if (task.protocol === ProtocolType.BITTORRENT) {
         await downloadBittorrent(task, ctrl, this);
+      } else if (task.protocol === ProtocolType.ED2K) {
+        await downloadEd2k(task, ctrl, this);
       } else {
         const pending = task.segments.filter((s) => !s.done);
         if (pending.length === 0) {
@@ -262,15 +273,12 @@ export class DownloadEngine implements EngineHooks {
   private ensureFile(task: DownloadTask): void {
     task.dirPath = task.dirPath || this.defaultDir();
     // Ensure the target directory exists (may be a custom dirPath).
-    try {
-      fs.accessSync(task.dirPath);
-    } catch (e) {
-      fs.mkdirSync(task.dirPath, true);
+    // NOTE: fs.accessSync returns boolean (false if not exist) — it does NOT throw.
+    if (!fs.accessSync(task.dirPath)) {
+      fs.mkdirSync(task.dirPath);
     }
     task.filePath = `${task.dirPath}/${task.fileName}`;
-    try {
-      fs.accessSync(task.filePath);
-    } catch (e) {
+    if (!fs.accessSync(task.filePath)) {
       const f = fs.openSync(task.filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
       fs.closeSync(f.fd);
     }

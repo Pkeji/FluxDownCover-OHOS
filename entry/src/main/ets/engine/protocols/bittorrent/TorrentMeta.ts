@@ -175,7 +175,7 @@ export function sha1Sync(data: Uint8Array): Uint8Array {
   const md: cryptoFramework.Md = cryptoFramework.createMd('SHA1');
   md.updateSync({ data: data });
   const digest: cryptoFramework.DataBlob = md.digestSync();
-  return digest.data;
+  return new Uint8Array(digest.data);
 }
 
 export function sha1FileRegion(fd: number, offset: number, length: number): Uint8Array {
@@ -196,7 +196,7 @@ export function sha1FileRegion(fd: number, offset: number, length: number): Uint
     remaining -= bytesRead;
   }
   const digest: cryptoFramework.DataBlob = md.digestSync();
-  return digest.data;
+  return new Uint8Array(digest.data);
 }
 
 export function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {

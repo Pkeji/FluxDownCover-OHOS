@@ -1,13 +1,15 @@
 import { promptAction } from '@kit.ArkUI';
+import { common, Want } from '@kit.AbilityKit';
 import { DownloadViewModel } from '../viewmodel/DownloadViewModel';
 import { DownloadTask } from '../model/DownloadTask';
 import { TaskStatus } from '../model/TaskStatus';
 import { ProtocolType } from '../model/ProtocolType';
-import { formatBytes, formatSpeed } from '../utils/common';
+import { formatBytes, formatSpeed, detectProtocol, protocolMeta, ALL_PROTOCOLS, fileNameFromUrl } from '../utils/common';
 
 interface Palette {
   bg: string;
   surface: string;
+  surfaceSolid: string;
   text: string;
   textSecondary: string;
   primary: string;
@@ -17,21 +19,23 @@ interface Palette {
 function palette(theme: 'light' | 'dark'): Palette {
   if (theme === 'dark') {
     return {
-      bg: '#15171C',
-      surface: '#1E2128',
+      bg: '#0F1015',
+      surface: '#661E2128',
+      surfaceSolid: '#1E2128',
       text: '#E6E8EC',
       textSecondary: '#9CA3AF',
       primary: '#60A5FA',
-      border: '#2A2E37'
+      border: '#222630'
     };
   }
   return {
-    bg: '#F2F4F8',
-    surface: '#FFFFFF',
+    bg: '#E8EBF0',
+    surface: '#66FFFFFF',
+    surfaceSolid: '#FFFFFF',
     text: '#1A1C20',
     textSecondary: '#6B7280',
     primary: '#3B82F6',
-    border: '#E5E7EB'
+    border: '#0000000F'
   };
 }
 
@@ -50,7 +54,7 @@ function statusText(s: TaskStatus): string {
     case TaskStatus.Error:
       return '错误';
     default:
-      return '等待';
+      return '未知';
   }
 }
 
@@ -60,9 +64,6 @@ struct IndexPage {
   @Local vm: DownloadViewModel = new DownloadViewModel();
   navPathStack: NavPathStack = new NavPathStack();
   @Local currentTab: number = 0;
-  @Local showAdd: boolean = false;
-  @Local addUrl: string = '';
-  @Local addName: string = '';
 
   @Computed
   get p(): Palette {
@@ -70,7 +71,8 @@ struct IndexPage {
   }
 
   aboutToAppear(): void {
-    this.vm.init();
+    const context = getContext(this) as common.UIAbilityContext;
+    this.vm.init(context);
   }
 
   private async doExport(task: DownloadTask): Promise<void> {
@@ -83,10 +85,10 @@ struct IndexPage {
   }
 
   get visibleTasks(): DownloadTask[] {
-    if (this.currentTab === 1) {
-      return this.vm.tasks.filter((t) => t.status === TaskStatus.Completed);
+    if (this.currentTab === 0) {
+      return this.vm.tasks.filter(t => t.status !== TaskStatus.Completed);
     }
-    return this.vm.tasks.filter((t) => t.status !== TaskStatus.Completed);
+    return this.vm.tasks.filter(t => t.status === TaskStatus.Completed);
   }
 
   build() {
@@ -94,11 +96,20 @@ struct IndexPage {
       this.MasterView()
     }
     .title('FluxDown')
-    .backgroundColor(this.vm.theme === 'dark' ? '#15171C' : '#F2F4F8')
+    .backgroundColor(this.p.bg)
+    .mode(NavigationMode.Auto)
+    .navBarWidth(360)
     .menus([
-      { value: '新建', action: () => { this.showAdd = true; } },
+      {
+        value: '新建下载',
+        icon: $r('app.media.ic_add'),
+        action: () => {
+          this.navPathStack.pushPath({ name: 'add' });
+        }
+      },
       {
         value: '设置',
+        icon: $r('app.media.ic_settings'),
         action: () => {
           this.navPathStack.pushPath({ name: 'settings' });
         }
@@ -114,11 +125,25 @@ struct IndexPage {
         TaskDetailContent({ task: param as DownloadTask, vm: this.vm })
       }
       .title('任务详情')
+      .mode(NavDestinationMode.STANDARD)
+    } else if (name === 'add') {
+      NavDestination() {
+        AddContent({ vm: this.vm, navStack: this.navPathStack })
+      }
+      .title('新建下载')
+      .mode(NavDestinationMode.STANDARD)
     } else if (name === 'settings') {
       NavDestination() {
-        SettingsContent({ vm: this.vm })
+        SettingsContent({ vm: this.vm, navStack: this.navPathStack })
       }
       .title('设置')
+      .mode(NavDestinationMode.STANDARD)
+    } else if (name === 'about') {
+      NavDestination() {
+        AboutContent({ vm: this.vm })
+      }
+      .title('关于')
+      .mode(NavDestinationMode.STANDARD)
     }
   }
 
@@ -126,26 +151,20 @@ struct IndexPage {
   MasterView() {
     Column() {
       Row() {
-        this.TabButton('下载中', 0)
-        this.TabButton('已完成', 1)
+        this.TabButton('下载中', 0, '↓')
+        this.TabButton('已完成', 1, '✓')
       }
       .width('100%')
-      .padding({ top: 8, bottom: 8 })
-
-      if (this.showAdd) {
-        this.AddSheet()
-      }
+      .padding({ left: 12, right: 12, top: 8, bottom: 8 })
 
       if (this.visibleTasks.length === 0) {
         Column() {
           Text('暂无下载任务').fontColor(this.p.textSecondary).fontSize(16)
-          Text('点击右上角“新建”添加下载链接')
-            .fontColor(this.p.textSecondary)
-            .fontSize(12)
-            .margin({ top: 6 })
+          Text('点击右上角"新建下载"添加').fontColor(this.p.textSecondary).fontSize(13).margin({ top: 6 })
         }
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
+        .transition(TransitionEffect.OPACITY.animation({ duration: 300, curve: Curve.EaseInOut }))
       } else {
         List() {
           ForEach(
@@ -153,9 +172,12 @@ struct IndexPage {
             (task: DownloadTask) => {
               ListItem() {
                 this.TaskRow(task)
-              }.onClick(() => {
+              }
+              .onClick(() => {
                 this.navPathStack.pushPath({ name: 'detail', param: task });
               })
+              .transition(TransitionEffect.translate({ y: 20 }).combine(TransitionEffect.OPACITY)
+                .animation({ duration: 300, curve: Curve.EaseOut }))
             },
             (task: DownloadTask) => task.id
           )
@@ -163,33 +185,55 @@ struct IndexPage {
         .layoutWeight(1)
         .width('100%')
         .divider({ strokeWidth: 1, color: this.p.border })
+        .transition(TransitionEffect.OPACITY.animation({ duration: 300, curve: Curve.EaseInOut }))
       }
     }
     .width('100%')
-    .height('100%')
-    .backgroundColor(this.p.bg)
   }
 
   @Builder
-  TabButton(label: string, index: number) {
-    Button(label)
-      .width('50%')
-      .backgroundColor(this.currentTab === index ? this.p.primary : this.p.surface)
-      .fontColor(this.currentTab === index ? '#FFFFFF' : this.p.text)
-      .onClick(() => {
-        this.currentTab = index;
-      })
+  TabButton(label: string, index: number, icon: string) {
+    Row() {
+      Text(icon)
+        .fontSize(18)
+        .fontColor(this.currentTab === index ? '#FFFFFF' : this.p.text)
+      Text(label)
+        .fontSize(14)
+        .fontColor(this.currentTab === index ? '#FFFFFF' : this.p.text)
+        .margin({ left: 6 })
+    }
+    .layoutWeight(1)
+    .height(40)
+    .justifyContent(FlexAlign.Center)
+    .backgroundColor(this.currentTab === index ? this.p.primary : this.p.surface)
+    .borderRadius(10)
+    .margin({ left: 4, right: 4 })
+    .animation({ duration: 250, curve: Curve.EaseInOut })
+    .onClick(() => {
+      this.currentTab = index;
+    })
   }
 
   @Builder
   TaskRow(task: DownloadTask) {
     Row() {
       Column() {
-        Text(task.fileName)
-          .fontSize(15)
-          .fontColor(this.p.text)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
+        Row() {
+          Text(task.fileName)
+            .fontSize(15)
+            .fontColor(this.p.text)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .layoutWeight(1)
+          Text(protocolMeta(task.protocol).label)
+            .fontSize(10)
+            .fontColor('#FFFFFF')
+            .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+            .borderRadius(4)
+            .backgroundColor(protocolMeta(task.protocol).color)
+            .margin({ left: 8 })
+        }
+        .width('100%')
         Row() {
           Text(statusText(task.status)).fontSize(12).fontColor(this.p.textSecondary)
           if (task.status === TaskStatus.Downloading) {
@@ -245,67 +289,492 @@ struct IndexPage {
             .height(32)
             .fontSize(12)
             .backgroundColor(this.p.primary)
+            .fontColor('#FFFFFF')
             .onClick(() => {
               this.doExport(task);
             })
         }
-        Button('移除')
+        Button('删除')
           .height(32)
           .fontSize(12)
-          .backgroundColor('#EF4444')
+          .margin({ left: 6 })
           .onClick(() => {
             this.vm.remove(task);
           })
       }
-      .padding({ left: 8 })
     }
     .padding(12)
     .backgroundColor(this.p.surface)
+        .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
     .borderRadius(12)
     .margin({ left: 12, right: 12, top: 6, bottom: 6 })
   }
+}
+
+// ── 新建下载页面 ──
+@ComponentV2
+struct AddContent {
+  @Param vm: DownloadViewModel = new DownloadViewModel();
+  @Param navStack: NavPathStack = new NavPathStack();
+  @Local url: string = '';
+  @Local autoFileName: string = '';
+  @Local detectedLabel: string = '';
+  @Local detectedColor: string = '';
+  @Local detectedDesc: string = '';
+  @Local detectedImpl: boolean = true;
+  @Local hasDetection: boolean = false;
+
+  @Computed
+  get p(): Palette {
+    return palette(this.vm.theme);
+  }
 
   @Builder
-  AddSheet() {
+  ProtocolChip(label: string, color: string, implemented: boolean) {
+    Text(label)
+      .fontSize(11)
+      .fontColor('#FFFFFF')
+      .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+      .borderRadius(6)
+      .backgroundColor(color)
+  }
+
+  build() {
     Column() {
-      Text('新建下载').fontSize(16).fontColor(this.p.text).margin({ bottom: 10 })
-      TextInput({ placeholder: '下载链接 (http/https/ftp/*.m3u8)', text: this.addUrl })
+      Text('下载链接')
+        .fontSize(14)
+        .fontColor(this.p.textSecondary)
+        .width('100%')
+        .margin({ bottom: 8 })
+
+      TextInput({ placeholder: '粘贴或输入下载链接', text: this.url })
         .onChange((v: string) => {
-          this.addUrl = v;
+          this.url = v;
+          const trimmed = v.trim();
+          if (trimmed.length > 0) {
+            const meta = protocolMeta(detectProtocol(trimmed));
+            this.detectedLabel = meta.label;
+            this.detectedColor = meta.color;
+            this.detectedDesc = meta.desc;
+            this.detectedImpl = meta.implemented;
+            this.hasDetection = true;
+            this.autoFileName = fileNameFromUrl(trimmed);
+          } else {
+            this.hasDetection = false;
+            this.autoFileName = '';
+          }
         })
         .width('100%')
-      TextInput({ placeholder: '文件名 (可选)', text: this.addName })
-        .onChange((v: string) => {
-          this.addName = v;
-        })
+        .height(48)
+        .borderRadius(10)
+
+      // 实时协议检测徽章
+      if (this.hasDetection) {
+        Row() {
+          Row() {
+            Text('●').fontSize(10).fontColor(this.detectedColor).margin({ right: 4 })
+            Text(this.detectedLabel).fontSize(12).fontColor(this.p.text)
+            Text(this.detectedDesc).fontSize(11).fontColor(this.p.textSecondary).margin({ left: 6 })
+          }
+          .layoutWeight(1)
+
+          if (!this.detectedImpl) {
+            Text('未实现').fontSize(10).fontColor('#FF6B6B')
+          }
+        }
         .width('100%')
+        .padding({ left: 12, right: 12, top: 8, bottom: 8 })
+        .backgroundColor(this.p.surface)
+        .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
+        .borderRadius(8)
         .margin({ top: 8 })
-      Row() {
-        Button('取消').onClick(() => {
-          this.showAdd = false;
-          this.addUrl = '';
-          this.addName = '';
-        })
-        Button('确定')
-          .backgroundColor(this.p.primary)
-          .onClick(() => {
-            this.vm.addDownload(this.addUrl, this.addName || undefined);
-            this.showAdd = false;
-            this.addUrl = '';
-            this.addName = '';
-          })
       }
-      .justifyContent(FlexAlign.SpaceBetween)
+
+      // 自动识别文件名预览
+      if (this.autoFileName.length > 0) {
+        Row() {
+          Text('文件名').fontSize(13).fontColor(this.p.textSecondary)
+          Text(this.autoFileName)
+            .fontSize(13)
+            .fontColor(this.p.text)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .layoutWeight(1)
+            .margin({ left: 8 })
+        }
+        .width('100%')
+        .margin({ top: 12 })
+      }
+
+      // 支持协议标签
+      Text('支持协议')
+        .fontSize(13)
+        .fontColor(this.p.textSecondary)
+        .width('100%')
+        .margin({ top: 20, bottom: 8 })
+
+      Flex({ wrap: FlexWrap.Wrap }) {
+        ForEach(ALL_PROTOCOLS, (proto: ProtocolType) => {
+          this.ProtocolChip(
+            protocolMeta(proto).label,
+            protocolMeta(proto).color,
+            protocolMeta(proto).implemented
+          )
+        })
+      }
       .width('100%')
-      .margin({ top: 12 })
+
+      Button('开始下载')
+        .width('100%')
+        .height(48)
+        .backgroundColor(this.p.primary)
+        .fontColor('#FFFFFF')
+        .borderRadius(10)
+        .margin({ top: 24 })
+        .enabled(this.url.trim().length > 0)
+        .onClick(() => {
+          if (this.url.trim().length === 0) {
+            return;
+          }
+          this.vm.addDownload(this.url.trim(), undefined);
+          this.url = '';
+          this.autoFileName = '';
+          this.hasDetection = false;
+          promptAction.showToast({ message: '已添加下载任务' });
+          this.navStack.pop();
+        })
     }
-    .padding(16)
-    .backgroundColor(this.p.surface)
-    .borderRadius(12)
-    .margin(12)
+    .padding(20)
+    .width('100%')
+    .height('100%')
+    .backgroundColor(this.p.bg)
+    .alignItems(HorizontalAlign.Start)
   }
 }
 
+// ── 设置页面 ──
+@ComponentV2
+struct SettingsContent {
+  @Param vm: DownloadViewModel = new DownloadViewModel();
+  @Param navStack: NavPathStack = new NavPathStack();
+
+  @Computed
+  get p(): Palette {
+    return palette(this.vm.theme);
+  }
+
+  build() {
+    Scroll() {
+      Column() {
+        // ── 关于入口 ──
+        Row() {
+          Text('关于').fontColor(this.p.text).layoutWeight(1).fontSize(16)
+          Text('›').fontColor(this.p.textSecondary).fontSize(20)
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor(this.p.surface)
+        .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
+        .borderRadius(12)
+        .margin({ left: 16, right: 16, top: 16 })
+        .onClick(() => {
+          this.navStack.pushPath({ name: 'about' });
+        })
+
+        // ── 下载设置 ──
+        Text('下载设置').fontSize(13).fontColor(this.p.textSecondary)
+          .margin({ left: 20, top: 24, bottom: 6 })
+          .width('100%')
+
+        Column() {
+          Row() {
+            Text('最大线程数').fontColor(this.p.text).layoutWeight(1).fontSize(15)
+            Text(String(this.vm.maxSegments)).fontColor(this.p.primary).fontSize(15)
+          }
+          .width('100%')
+          .padding({ left: 16, right: 16, top: 14, bottom: 6 })
+
+          Slider({
+            value: this.vm.maxSegments,
+            min: 1,
+            max: 16,
+            step: 1,
+            style: SliderStyle.OutSet
+          })
+            .onChange((v: number) => {
+              this.vm.setMaxSegments(v);
+            })
+            .width('100%')
+            .padding({ left: 12, right: 12, bottom: 8 })
+            .blockColor(this.p.primary)
+
+          Divider().color(this.p.border).margin({ left: 16, right: 16 })
+
+          Row() {
+            Text('校验完整性').fontColor(this.p.text).layoutWeight(1).fontSize(15)
+            Toggle({ isOn: this.vm.verifyIntegrity, type: ToggleType.Switch })
+              .onChange((v: boolean) => {
+                this.vm.setVerify(v);
+              })
+          }
+          .width('100%')
+          .padding(16)
+
+          Divider().color(this.p.border).margin({ left: 16, right: 16 })
+
+          Row() {
+            Text('自动导出到公共 Download').fontColor(this.p.text).layoutWeight(1).fontSize(15)
+            Toggle({ isOn: this.vm.autoExport, type: ToggleType.Switch })
+              .onChange((v: boolean) => {
+                this.vm.setAutoExport(v);
+              })
+          }
+          .width('100%')
+          .padding(16)
+        }
+        .width('100%')
+        .backgroundColor(this.p.surface)
+        .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
+        .borderRadius(12)
+        .margin({ left: 16, right: 16 })
+
+        // ── 外观 ──
+        Text('外观').fontSize(13).fontColor(this.p.textSecondary)
+          .margin({ left: 20, top: 24, bottom: 6 })
+          .width('100%')
+
+        Row() {
+          Text('主题').fontColor(this.p.text).layoutWeight(1).fontSize(15)
+          Button(this.vm.theme === 'dark' ? '深色' : '浅色')
+            .fontSize(13)
+            .backgroundColor(this.vm.theme === 'dark' ? '#3A3D45' : '#E0E0E0')
+            .fontColor(this.p.text)
+            .onClick(() => {
+              this.vm.setTheme(this.vm.theme === 'dark' ? 'light' : 'dark');
+            })
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor(this.p.surface)
+        .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
+        .borderRadius(12)
+        .margin({ left: 16, right: 16 })
+
+        // ── MCP 服务 ──
+        Text('MCP 服务').fontSize(13).fontColor(this.p.textSecondary)
+          .margin({ left: 20, top: 24, bottom: 6 })
+          .width('100%')
+
+        Column() {
+          Row() {
+            Column() {
+              Text('MCP 本地服务').fontColor(this.p.text).fontSize(15)
+              Text('127.0.0.1:17800').fontColor(this.p.textSecondary).fontSize(12).margin({ top: 2 })
+            }
+            .alignItems(HorizontalAlign.Start)
+            .layoutWeight(1)
+            Toggle({ isOn: this.vm.mcpEnabled, type: ToggleType.Switch })
+              .onChange((v: boolean) => {
+                this.vm.setMcp(v);
+              })
+          }
+          .width('100%')
+          .padding(16)
+
+          Divider().color(this.p.border).margin({ left: 16, right: 16 })
+
+          Column() {
+            Text('Bearer Token').fontColor(this.p.textSecondary).fontSize(13)
+            TextInput({ text: this.vm.mcpToken })
+              .onChange((v: string) => {
+                this.vm.setMcpToken(v);
+              })
+              .width('100%')
+              .margin({ top: 8 })
+              .backgroundColor(this.p.bg)
+              .borderRadius(8)
+          }
+          .width('100%')
+          .padding(16)
+          .alignItems(HorizontalAlign.Start)
+        }
+        .width('100%')
+        .backgroundColor(this.p.surface)
+        .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
+        .borderRadius(12)
+        .margin({ left: 16, right: 16 })
+
+      }
+      .width('100%')
+    }
+    .scrollBar(BarState.Off)
+    .width('100%')
+    .height('100%')
+    .backgroundColor(this.p.bg)
+  }
+}
+
+// ── 关于页面 ──
+@ComponentV2
+struct AboutContent {
+  @Param vm: DownloadViewModel = new DownloadViewModel();
+
+  @Computed
+  get p(): Palette {
+    return palette(this.vm.theme);
+  }
+
+  build() {
+    Scroll() {
+      Column() {
+        // App icon & name
+        Column() {
+          Image($r('app.media.app_icon'))
+            .width(80)
+            .height(80)
+            .borderRadius(20)
+            .margin({ bottom: 12 })
+
+          Text('FluxDown')
+            .fontSize(22)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.p.text)
+
+          Text('v1.0.0')
+            .fontSize(14)
+            .fontColor(this.p.textSecondary)
+            .margin({ top: 4 })
+        }
+        .width('100%')
+        .padding({ top: 36, bottom: 28 })
+        .alignItems(HorizontalAlign.Center)
+
+        // 简介
+        Column() {
+          Text('简介')
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.p.textSecondary)
+            .width('100%')
+            .margin({ bottom: 10 })
+
+          Text('FluxDown 是一款多协议下载管理器，支持 HTTP/HTTPS、FTP、HLS 流媒体、BitTorrent P2P 及 eD2K 协议。基于 HarmonyOS NEXT 原生开发，提供流畅的下载体验与任务管理功能。')
+            .fontSize(14)
+            .fontColor(this.p.text)
+            .lineHeight(22)
+            .width('100%')
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor(this.p.surface)
+        .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
+        .borderRadius(12)
+        .margin({ left: 16, right: 16, bottom: 12 })
+
+        // 支持协议
+        Column() {
+          Text('支持协议')
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.p.textSecondary)
+            .width('100%')
+            .margin({ bottom: 12 })
+
+          this.ProtocolItem('HTTP / HTTPS', '网页直链下载，支持多线程分片')
+          this.ProtocolItem('FTP', '文件传输协议，被动模式')
+          this.ProtocolItem('SFTP', 'SSH 文件传输协议（开发中）')
+          this.ProtocolItem('HLS (m3u8)', 'HTTP Live Streaming 流媒体分段下载')
+          this.ProtocolItem('BitTorrent', 'P2P 下载，磁力链接 / .torrent 种子')
+          this.ProtocolItem('迅雷 (thunder://)', '迅雷专用链接（开发中）')
+          this.ProtocolItem('eD2K', 'eDonkey 网络（开发中）')
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor(this.p.surface)
+        .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
+        .borderRadius(12)
+        .margin({ left: 16, right: 16, bottom: 16 })
+
+        // ── 作者 ──
+        Column() {
+          Row() {
+            Image('https://avatars.githubusercontent.com/zerx-lab?v=4')
+              .width(40)
+              .height(40)
+              .borderRadius(20)
+            Column() {
+              Text('原作者').fontSize(12).fontColor(this.p.textSecondary)
+              Text('zerx-lab').fontSize(14).fontColor(this.p.text).fontWeight(FontWeight.Medium)
+            }
+            .layoutWeight(1)
+            .alignItems(HorizontalAlign.Start)
+            .margin({ left: 12 })
+          }
+          .width('100%')
+          .onClick(() => {
+            const want: Want = { uri: 'https://github.com/zerx-lab' };
+            (getContext(this) as common.UIAbilityContext).startAbility(want);
+          })
+
+          Divider().color(this.p.border).strokeWidth(1).margin({ top: 12, bottom: 12 })
+
+          Row() {
+            Image('https://avatars.githubusercontent.com/Pkeji?v=4')
+              .width(40)
+              .height(40)
+              .borderRadius(20)
+            Column() {
+              Text('移植者').fontSize(12).fontColor(this.p.textSecondary)
+              Text('Pkeji').fontSize(14).fontColor(this.p.text).fontWeight(FontWeight.Medium)
+            }
+            .layoutWeight(1)
+            .alignItems(HorizontalAlign.Start)
+            .margin({ left: 12 })
+          }
+          .width('100%')
+          .onClick(() => {
+            const want: Want = { uri: 'https://github.com/Pkeji' };
+            (getContext(this) as common.UIAbilityContext).startAbility(want);
+          })
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor(this.p.surface)
+        .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
+        .borderRadius(12)
+        .margin({ left: 16, right: 16, bottom: 16 })
+
+        Text('© 2026 FluxDown for HarmonyOS')
+          .fontSize(12)
+          .fontColor(this.p.textSecondary)
+          .margin({ bottom: 32 })
+      }
+      .width('100%')
+      .alignItems(HorizontalAlign.Center)
+    }
+    .scrollBar(BarState.Off)
+    .width('100%')
+    .height('100%')
+    .backgroundColor(this.p.bg)
+  }
+
+  @Builder
+  ProtocolItem(name: string, desc: string) {
+    Row() {
+      Text('•').fontSize(14).fontColor(this.p.primary).margin({ right: 8 })
+      Column() {
+        Text(name).fontSize(13).fontColor(this.p.text).fontWeight(FontWeight.Medium)
+        Text(desc).fontSize(12).fontColor(this.p.textSecondary).margin({ top: 2 })
+      }
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
+    }
+    .width('100%')
+    .margin({ bottom: 8 })
+  }
+}
+
+// ── 任务详情页面 ──
 @ComponentV2
 struct TaskDetailContent {
   @Param task: DownloadTask = new DownloadTask();
@@ -326,7 +795,8 @@ struct TaskDetailContent {
 
       List() {
         this.Row2('状态', statusText(this.task.status))
-        this.Row2('协议', this.task.protocol)
+        this.Row2('协议', protocolMeta(this.task.protocol).label + ' · ' + protocolMeta(this.task.protocol).desc)
+        this.Row2('文件名', this.task.fileName)
         this.Row2('大小', this.task.totalBytes > 0 ? formatBytes(this.task.totalBytes) : '未知')
         this.Row2('已下载', formatBytes(this.task.downloadedBytes))
         this.Row2('进度', this.task.totalBytes > 0 ? this.task.percent + '%' : '-')
@@ -340,34 +810,9 @@ struct TaskDetailContent {
           this.Row2('错误', this.task.errorMessage)
         }
       }
-      .width('100%')
       .layoutWeight(1)
-
-      Row() {
-        if (this.task.status === TaskStatus.Downloading) {
-          Button('暂停').width('30%').onClick(() => this.vm.pause(this.task))
-        } else if (this.task.status === TaskStatus.Paused || this.task.status === TaskStatus.Error) {
-          Button('继续').width('30%').onClick(() => this.vm.resume(this.task))
-        } else if (this.task.status === TaskStatus.Completed) {
-          Button('导出到公共 Download')
-            .width('30%')
-            .onClick(async () => {
-              try {
-                const path = await this.vm.exportToDownload(this.task);
-                promptAction.showToast({ message: '已导出到公共 Download: ' + path });
-              } catch (e) {
-                promptAction.showToast({ message: '导出失败: ' + ((e as Error)?.message || String(e)) });
-              }
-            })
-        }
-        Button('移除')
-          .width('30%')
-          .backgroundColor('#EF4444')
-          .onClick(() => this.vm.remove(this.task))
-      }
-      .justifyContent(FlexAlign.SpaceAround)
       .width('100%')
-      .padding(12)
+      .divider({ strokeWidth: 1, color: this.p.border })
     }
     .width('100%')
     .height('100%')
@@ -389,124 +834,5 @@ struct TaskDetailContent {
       .padding(10)
       .width('100%')
     }
-  }
-}
-
-@ComponentV2
-struct SettingsContent {
-  @Param vm: DownloadViewModel = new DownloadViewModel();
-
-  @Computed
-  get p(): Palette {
-    return palette(this.vm.theme);
-  }
-
-  build() {
-    Column() {
-      List() {
-        ListItem() {
-          Row() {
-            Text('最大线程数').fontColor(this.p.text).layoutWeight(1)
-            Text(String(this.vm.maxSegments)).fontColor(this.p.primary)
-          }
-          .padding(12)
-          .width('100%')
-        }
-        ListItem() {
-          Slider({
-            value: this.vm.maxSegments,
-            min: 1,
-            max: 16,
-            step: 1,
-            style: SliderStyle.OutSet
-          })
-            .onChange((v: number) => {
-              this.vm.setMaxSegments(v);
-            })
-            .width('100%')
-            .padding(12)
-        }
-        ListItem() {
-          Row() {
-            Text('下载完成后校验完整性 (SHA-256)').fontColor(this.p.text).layoutWeight(1)
-            Toggle({ isOn: this.vm.verifyIntegrity, type: ToggleType.Switch })
-              .onChange((v: boolean) => {
-                this.vm.setVerify(v);
-              })
-          }
-          .padding(12)
-          .width('100%')
-        }
-        ListItem() {
-          Row() {
-            Text('下载完成后自动导出到公共 Download').fontColor(this.p.text).layoutWeight(1)
-            Toggle({ isOn: this.vm.autoExport, type: ToggleType.Switch })
-              .onChange((v: boolean) => {
-                this.vm.setAutoExport(v);
-              })
-          }
-          .padding(12)
-          .width('100%')
-        }
-        ListItem() {
-          Row() {
-            Text('主题').fontColor(this.p.text).layoutWeight(1)
-            Button(this.vm.theme === 'dark' ? '深色' : '浅色').onClick(() => {
-              this.vm.setTheme(this.vm.theme === 'dark' ? 'light' : 'dark');
-            })
-          }
-          .padding(12)
-          .width('100%')
-        }
-        ListItem() {
-          Row() {
-            Text('MCP 本地服务 (127.0.0.1:17800)').fontColor(this.p.text).layoutWeight(1)
-            Toggle({ isOn: this.vm.mcpEnabled, type: ToggleType.Switch })
-              .onChange((v: boolean) => {
-                this.vm.setMcp(v);
-              })
-          }
-          .padding(12)
-          .width('100%')
-        }
-        ListItem() {
-          Column() {
-            Text('MCP Bearer Token').fontColor(this.p.textSecondary).fontSize(12).alignSelf(ItemAlign.Start)
-            TextInput({ text: this.vm.mcpToken })
-              .onChange((v: string) => {
-                this.vm.mcpToken = v;
-              })
-              .width('100%')
-              .margin({ top: 6 })
-          }
-          .padding(12)
-          .width('100%')
-        }
-      }
-      .width('100%')
-      .layoutWeight(1)
-
-      Column() {
-        Text('目标 API: HarmonyOS NEXT 24 (Mate 60 Pro · NEXT 6.1.1.120)')
-          .fontSize(11)
-          .fontColor(this.p.textSecondary)
-          .width('100%')
-        Text('权限 ohos.permission.INTERNET 等已在 module.json5 中声明')
-          .fontSize(11)
-          .fontColor(this.p.textSecondary)
-          .width('100%')
-          .margin({ top: 4 })
-        Text('文件默认存于应用沙箱；完成后可在任务详情/列表中“导出到公共 Download”目录（手机无需额外权限）')
-          .fontSize(11)
-          .fontColor(this.p.textSecondary)
-          .width('100%')
-          .margin({ top: 4 })
-      }
-      .padding(12)
-      .width('100%')
-    }
-    .width('100%')
-    .height('100%')
-    .backgroundColor(this.p.bg)
   }
 }

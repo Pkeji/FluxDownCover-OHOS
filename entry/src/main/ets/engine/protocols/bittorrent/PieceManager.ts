@@ -31,6 +31,8 @@ export class PieceManager {
   private havePieces: boolean[] = [];
   private fileFd: number = -1;
   private onVerified: PieceVerifiedCallback;
+  /** Pieces currently being downloaded by some peer (avoid duplicate work). */
+  private downloading: Set<number> = new Set();
 
   /** Total bytes verified and written. */
   verifiedBytes: number = 0;
@@ -102,11 +104,19 @@ export class PieceManager {
    */
   pickPiece(availablePieces: Set<number>): number {
     for (let i = 0; i < this.pieces.length; i++) {
-      if (!this.pieces[i].done && availablePieces.has(i)) {
+      if (!this.pieces[i].done && !this.downloading.has(i) && availablePieces.has(i)) {
+        this.downloading.add(i);
         return i;
       }
     }
     return -1;
+  }
+
+  /** Release a piece from the downloading set (e.g. when a peer disconnects). */
+  releasePiece(pieceIndex: number): void {
+    if (pieceIndex >= 0 && !this.pieces[pieceIndex]?.done) {
+      this.downloading.delete(pieceIndex);
+    }
   }
 
   /**
@@ -171,12 +181,14 @@ export class PieceManager {
       // Hash mismatch — reset piece for re-download
       piece.received = 0;
       piece.blocks.clear();
+      this.downloading.delete(piece.index);
       return;
     }
 
     piece.done = true;
     this.havePieces[piece.index] = true;
     this.verifiedBytes += piece.total;
+    this.downloading.delete(piece.index);
     this.onVerified(piece.index, piece.total);
   }
 

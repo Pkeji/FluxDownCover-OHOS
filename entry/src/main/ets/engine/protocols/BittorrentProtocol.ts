@@ -52,12 +52,13 @@ export async function downloadBittorrent(
   task.totalBytes = meta.totalLength;
   // Always derive the output filename from the torrent metadata, not the URL.
   task.fileName = sanitizeFileName(meta.isMultiFile ? `${meta.name}.tar` : meta.name);
-  task.dirPath = task.dirPath || '';
+  if (!task.dirPath) {
+    throw new Error('BitTorrent download failed: dirPath is empty. Ensure DownloadEngine sets a valid default directory.');
+  }
   // Ensure the output directory exists.
-  try {
-    fs.accessSync(task.dirPath);
-  } catch (e) {
-    fs.mkdirSync(task.dirPath, true);
+  // NOTE: fs.accessSync returns boolean (false if not exist) — it does NOT throw.
+  if (!fs.accessSync(task.dirPath)) {
+    fs.mkdirSync(task.dirPath);
   }
   task.filePath = `${task.dirPath}/${task.fileName}`;
 
@@ -84,7 +85,7 @@ export async function downloadBittorrent(
   );
 
   // ── 5. Connect to peers and download ────────────────────────────────
-  const connections: PeerConnection[] = [];
+  let connections: PeerConnection[] = [];
   const activeRequests: Map<string, { piece: number; begin: number; length: number }> = new Map();
 
   let lastAnnounce = Date.now();
@@ -124,12 +125,13 @@ export async function downloadBittorrent(
       }
     }
 
-    // Clean up disposed connections
+    // Clean up disposed connections and remove from array
     for (const conn of connections) {
       if (conn.isDisposed) {
         conn.close();
       }
     }
+    connections = connections.filter((c) => !c.isDisposed);
 
     // Wait a bit before checking again
     await sleep(500);
@@ -176,9 +178,8 @@ async function loadTorrentMeta(url: string): Promise<TorrentMeta> {
     filePath = filePath.substring('file://'.length);
   }
   // Verify the .torrent file exists before opening.
-  try {
-    fs.accessSync(filePath);
-  } catch (e) {
+  // NOTE: fs.accessSync returns boolean — it does NOT throw for non-existent files.
+  if (!fs.accessSync(filePath)) {
     throw new Error(`无法访问 .torrent 文件: ${filePath}（文件不存在或应用无权限访问）`);
   }
   return parseTorrentFile(filePath);
@@ -201,6 +202,7 @@ async function connectToPeer(
   // Track what pieces this peer has
   const peerPieces = new Set<number>();
   let unchoked = false;
+  let currentPiece = -1; // track piece assigned to this peer for cleanup
 
   const handler: PeerMessageHandler = {
     onUnchoke() {
@@ -244,6 +246,7 @@ async function connectToPeer(
     if (pieceIdx < 0) {
       return;
     }
+    currentPiece = pieceIdx;
     const blockReq = pieceManager.nextBlockRequest(pieceIdx);
     if (!blockReq) {
       return;
@@ -259,6 +262,11 @@ async function connectToPeer(
     await conn.connect(15000);
     conn.setMessageHandler(handler);
 
+    // Release piece on disconnect
+    conn.onDispose = () => {
+      pieceManager.releasePiece(currentPiece);
+    };
+
     // Send our bitfield
     const havePieces = pieceManager.getHavePieces();
     const bitfield = buildBitfield(havePieces, meta.pieceCount);
@@ -272,6 +280,7 @@ async function connectToPeer(
     return conn;
   } catch (e) {
     conn.close();
+    pieceManager.releasePiece(currentPiece);
     return null;
   }
 }

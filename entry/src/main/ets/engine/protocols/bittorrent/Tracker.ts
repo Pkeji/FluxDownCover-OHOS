@@ -9,6 +9,7 @@ import {
   dictGetBytes
 } from './Bencode';
 import { TorrentMeta } from './TorrentMeta';
+import { announceUdp } from './UdpTracker';
 
 /**
  * A single peer endpoint.
@@ -177,14 +178,17 @@ export async function announceAny(
 ): Promise<AnnounceResult> {
   let lastError: Error | null = null;
   for (const url of trackers) {
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      continue; // skip UDP trackers (not supported in this implementation)
-    }
     try {
-      return await announce(url, meta, peerId, port, uploaded, downloaded, left);
+      if (url.startsWith('udp://')) {
+        return await announceUdp(url, meta, peerId, port, uploaded, downloaded, left);
+      } else if (url.startsWith('http://') || url.startsWith('https://')) {
+        return await announce(url, meta, peerId, port, uploaded, downloaded, left);
+      } else {
+        continue; // unsupported tracker scheme
+      }
     } catch (e) {
       lastError = e as Error;
     }
   }
-  throw lastError ?? new Error('Tracker: no HTTP trackers available');
+  throw lastError ?? new Error('Tracker: no usable trackers available');
 }
