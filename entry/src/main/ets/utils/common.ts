@@ -77,6 +77,12 @@ export function detectProtocol(url: string, override?: ProtocolType): ProtocolTy
   if (lower.startsWith('thunder://')) {
     return ProtocolType.THUNDER;
   }
+  if (lower.startsWith('flashget://')) {
+    return ProtocolType.FLASHGET;
+  }
+  if (lower.startsWith('qqdl://')) {
+    return ProtocolType.QQDL;
+  }
   if (lower.startsWith('magnet:') || lower.startsWith('bt://') || lower.endsWith('.torrent')) {
     return ProtocolType.BITTORRENT;
   }
@@ -112,7 +118,9 @@ const PROTOCOL_META: Record<string, ProtocolMeta> = {
   [ProtocolType.HLS]: { label: 'HLS', desc: '流媒体 m3u8', color: '#9C27B0', implemented: true },
   [ProtocolType.DASH]: { label: 'DASH', desc: '流媒体 mpd', color: '#AB47BC', implemented: true },
   [ProtocolType.BITTORRENT]: { label: 'BT', desc: 'P2P / 磁力', color: '#00BCD4', implemented: true },
-  [ProtocolType.THUNDER]: { label: '迅雷', desc: 'thunder://', color: '#FF5722', implemented: false },
+  [ProtocolType.THUNDER]: { label: '迅雷', desc: 'thunder://', color: '#FF5722', implemented: true },
+  [ProtocolType.FLASHGET]: { label: '快车', desc: 'flashget://', color: '#E91E63', implemented: true },
+  [ProtocolType.QQDL]: { label: '旋风', desc: 'qqdl://', color: '#00C853', implemented: true },
   [ProtocolType.ED2K]: { label: 'eD2K', desc: 'eDonkey 网络', color: '#607D8B', implemented: true },
 };
 
@@ -130,5 +138,7 @@ export const ALL_PROTOCOLS: ProtocolType[] = [
   ProtocolType.DASH,
   ProtocolType.BITTORRENT,
   ProtocolType.THUNDER,
+  ProtocolType.FLASHGET,
+  ProtocolType.QQDL,
   ProtocolType.ED2K,
 ];

@@ -24,7 +24,10 @@ multi-protocol download manager — to **HarmonyOS NEXT**, written in **ArkTS / 
 | Three-pane ArkUI | ✅ Full | Master/detail `Navigation` + settings; light/dark themes |
 | MCP server (AI-agent) | ✅ Implemented | Local HTTP JSON-RPC on `127.0.0.1:17800`, Bearer-auth, 5 tools |
 | Save to public **Download** dir | ✅ Full | `DocumentViewPicker` DOWNLOAD mode — manual "导出" button + optional auto-export toggle |
-| BitTorrent / eD2K | ⛔ Scaffolded | Engine returns a clear "not implemented" error; interface ready |
+| BitTorrent | ✅ Implemented | HTTP tracker, peer wire protocol, SHA-1 piece verification |
+| eD2K (eDonkey) | ✅ Implemented | Server + peer wire protocol, MD4 chunk verification |
+| Thunder / FlashGet / QQDL | ✅ Implemented | Wrapper-protocol decoders — base64 decode → re-dispatch to real protocol |
+| SFTP | ⛔ Not supported | Requires SSH transport layer; URL parser ready, clear error message |
 | Browser extension | ⛔ Out of scope | Original is a separate WXT/TS extension; OHOS side hooks documented below |
 
 ---
@@ -47,8 +50,12 @@ FluxDownOHOS/
         │   ├── HashTask.ets      # @Concurrent SHA-256 (TaskPool)
         │   ├── EngineHooks.ts / types.ts
         │   └── protocols/
-        │       ├── HlsProtocol.ts  # parse + append .ts
-        │       └── FtpProtocol.ts  # passive-mode client (@ohos.net.socket)
+        │       ├── HlsProtocol.ts       # parse + append .ts
+        │       ├── FtpProtocol.ts       # passive-mode client (@ohos.net.socket)
+        │       ├── BittorrentProtocol.ts # tracker + peer wire + SHA-1
+        │       ├── Ed2kProtocol.ts       # eDonkey server + peer protocol
+        │       ├── ThunderProtocol.ts    # thunder/flashget/qqdl decoder
+        │       └── SftpProtocol.ts       # URL parser (SSH not supported)
         ├── store/                # DatabaseManager (RDB) + TaskRepository
         ├── viewmodel/DownloadViewModel.ts  # state owner + persistence + MCP backend
         ├── mcp/                  # McpServer (local HTTP) + McpBackend
