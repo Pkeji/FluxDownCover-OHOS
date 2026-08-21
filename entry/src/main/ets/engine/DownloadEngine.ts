@@ -16,6 +16,7 @@ import { buildDashSegments, downloadDash } from './protocols/DashProtocol';
 import { downloadFtp } from './protocols/FtpProtocol';
 import { downloadBittorrent } from './protocols/BittorrentProtocol';
 import { downloadEd2k } from './protocols/Ed2kProtocol';
+import { decodeWrapperLink } from './protocols/ThunderProtocol';
 
 /**
  * Core download engine. Implements FluxDown's headline features:
@@ -117,15 +118,34 @@ export class DownloadEngine implements EngineHooks {
     }
     if (task.protocol === ProtocolType.SFTP) {
       task.status = TaskStatus.Error;
-      task.errorMessage = 'SFTP 协议尚未实现，敬请期待。';
+      task.errorMessage =
+        'SFTP 协议暂不支持。SFTP 需要 SSH 加密传输层，建议使用 FTP 或将文件转为 HTTP 直链下载。';
       this.listener?.onTaskError(task, task.errorMessage);
       return;
     }
-    if (task.protocol === ProtocolType.THUNDER) {
-      task.status = TaskStatus.Error;
-      task.errorMessage = '迅雷链接 (thunder://) 尚未实现，敬请期待。';
-      this.listener?.onTaskError(task, task.errorMessage);
-      return;
+    if (task.protocol === ProtocolType.THUNDER ||
+        task.protocol === ProtocolType.FLASHGET ||
+        task.protocol === ProtocolType.QQDL) {
+      const decoded = decodeWrapperLink(task.url);
+      if (!decoded) {
+        task.status = TaskStatus.Error;
+        task.errorMessage = `链接解析失败：无法解码 ${task.protocol}:// 链接，请检查链接是否完整。`;
+        this.listener?.onTaskError(task, task.errorMessage);
+        return;
+      }
+      if (decoded.protocol === ProtocolType.SFTP) {
+        task.status = TaskStatus.Error;
+        task.errorMessage = '解码后的链接为 SFTP 协议，暂不支持，敬请期待。';
+        this.listener?.onTaskError(task, task.errorMessage);
+        return;
+      }
+      // Update task with the real URL and protocol, then re-dispatch
+      task.url = decoded.url;
+      task.protocol = decoded.protocol;
+      if (!task.fileName || task.fileName === '') {
+        task.fileName = fileNameFromUrl(decoded.url);
+      }
+      return this.start(task);
     }
 
     // BitTorrent: skip ensureFile — the output filename comes from .torrent metadata,

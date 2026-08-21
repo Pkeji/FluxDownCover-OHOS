@@ -25,6 +25,10 @@
       "value": "需要读取网络状态以管理下载任务"
     },
     {
+      "name": "perm_pasteboard_reason",
+      "value": "需要读取剪贴板以自动检测下载链接"
+    },
+    {
       "name": "page_title",
       "value": "下载"
     },

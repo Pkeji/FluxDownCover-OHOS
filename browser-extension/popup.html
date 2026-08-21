@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f6f8;
+      color: #1a1a2e;
+    }
+    .header {
+      background: linear-gradient(135deg, #00BCD4, #006064);
+      color: #fff;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header img { width: 28px; height: 28px; }
+    .header h1 { font-size: 16px; font-weight: 600; }
+    .content { padding: 16px; }
+    .url-box {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 12px;
+      color: #666;
+      word-break: break-all;
+      max-height: 80px;
+      overflow-y: auto;
+      margin-bottom: 12px;
+    }
+    .btn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn:active { opacity: 0.7; }
+    .btn-primary {
+      background: linear-gradient(135deg, #00BCD4, #006064);
+      color: #fff;
+    }
+    .btn-secondary {
+      background: #e8e8e8;
+      color: #333;
+      margin-top: 8px;
+    }
+    .status {
+      text-align: center;
+      font-size: 12px;
+      margin-top: 10px;
+      color: #888;
+    }
+    .status.success { color: #4CAF50; }
+    .status.error { color: #f44336; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="icons/icon48.png" alt="FluxDown">
+    <h1>FluxDown 下载管理器</h1>
+  </div>
+  <div class="content">
+    <div class="url-box" id="currentUrl">正在获取页面地址...</div>
+    <button class="btn btn-primary" id="sendBtn">发送到 FluxDown</button>
+    <button class="btn btn-secondary" id="copyBtn">复制深度链接</button>
+    <div class="status" id="status"></div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

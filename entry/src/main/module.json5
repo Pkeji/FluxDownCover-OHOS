@@ -29,6 +29,27 @@
             "actions": [
               "action.system.home"
             ]
+          },
+          {
+            "actions": [
+              "ohos.want.action.viewData"
+            ],
+            "uris": [
+              {
+                "scheme": "fluxdown",
+                "host": "download"
+              }
+            ]
+          },
+          {
+            "actions": [
+              "ohos.want.action.sendData"
+            ],
+            "uris": [
+              {
+                "type": "text/plain"
+              }
+            ]
           }
         ]
       }

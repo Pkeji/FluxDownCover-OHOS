@@ -31,7 +31,7 @@
     "products": [
       {
         "name": "default",
-        "signingConfig": "default",
+        "signingConfig": "ceshi",
         "compatibleSdkVersion": "6.1.1(24)",
         "compileSdkVersion": "6.1.1(24)",
         "targetSdkVersion": "6.1.1(24)",

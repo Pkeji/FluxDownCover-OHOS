@@ -80,6 +80,7 @@ struct IndexPage {
   @Local vm: DownloadViewModel = new DownloadViewModel();
   navPathStack: NavPathStack = new NavPathStack();
   @Local currentTab: number = 0;
+  private deepLinkTimer: number = -1;
 
   @Computed
   get p(): Palette {
@@ -89,6 +90,34 @@ struct IndexPage {
   aboutToAppear(): void {
     const context = getContext(this) as common.UIAbilityContext;
     this.vm.init(context);
+    // Process any pending deep-link URL from cold start
+    this.handlePendingDeepLink();
+    // Poll for warm-start deep links (onNewWant updates AppStorage)
+    this.deepLinkTimer = setInterval(() => {
+      this.handlePendingDeepLink();
+    }, 800);
+  }
+
+  aboutToDisappear(): void {
+    if (this.deepLinkTimer >= 0) {
+      clearInterval(this.deepLinkTimer);
+      this.deepLinkTimer = -1;
+    }
+  }
+
+  /** Check AppStorage for a pending download URL from deep link / share. */
+  private handlePendingDeepLink(): void {
+    const url = AppStorage.get<string>('pendingDownloadUrl');
+    if (url && url.length > 0) {
+      // Clear immediately to avoid re-processing
+      AppStorage.setOrCreate<string>('pendingDownloadUrl', '');
+      // Auto-add the download
+      this.vm.addDownload(url).then(() => {
+        promptAction.showToast({ message: '已从浏览器扩展接收链接，开始下载' });
+      }).catch((e: Error) => {
+        promptAction.showToast({ message: '链接接收失败: ' + (e?.message || String(e)) });
+      });
+    }
   }
 
   private async doExport(task: DownloadTask): Promise<void> {
@@ -598,6 +627,58 @@ struct SettingsContent {
           }
           .width('100%')
           .padding(16)
+
+          Divider().color(this.p.border).margin({ left: 16, right: 16 })
+
+          // 全局限速
+          Row() {
+            Text('全局限速').fontColor(this.p.text).layoutWeight(1).fontSize(15)
+            Text(this.vm.globalSpeedLimit > 0 ? formatSpeed(this.vm.globalSpeedLimit) : '不限')
+              .fontColor(this.p.primaryDark).fontSize(15)
+          }
+          .width('100%')
+          .padding({ left: 16, right: 16, top: 14, bottom: 6 })
+
+          Slider({
+            value: this.vm.globalSpeedLimit > 0 ? Math.log10(this.vm.globalSpeedLimit / 1024) : 0,
+            min: 0,
+            max: 4,
+            step: 0.1,
+            style: SliderStyle.OutSet
+          })
+            .onChange((v: number) => {
+              this.vm.setGlobalSpeedLimit(v > 0 ? Math.round(Math.pow(10, v) * 1024) : 0);
+            })
+            .width('100%')
+            .padding({ left: 12, right: 12, bottom: 8 })
+            .blockColor(this.p.primary)
+
+          Divider().color(this.p.border).margin({ left: 16, right: 16 })
+
+          // 代理
+          Column() {
+            Text('代理地址').fontColor(this.p.textSecondary).fontSize(13)
+            TextInput({ text: this.vm.proxyUrl, placeholder: 'http://host:port 或留空' })
+              .onChange((v: string) => { this.vm.setProxyUrl(v); })
+              .width('100%')
+              .margin({ top: 8 })
+              .backgroundColor(this.p.bg)
+              .borderRadius(8)
+          }
+          .width('100%')
+          .padding(16)
+          .alignItems(HorizontalAlign.Start)
+
+          Divider().color(this.p.border).margin({ left: 16, right: 16 })
+
+          // 剪贴板监听
+          Row() {
+            Text('剪贴板监听').fontColor(this.p.text).layoutWeight(1).fontSize(15)
+            Toggle({ isOn: this.vm.clipboardMonitor, type: ToggleType.Switch })
+              .onChange((v: boolean) => { this.vm.setClipboardMonitor(v); })
+          }
+          .width('100%')
+          .padding(16)
         }
         .width('100%')
         .backgroundColor(this.p.surface)
@@ -610,18 +691,49 @@ struct SettingsContent {
           .margin({ left: 20, top: 24, bottom: 6 })
           .width('100%')
 
-        Row() {
-          Text('主题').fontColor(this.p.text).layoutWeight(1).fontSize(15)
-          Button(this.vm.theme === 'dark' ? '深色' : '浅色')
-            .fontSize(13)
-            .backgroundColor(this.vm.theme === 'dark' ? '#3A3D45' : '#E0E0E0')
-            .fontColor(this.p.text)
-            .onClick(() => {
-              this.vm.setTheme(this.vm.theme === 'dark' ? 'light' : 'dark');
+        Column() {
+          Row() {
+            Text('主题').fontColor(this.p.text).layoutWeight(1).fontSize(15)
+            Button(this.vm.theme === 'dark' ? '深色' : '浅色')
+              .fontSize(13)
+              .backgroundColor(this.vm.theme === 'dark' ? '#3A3D45' : '#E0E0E0')
+              .fontColor(this.p.text)
+              .onClick(() => {
+                this.vm.setTheme(this.vm.theme === 'dark' ? 'light' : 'dark');
+              })
+          }
+          .width('100%')
+          .padding(16)
+
+          Divider().color(this.p.border).margin({ left: 16, right: 16 })
+
+          Row() {
+            Text('配色').fontColor(this.p.text).fontSize(15)
+          }
+          .width('100%')
+          .padding({ left: 16, top: 12, bottom: 4 })
+
+          Flex({ wrap: FlexWrap.Wrap }) {
+            ForEach(COLOR_SCHEMES, (scheme: ColorScheme) => {
+              Column() {
+                Column()
+                  .width(36)
+                  .height(36)
+                  .borderRadius(18)
+                  .backgroundColor(scheme.primary)
+                  .border({
+                    width: this.vm.colorScheme === scheme.id ? 3 : 0,
+                    color: this.p.text
+                  })
+              }
+              .margin(8)
+              .onClick(() => { this.vm.setColorScheme(scheme.id); })
             })
+          }
+          .width('100%')
+          .padding({ left: 16, right: 16, bottom: 16 })
         }
         .width('100%')
-        .padding(16)
         .backgroundColor(this.p.surface)
         .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
         .borderRadius(12)
@@ -671,58 +783,28 @@ struct SettingsContent {
         .borderRadius(12)
         .margin({ left: 16, right: 16 })
 
-        // ── 高级设置 (FluxDown 扩展) ──
-        Text('高级设置').fontSize(13).fontColor(this.p.textSecondary)
+        // ── 浏览器扩展 ──
+        Text('浏览器扩展').fontSize(13).fontColor(this.p.textSecondary)
           .margin({ left: 20, top: 24, bottom: 6 })
           .width('100%')
 
         Column() {
-          // Global speed limit
           Row() {
-            Text('全局限速').fontColor(this.p.text).layoutWeight(1).fontSize(15)
-            Text(this.vm.globalSpeedLimit > 0 ? formatSpeed(this.vm.globalSpeedLimit) : '不限')
-              .fontColor(this.p.primaryDark).fontSize(15)
+            Text('深度链接协议').fontColor(this.p.textSecondary).fontSize(13).layoutWeight(1)
+            Text('fluxdown://').fontColor(this.p.primary).fontSize(13).fontFamily('monospace')
           }
           .width('100%')
-          .padding({ left: 16, right: 16, top: 14, bottom: 6 })
-
-          Slider({
-            value: this.vm.globalSpeedLimit > 0 ? Math.log10(this.vm.globalSpeedLimit / 1024) : 0,
-            min: 0,
-            max: 4,
-            step: 0.1,
-            style: SliderStyle.OutSet
-          })
-            .onChange((v: number) => {
-              this.vm.setGlobalSpeedLimit(v > 0 ? Math.round(Math.pow(10, v) * 1024) : 0);
-            })
-            .width('100%')
-            .padding({ left: 12, right: 12, bottom: 8 })
-            .blockColor(this.p.primary)
+          .padding({ left: 16, top: 14, bottom: 8 })
 
           Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
-          // Proxy
-          Column() {
-            Text('代理地址').fontColor(this.p.textSecondary).fontSize(13)
-            TextInput({ text: this.vm.proxyUrl, placeholder: 'http://host:port 或留空' })
-              .onChange((v: string) => { this.vm.setProxyUrl(v); })
-              .width('100%')
-              .margin({ top: 8 })
-              .backgroundColor(this.p.bg)
-              .borderRadius(8)
-          }
-          .width('100%')
-          .padding(16)
-          .alignItems(HorizontalAlign.Start)
-
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
-
-          // Clipboard monitoring
           Row() {
-            Text('剪贴板监听').fontColor(this.p.text).layoutWeight(1).fontSize(15)
-            Toggle({ isOn: this.vm.clipboardMonitor, type: ToggleType.Switch })
-              .onChange((v: boolean) => { this.vm.setClipboardMonitor(v); })
+            Column() {
+              Text('安装方式').fontColor(this.p.text).fontSize(15)
+              Text('在浏览器打开 chrome://extensions，开启「开发者模式」，点击「加载已解压的扩展程序」并选择 browser-extension 目录')
+                .fontColor(this.p.textSecondary).fontSize(12).margin({ top: 6 })
+            }
+            .alignItems(HorizontalAlign.Start).layoutWeight(1)
           }
           .width('100%')
           .padding(16)
@@ -732,38 +814,6 @@ struct SettingsContent {
         .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
         .borderRadius(12)
         .margin({ left: 16, right: 16 })
-
-        // ── 配色方案 ──
-        Text('配色方案').fontSize(13).fontColor(this.p.textSecondary)
-          .margin({ left: 20, top: 24, bottom: 6 })
-          .width('100%')
-
-        Column() {
-          Flex({ wrap: FlexWrap.Wrap }) {
-            ForEach(COLOR_SCHEMES, (scheme: ColorScheme) => {
-              Column() {
-                Column()
-                  .width(36)
-                  .height(36)
-                  .borderRadius(18)
-                  .backgroundColor(scheme.primary)
-                  .border({
-                    width: this.vm.colorScheme === scheme.id ? 3 : 0,
-                    color: this.p.text
-                  })
-              }
-              .margin(8)
-              .onClick(() => { this.vm.setColorScheme(scheme.id); })
-            })
-          }
-          .width('100%')
-          .padding(16)
-        }
-        .width('100%')
-        .backgroundColor(this.p.surface)
-        .backgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
-        .borderRadius(12)
-        .margin({ left: 16, right: 16, bottom: 16 })
 
         // ── RSS 订阅 ──
         Row() {

@@ -15,6 +15,7 @@ import { SpeedLimiter } from '../utils/SpeedLimiter';
 import { RssParser } from '../utils/RssParser';
 import { genId } from '../utils/common';
 import { common } from '@kit.AbilityKit';
+import { pasteboard } from '@kit.BasicServicesKit';
 
 /**
  * Single owner of the task list and app settings. The UI observes its @Trace
@@ -47,6 +48,8 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   private queueStore: QueueStore = new QueueStore();
   private rssStore: RssStore = new RssStore();
   private rssTimer: number = -1;
+  private clipboardTimer: number = -1;
+  private lastClipboardText: string = '';
 
   async init(context: common.UIAbilityContext): Promise<void> {
     // Load persisted settings before anything else
@@ -80,6 +83,11 @@ export class DownloadViewModel implements EngineListener, McpBackend {
 
     // Start RSS polling
     this.startRssPolling();
+
+    // Start clipboard monitor if enabled
+    if (this.clipboardMonitor) {
+      this.startClipboardMonitor();
+    }
   }
 
   async addDownload(url: string, fileName?: string): Promise<void> {
@@ -524,5 +532,63 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   setClipboardMonitor(enabled: boolean): void {
     this.clipboardMonitor = enabled;
     this.settings.put('clipboardMonitor', enabled);
+    if (enabled) {
+      this.startClipboardMonitor();
+    } else {
+      this.stopClipboardMonitor();
+    }
+  }
+
+  /** Start polling the system clipboard for downloadable URLs. */
+  private startClipboardMonitor(): void {
+    if (this.clipboardTimer >= 0) {
+      return;
+    }
+    this.clipboardTimer = setInterval(() => {
+      this.checkClipboard();
+    }, 1000);
+  }
+
+  /** Stop clipboard polling. */
+  private stopClipboardMonitor(): void {
+    if (this.clipboardTimer >= 0) {
+      clearInterval(this.clipboardTimer);
+      this.clipboardTimer = -1;
+    }
+  }
+
+  /** Read clipboard; if it contains a new URL, auto-add as download. */
+  private checkClipboard(): void {
+    try {
+      const pasteData = pasteboard.getSystemPasteboard().getDataSync();
+      if (!pasteData || pasteData.getRecordCount() === 0) {
+        return;
+      }
+      const record = pasteData.getPrimaryText();
+      if (!record || record === this.lastClipboardText) {
+        return;
+      }
+      this.lastClipboardText = record;
+      const trimmed = record.trim();
+      // Only process if it looks like a downloadable URL
+      const lower = trimmed.toLowerCase();
+      const isUrl = lower.startsWith('http://') || lower.startsWith('https://') ||
+        lower.startsWith('ftp://') || lower.startsWith('sftp://') ||
+        lower.startsWith('ed2k://') || lower.startsWith('magnet:') ||
+        lower.startsWith('thunder://') || lower.startsWith('flashget://') ||
+        lower.startsWith('qqdl://') || lower.startsWith('bt://') ||
+        lower.endsWith('.torrent');
+      if (!isUrl) {
+        return;
+      }
+      // Avoid duplicates: skip if already in task list
+      const exists = this.tasks.some(t => t.url === trimmed);
+      if (exists) {
+        return;
+      }
+      this.addDownload(trimmed).catch(() => {});
+    } catch (_e) {
+      // Clipboard read may fail silently
+    }
   }
 }
