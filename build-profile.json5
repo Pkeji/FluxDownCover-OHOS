@@ -20,11 +20,11 @@
         "material": {
           "certpath": "/Users/Zhuanz/.ohos/config/ceshi_FluxDownOHOS_uczUCa4FGgDqkEL7bPXYMMxO_PS4Lol1CE_1aBnke2o=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001B4C64DA534F6E978577AD5D487B079EB4B170F6745E1F587600BE94276D1A520B5AA61BCF05B47B",
+          "keyPassword": "0000001B7CEF9D5FAFD79854F1DFD2237B0F866A25585C6465DBAAE6DC04A2E1F50BD5D67F64C978102060",
           "profile": "/Users/Zhuanz/.ohos/config/ceshi_FluxDownOHOS_uczUCa4FGgDqkEL7bPXYMMxO_PS4Lol1CE_1aBnke2o=.p7b",
           "signAlg": "SHA256withECDSA",
           "storeFile": "/Users/Zhuanz/.ohos/config/ceshi_FluxDownOHOS_uczUCa4FGgDqkEL7bPXYMMxO_PS4Lol1CE_1aBnke2o=.p12",
-          "storePassword": "0000001B3D0D78CF6C2A45EDBBCE96E276D574D8246AE84F8F444D83FC50E988440310417439FD4D37E788"
+          "storePassword": "0000001B8996B7B73C0F445C0471936F9D14D26A5FE39D4ED33BA5067B095EFA842C8A99C47CF3AD93A37A"
         }
       }
     ],
@@ -32,7 +32,7 @@
       {
         "name": "default",
         "signingConfig": "ceshi",
-        "compatibleSdkVersion": "6.1.1(24)",
+        "compatibleSdkVersion": "6.1.0(23)",
         "compileSdkVersion": "6.1.1(24)",
         "targetSdkVersion": "6.1.1(24)",
         "arkTSVersion": "1.1",

@@ -1,8 +1,8 @@
-# FluxDown for HarmonyOS (ArkTS)
+# FluxDown Cover for HarmonyOS (ArkTS)
 
 This is a **port of [FluxDown](https://github.com/zerx-lab/FluxDown)** — the Rust + Flutter
 multi-protocol download manager — to **HarmonyOS NEXT**, written in **ArkTS / ArkUI**
-(the native HarmonyOS language), as a Stage-model DevEco Studio project.
+(the native HarmonyOS language), as a Stage-model DevEco Studio project. Named **FluxDown Cover**.
 
 > Original FluxDown = Rust engine (HTTP/FTP/BitTorrent/eD2K/HLS/DASH) + Flutter UI + Rinf FFI +
 > browser extension + MCP server. This port re-implements the experience natively for phones
@@ -24,11 +24,8 @@ multi-protocol download manager — to **HarmonyOS NEXT**, written in **ArkTS / 
 | Three-pane ArkUI | ✅ Full | Master/detail `Navigation` + settings; light/dark themes |
 | MCP server (AI-agent) | ✅ Implemented | Local HTTP JSON-RPC on `127.0.0.1:17800`, Bearer-auth, 5 tools |
 | Save to public **Download** dir | ✅ Full | `DocumentViewPicker` DOWNLOAD mode — manual "导出" button + optional auto-export toggle |
-| BitTorrent | ✅ Implemented | HTTP tracker, peer wire protocol, SHA-1 piece verification |
-| eD2K (eDonkey) | ✅ Implemented | Server + peer wire protocol, MD4 chunk verification |
-| Thunder / FlashGet / QQDL | ✅ Implemented | Wrapper-protocol decoders — base64 decode → re-dispatch to real protocol |
-| SFTP | ⛔ Not supported | Requires SSH transport layer; URL parser ready, clear error message |
-| Browser extension | ✅ Implemented | Chrome/Edge MV3 extension + bookmarklet; deep link `fluxdown://` + MCP delivery |
+| BitTorrent / eD2K | ⛔ Scaffolded | Engine returns a clear "not implemented" error; interface ready |
+| Browser extension | ⛔ Out of scope | Original is a separate WXT/TS extension; OHOS side hooks documented below |
 
 ---
 
@@ -50,12 +47,8 @@ FluxDownOHOS/
         │   ├── HashTask.ets      # @Concurrent SHA-256 (TaskPool)
         │   ├── EngineHooks.ts / types.ts
         │   └── protocols/
-        │       ├── HlsProtocol.ts       # parse + append .ts
-        │       ├── FtpProtocol.ts       # passive-mode client (@ohos.net.socket)
-        │       ├── BittorrentProtocol.ts # tracker + peer wire + SHA-1
-        │       ├── Ed2kProtocol.ts       # eDonkey server + peer protocol
-        │       ├── ThunderProtocol.ts    # thunder/flashget/qqdl decoder
-        │       └── SftpProtocol.ts       # URL parser (SSH not supported)
+        │       ├── HlsProtocol.ts  # parse + append .ts
+        │       └── FtpProtocol.ts  # passive-mode client (@ohos.net.socket)
         ├── store/                # DatabaseManager (RDB) + TaskRepository
         ├── viewmodel/DownloadViewModel.ts  # state owner + persistence + MCP backend
         ├── mcp/                  # McpServer (local HTTP) + McpBackend
@@ -102,7 +95,7 @@ FluxDownOHOS/
       `context.filesDir/downloads/` (use DevEco's Device File Browser).
 - [ ] Kill & relaunch the app → in-progress tasks reappear as **已暂停** (persistence works).
 - [ ] Settings → enable **MCP 本地服务**, then from a terminal on the phone/computer:
-      `curl -X POST http://127.0.0.1:17800/mcp -H "Authorization: Bearer fluxdown-local"
+      `curl -X POST http://127.0.0.1:17800/mcp -H "Authorization: Bearer fluxdowncover-local"
        -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`
 - [ ] FTP: try an `ftp://…` URL (anonymous mirror) and confirm the file downloads.
 - [ ] On a **completed** task, tap **导出** (list row) or **导出到公共 Download** (detail) →
@@ -115,7 +108,7 @@ FluxDownOHOS/
 ## Where files are saved (public Download directory)
 
 Files are downloaded into the app sandbox (`context.filesDir/downloads/`) so they always exist,
-survive app restart, and are private to FluxDown. To make a finished file visible in the system
+survive app restart, and are private to FluxDown Cover. To make a finished file visible in the system
 **Download** folder, use the **导出到公共 Download** action (available on completed tasks).
 
 > **Why not `Environment.getUserDownloadDir()`?** Huawei's docs state that API returns error
@@ -153,73 +146,18 @@ survive app restart, and are private to FluxDown. To make a finished file visibl
 
 ## Mapping to the original repo
 
-| Original (FluxDown) | This port |
+| Original (FluxDown) | FluxDown Cover (this port) |
 |---|---|
 | `native/engine` (Rust) | `engine/DownloadEngine.ts` + `protocols/*` |
 | `native/hub` (Rinf FFI) | removed — native ArkTS instead of Flutter↔Rust bridge |
 | `lib/` (Flutter UI) | `pages/Index.ets` + `viewmodel/` |
 | `native/api/src/mcp.rs` | `mcp/McpServer.ts` (HTTP JSON-RPC on :17800) |
-| `fluxDown/` (browser ext) | `browser-extension/` (Chrome/Edge MV3 + bookmarklet; deep link + MCP) |
+| `fluxDown/` (browser ext) | out of scope; OHOS side would expose the same MCP tools |
 | SQLite state | `store/` (relationalStore) |
-
----
-
-## Browser Extension & Deep Link Integration
-
-FluxDown for HarmonyOS supports receiving download URLs from desktop browsers via two mechanisms:
-
-### 1. Deep Link (`fluxdown://` custom URI scheme)
-
-The app registers `fluxdown://download?url=<encoded>` as a custom URI scheme in `module.json5`.
-When a browser opens this URL, HarmonyOS dispatches it to FluxDown, which auto-starts the download.
-
-- **Cold start**: `EntryAbility.onCreate()` parses the Want URI and stores it in `AppStorage`.
-- **Warm start**: `EntryAbility.onNewWant()` handles subsequent deep links while the app is running.
-- `Index.ets` polls `AppStorage` for pending URLs and auto-adds them as downloads.
-
-### 2. MCP Server (HTTP JSON-RPC)
-
-When the MCP local service is enabled (Settings → MCP 本地服务), the extension can POST
-directly to `http://127.0.0.1:17800/mcp` with a `tools/call` request for `addDownload`.
-
-### Chrome / Edge Extension (`browser-extension/`)
-
-```
-browser-extension/
-├── manifest.json    # MV3 manifest
-├── popup.html       # Popup UI with mode toggle (deep link / MCP)
-├── popup.js         # Send current tab URL to FluxDown
-├── background.js    # Context menu: right-click → "发送到 FluxDown 下载"
-├── content.js       # Floating ⬇ button on downloadable file links
-└── icons/           # 16/48/128px PNG icons
-```
-
-**Install (developer mode):**
-1. Open `chrome://extensions`
-2. Enable "Developer mode"
-3. Click "Load unpacked" → select `browser-extension/`
-
-**Usage:**
-- Click the FluxDown toolbar icon → popup shows current page URL → click "发送到 FluxDown"
-- Right-click any link → "发送到 FluxDown 下载"
-- Hover over downloadable file links → floating ⬇ FluxDown button appears
-
-### Bookmarklet
-
-```javascript
-javascript:void(window.open('fluxdown://download?url='+encodeURIComponent(location.href)))
-```
-
-Drag this to your bookmarks bar for one-click send from any browser (Safari, Firefox, etc.).
-
-### Clipboard Monitor
-
-Enable **Settings → 剪贴板监听** to auto-detect URLs copied to the system clipboard.
-When a URL (http/https/ftp/ed2k/magnet/thunder) is copied, FluxDown auto-adds it as a download.
 
 ---
 
 ## License
 
-FluxDown is distributed under **AGPL-3.0**. This port follows the same license; keep it open
+FluxDown Cover is distributed under **AGPL-3.0**. This port follows the same license; keep it open
 source if you redistribute.

@@ -8,7 +8,7 @@ export const TABLE_NAME = 'download_tasks';
 /**
  * Singleton wrapper around the relational (SQLite) store.
  * All download state is persisted here so downloads survive app restarts
- * (FluxDown's "resume anywhere" guarantee).
+ * (FluxDown Cover's "resume anywhere" guarantee).
  */
 export class DatabaseManager {
   private static instance: DatabaseManager | null = null;
@@ -33,7 +33,7 @@ export class DatabaseManager {
         this.createTable();
       })
       .catch((err: BusinessError) => {
-        console.error(`FluxDown DB init failed: ${err.code} ${err.message}`);
+        console.error(`FluxDown Cover DB init failed: ${err.code} ${err.message}`);
       });
   }
 
@@ -81,10 +81,10 @@ export class DatabaseManager {
         for (const m of migrations) {
           this.rdbStore?.executeSql(m).catch(() => { /* column already exists */ });
         }
-        console.info('FluxDown: tasks table ready');
+        console.info('FluxDown Cover: tasks table ready');
       })
       .catch((err: BusinessError) => {
-        console.error(`FluxDown create table failed: ${err.code} ${err.message}`);
+        console.error(`FluxDown Cover create table failed: ${err.code} ${err.message}`);
       });
   }
 

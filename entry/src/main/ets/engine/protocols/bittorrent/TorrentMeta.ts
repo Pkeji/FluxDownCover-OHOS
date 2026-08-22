@@ -158,7 +158,7 @@ export function parseTorrentBytes(data: Uint8Array): TorrentMeta {
   return meta;
 }
 
-/** Generate a 20-byte random peer ID with FluxDown prefix. */
+/** Generate a 20-byte random peer ID with FluxDown Cover prefix. */
 export function generatePeerId(): Uint8Array {
   const prefix = asciiToBytes('-FD100-');
   const id = new Uint8Array(20);

@@ -1,6 +1,6 @@
 /**
  * Token-bucket rate limiter for download speed control.
- * Ported from FluxDown's Rust speed governor.
+ * Ported from FluxDown Cover's Rust speed governor.
  * Supports both global and per-task limits (0 = unlimited).
  */
 export class SpeedLimiter {

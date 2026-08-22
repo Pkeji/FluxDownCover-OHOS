@@ -1,6 +1,7 @@
 import fs from '@ohos.file.fs';
 import { TorrentMeta, sha1FileRegion, bytesEqual } from './TorrentMeta';
 import { concatBytes } from './Bencode';
+import { SpeedLimiter } from '../../../utils/SpeedLimiter';
 
 /**
  * Piece download manager.
@@ -154,13 +155,15 @@ export class PieceManager {
     piece.received += data.length;
 
     if (piece.received >= piece.total) {
-      this.verifyAndWrite(piece);
+      this.verifyAndWrite(piece).catch(() => {
+        // piece write/verify failed — file I/O or hash mismatch; next block will retry
+      });
     }
     return true;
   }
 
   /** Verify a complete piece and write it to the file. */
-  private verifyAndWrite(piece: PieceState): void {
+  private async verifyAndWrite(piece: PieceState): Promise<void> {
     // Assemble piece data from blocks (sorted by begin offset)
     const sortedBegins = Array.from(piece.blocks.keys()).sort((a, b) => a - b);
     const parts: Uint8Array[] = [];
@@ -168,6 +171,14 @@ export class PieceManager {
       parts.push(piece.blocks.get(begin)!);
     }
     const pieceData = concatBytes(parts);
+
+    // Apply global speed limit before writing
+    const n = pieceData.byteLength;
+    const waitMs = SpeedLimiter.global().waitTime(n);
+    if (waitMs > 0) {
+      await new Promise(r => setTimeout(r, waitMs));
+    }
+    SpeedLimiter.global().tryConsume(n);
 
     // Write piece data to file first (at correct offset)
     const fileOffset = piece.index * this.meta.pieceLength;

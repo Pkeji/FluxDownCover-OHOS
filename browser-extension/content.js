@@ -1,5 +1,5 @@
 /**
- * FluxDown browser extension — content script.
+ * FluxDown Cover browser extension — content script.
  *
  * Injects a floating "发送到 FluxDown" button on pages with direct download links.
  * The button appears when the user hovers over a link that looks like a downloadable
@@ -31,7 +31,7 @@ document.addEventListener('mouseover', (e) => {
 
   link.dataset.fluxdownBtn = '1';
   const btn = document.createElement('div');
-  btn.textContent = '⬇ FluxDown';
+  btn.textContent = '⬇ FluxDown Cover';
   btn.style.cssText = `
     position: fixed;
     z-index: 2147483647;

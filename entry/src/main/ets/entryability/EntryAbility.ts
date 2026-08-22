@@ -4,6 +4,9 @@ import { window } from '@kit.ArkUI';
 import { deviceInfo } from '@kit.BasicServicesKit';
 import { DatabaseManager } from '../store/DatabaseManager';
 import { DownloadEngine } from '../engine/DownloadEngine';
+import { SettingsStore } from '../store/SettingsStore';
+import { McpServer } from '../mcp/McpServer';
+import { BackgroundTaskManager } from '../util/BackgroundTaskManager';
 
 const DOMAIN: number = 0x0001;
 
@@ -66,18 +69,22 @@ function extractUrlFromWant(want: Want): string {
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
-    // Initialise storage + engine with the ability context.
+    // Initialise all stores and engine with the ability context.
     DatabaseManager.getInstance().init(this.context);
     DownloadEngine.getInstance().init(this.context);
+    SettingsStore.getInstance().init(this.context).catch((e: Error) => {
+      hilog.error(DOMAIN, 'FluxDownCover', 'SettingsStore init failed: %{public}s', e.message);
+    });
+    BackgroundTaskManager.getInstance().init(this.context);
 
     // Handle deep link from cold start
     const url = extractUrlFromWant(want);
     if (url) {
       AppStorage.setOrCreate<string>('pendingDownloadUrl', url);
-      hilog.info(DOMAIN, 'FluxDown', 'Deep link (cold start): %{public}s', url);
+      hilog.info(DOMAIN, 'FluxDownCover', 'Deep link (cold start): %{public}s', url);
     }
 
-    hilog.info(DOMAIN, 'FluxDown', '%{public}s', 'FluxDown onCreate');
+    hilog.info(DOMAIN, 'FluxDownCover', '%{public}s', 'FluxDownCover onCreate');
   }
 
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
@@ -86,12 +93,13 @@ export default class EntryAbility extends UIAbility {
     if (url) {
       // Update AppStorage so the UI observer triggers
       AppStorage.setOrCreate<string>('pendingDownloadUrl', url);
-      hilog.info(DOMAIN, 'FluxDown', 'Deep link (warm start): %{public}s', url);
+      hilog.info(DOMAIN, 'FluxDownCover', 'Deep link (warm start): %{public}s', url);
     }
   }
 
   onDestroy(): void {
-    hilog.info(DOMAIN, 'FluxDown', '%{public}s', 'FluxDown onDestroy');
+    hilog.info(DOMAIN, 'FluxDownCover', '%{public}s', 'FluxDownCover onDestroy');
+    BackgroundTaskManager.getInstance().stop();
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
@@ -99,16 +107,16 @@ export default class EntryAbility extends UIAbility {
     if (deviceInfo.deviceType === '2in1') {
       const mainWindow = windowStage.getMainWindowSync();
       mainWindow.setWindowLayoutFullScreen(true).catch((e: Error) => {
-        hilog.error(DOMAIN, 'FluxDown', 'setWindowLayoutFullScreen failed: %{public}s', e.message);
+        hilog.error(DOMAIN, 'FluxDownCover', 'setWindowLayoutFullScreen failed: %{public}s', e.message);
       });
     }
 
     windowStage.loadContent('pages/Index', (err) => {
       if (err.code) {
-        hilog.error(DOMAIN, 'FluxDown', 'Failed to load pages/Index: %{public}s', JSON.stringify(err));
+        hilog.error(DOMAIN, 'FluxDownCover', 'Failed to load pages/Index: %{public}s', JSON.stringify(err));
         return;
       }
-      hilog.info(DOMAIN, 'FluxDown', '%{public}s', 'pages/Index loaded');
+      hilog.info(DOMAIN, 'FluxDownCover', '%{public}s', 'pages/Index loaded');
     });
   }
 }

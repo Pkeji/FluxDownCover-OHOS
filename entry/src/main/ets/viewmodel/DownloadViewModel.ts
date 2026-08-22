@@ -9,6 +9,7 @@ import { SettingsStore } from '../store/SettingsStore';
 import { DownloadQueue } from '../model/DownloadQueue';
 import { RssSubscription, RssItem } from '../model/RssSubscription';
 import { QueueStore } from '../store/QueueStore';
+import { BackgroundTaskManager } from '../util/BackgroundTaskManager';
 import { RssStore } from '../store/RssStore';
 import { StatsCalculator, DownloadStats } from '../utils/StatsCalculator';
 import { SpeedLimiter } from '../utils/SpeedLimiter';
@@ -30,9 +31,8 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   @Trace maxSegments: number = 8;
   @Trace verifyIntegrity: boolean = true;
   @Trace mcpEnabled: boolean = false;
-  @Trace mcpToken: string = 'fluxdown-local';
-  @Trace autoExport: boolean = false;
-  // ── Extended settings (FluxDown feature parity) ──
+  @Trace mcpToken: string = 'fluxdowncover-local';
+  // ── Extended settings (FluxDown Cover feature parity) ──
   @Trace globalSpeedLimit: number = 0; // bytes/sec, 0 = unlimited
   @Trace proxyUrl: string = ''; // global proxy URL
   @Trace colorScheme: string = 'cyan'; // accent color scheme id
@@ -57,9 +57,8 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     this.theme = await this.settings.getString('theme', 'light') as 'light' | 'dark';
     this.maxSegments = await this.settings.getNumber('maxSegments', 8);
     this.verifyIntegrity = await this.settings.getBoolean('verifyIntegrity', false);
-    this.autoExport = await this.settings.getBoolean('autoExport', false);
     this.mcpEnabled = await this.settings.getBoolean('mcpEnabled', false);
-    this.mcpToken = await this.settings.getString('mcpToken', 'fluxdown-local');
+    this.mcpToken = await this.settings.getString('mcpToken', 'fluxdowncover-local');
     // Load extended settings
     this.globalSpeedLimit = await this.settings.getNumber('globalSpeedLimit', 0);
     this.proxyUrl = await this.settings.getString('proxyUrl', '');
@@ -113,15 +112,28 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     if (i >= 0) {
       this.tasks.splice(i, 1);
     }
+    this.updateBackgroundTask();
+  }
+
+  /** Remove multiple tasks by their ids. */
+  removeTasks(ids: string[]): void {
+    for (const id of ids) {
+      const task = this.tasks.find(t => t.id === id);
+      if (task) {
+        this.engine.remove(task);
+        const i = this.tasks.indexOf(task);
+        if (i >= 0) {
+          this.tasks.splice(i, 1);
+        }
+      }
+    }
+    this.updateBackgroundTask();
   }
 
   async exportToDownload(task: DownloadTask): Promise<string> {
-    return this.engine.exportToPublicDownload(task);
-  }
-
-  setAutoExport(enabled: boolean): void {
-    this.autoExport = enabled;
-    this.settings.put('autoExport', enabled);
+    const path = await this.engine.exportToPublicDownload(task);
+    task.publicPath = path;
+    return path;
   }
 
   async startAll(): Promise<void> {
@@ -181,22 +193,26 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     this.settings.put('mcpToken', token);
   }
 
+  // ---- Background task management ----
+
+  /** Count active downloads and start/stop the continuous background task accordingly. */
+  private updateBackgroundTask(): void {
+    const activeCount = this.tasks.filter(t => t.status === TaskStatus.Downloading).length;
+    BackgroundTaskManager.getInstance().update(activeCount).catch(() => {});
+  }
+
   // ---- EngineListener ----
   onTaskUpdated(task: DownloadTask): void {
     this.repo.update(task).catch(() => {});
+    this.updateBackgroundTask();
   }
 
   onTaskCompleted(task: DownloadTask): void {
     this.repo.update(task).catch(() => {});
-    if (this.autoExport) {
-      // Best-effort: push the finished file into the public Download directory.
-      // This fires while the app is in the foreground; on devices that enforce an
-      // explicit user gesture for the picker it may be rejected — the manual
-      // "导出" button stays the reliable fallback.
-      this.exportToDownload(task).catch((e: Error) => {
-        console.error(`FluxDown auto-export failed: ${JSON.stringify(e)}`);
-      });
-    }
+    // Best-effort: push the finished file into the public Download directory.
+    this.exportToDownload(task).catch((e: Error) => {
+      console.error(`FluxDown Cover auto-export failed: ${JSON.stringify(e)}`);
+    });
     // Queue auto-start: when a task in a queue finishes, start the next pending one
     if (task.queueId) {
       const q = this.queues.find(qq => qq.id === task.queueId);
@@ -208,6 +224,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
 
   onTaskError(task: DownloadTask, error: string): void {
     this.repo.update(task).catch(() => {});
+    this.updateBackgroundTask();
   }
 
   // ---- McpBackend ----

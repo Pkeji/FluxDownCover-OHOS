@@ -4,7 +4,7 @@ import { formatBytes, formatSpeed } from './common';
 
 /**
  * Download statistics aggregator.
- * Ported from FluxDown's analytics dashboard — computes summary metrics
+ * Ported from FluxDown Cover's analytics dashboard — computes summary metrics
  * across all tasks for display in the Stats tab.
  */
 export interface DownloadStats {

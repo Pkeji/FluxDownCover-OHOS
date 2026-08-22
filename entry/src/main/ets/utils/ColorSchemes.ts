@@ -1,5 +1,5 @@
 /**
- * 13 accent color schemes ported from FluxDown's theme system.
+ * 13 accent color schemes ported from FluxDown Cover's theme system.
  * Each scheme provides a primary color and a set of semantic colors.
  * The base palette (bg, surface, text) is still controlled by light/dark mode;
  * these schemes only override the accent/primary color.

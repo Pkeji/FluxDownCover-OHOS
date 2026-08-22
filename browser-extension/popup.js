@@ -1,5 +1,5 @@
 /**
- * FluxDown browser extension — popup script.
+ * FluxDown Cover browser extension — popup script.
  *
  * Sends the current tab URL to FluxDown via deep link:
  *   fluxdown://download?url=<encoded>
@@ -33,7 +33,7 @@ sendBtn.addEventListener('click', () => {
       setTimeout(() => chrome.tabs.remove(tab.id), 800);
     }
   });
-  showStatus('已发送到 FluxDown ✓', 'success');
+  showStatus('已发送到 FluxDown Cover ✓', 'success');
 });
 
 // Copy deep link URL

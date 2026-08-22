@@ -32,12 +32,14 @@ export class DownloadTask {
   @Trace downloadedBytes: number = 0;
   @Trace status: TaskStatus = TaskStatus.Pending;
   @Trace speed: number = 0; // bytes/sec (computed)
+  @Trace peakSpeed: number = 0; // highest recorded speed
+  @Trace publicPath: string = ''; // path after export to public Download
   @Trace errorMessage: string = '';
   @Trace sha256: string = '';
   @Trace finishedAt: number = 0;
   @Trace createdAt: number = 0;
 
-  // ── Extended fields (FluxDown feature parity) ──
+  // ── Extended fields (FluxDown Cover feature parity) ──
   @Trace category: string = '默认'; // task category/tag for grouping & filtering
   @Trace priority: number = 0; // higher = started first (0 = normal)
   @Trace queueId: string = ''; // associated named-queue ID (empty = none)

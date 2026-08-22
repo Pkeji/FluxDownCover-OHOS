@@ -47,7 +47,7 @@ export async function announce(
     const url = buildAnnounceUrl(trackerUrl, meta.infoHash, peerId, port, uploaded, downloaded, left);
     const resp = await req.request(url, {
       method: http.RequestMethod.GET,
-      header: { Accept: '*/*', 'User-Agent': 'FluxDown/1.0' },
+      header: { Accept: '*/*', 'User-Agent': 'FluxDownCover/1.0' },
       expectDataType: http.HttpDataType.ARRAY_BUFFER,
       connectTimeout: 15000,
       readTimeout: 15000

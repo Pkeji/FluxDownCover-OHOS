@@ -4,7 +4,7 @@ import { RssItem } from '../model/RssSubscription';
 
 /**
  * Lightweight RSS/Atom XML parser.
- * Ported from FluxDown's feed parser — extracts <item>/<entry> elements
+ * Ported from FluxDown Cover's feed parser — extracts <item>/<entry> elements
  * with title, link, description and pubDate.
  */
 export class RssParser {
@@ -17,7 +17,7 @@ export class RssParser {
     try {
       const resp = await session.request(feedUrl, {
         method: http.RequestMethod.GET,
-        header: { 'User-Agent': 'FluxDown/1.0 RSS Reader' },
+        header: { 'User-Agent': 'FluxDownCover/1.0 RSS Reader' },
         expectDataType: http.HttpDataType.STRING,
         connectTimeout: 15000,
         readTimeout: 30000,

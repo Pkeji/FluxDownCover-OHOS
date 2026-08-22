@@ -19,6 +19,8 @@ import {
   bitfieldHas
 } from './bittorrent/PeerWire';
 import { PieceManager } from './bittorrent/PieceManager';
+import { parseMagnetLink } from './bittorrent/MagnetLink';
+import { downloadMetadata } from './bittorrent/MetadataExchange';
 
 const MAX_PEERS = 10;
 const LISTEN_PORT = 6881; // reported to tracker (we don't actually listen)
@@ -153,9 +155,15 @@ export async function downloadBittorrent(
 
 /**
  * Load torrent metadata from a URL or local file path.
- * Supports: http://, https://, or local filesystem path.
+ * Supports: http://, https://, magnet:, or local filesystem path.
  */
 async function loadTorrentMeta(url: string): Promise<TorrentMeta> {
+  // ── Magnet link ─────────────────────────────────────────────────────
+  if (url.toLowerCase().startsWith('magnet:')) {
+    return resolveMagnetLink(url);
+  }
+
+  // ── HTTP(S) .torrent file ────────────────────────────────────────────
   if (url.startsWith('http://') || url.startsWith('https://')) {
     const req = http.createHttp();
     try {
@@ -172,17 +180,103 @@ async function loadTorrentMeta(url: string): Promise<TorrentMeta> {
       req.destroy();
     }
   }
-  // Local file path — strip file:// prefix if present.
+
+  // ── Local file — strip file:// or content:// prefix if present. ─────
   let filePath = url;
   if (filePath.startsWith('file://')) {
     filePath = filePath.substring('file://'.length);
   }
-  // Verify the .torrent file exists before opening.
-  // NOTE: fs.accessSync returns boolean — it does NOT throw for non-existent files.
+  // For content:// URIs (from file picker), pass directly to fs.openSync
+  if (url.startsWith('content://')) {
+    return parseTorrentFile(url);
+  }
   if (!fs.accessSync(filePath)) {
     throw new Error(`无法访问 .torrent 文件: ${filePath}（文件不存在或应用无权限访问）`);
   }
   return parseTorrentFile(filePath);
+}
+
+/**
+ * Resolve a magnet: URI to a full TorrentMeta by:
+ *   1. Parsing the magnet link to get info_hash + trackers
+ *   2. Announcing to trackers to find peers
+ *   3. Downloading metadata from peers using BEP-9 ut_metadata
+ */
+async function resolveMagnetLink(uri: string): Promise<TorrentMeta> {
+  const magnet = parseMagnetLink(uri);
+  if (!magnet) {
+    throw new Error(`无效的磁力链接: ${uri}`);
+  }
+
+  const peerId = generatePeerId();
+  const displayName = magnet.displayName || `magnet_${magnet.infoHashHex.substring(0, 8)}`;
+
+  // If no trackers in magnet link, use public trackers as fallback
+  if (magnet.trackers.length === 0) {
+    magnet.trackers.push(
+      'udp://tracker.opentrackr.org:1337/announce',
+      'udp://tracker.openbittorrent.com:6969/announce',
+      'udp://tracker.torrent.eu.org:451/announce',
+      'udp://opentracker.i2p.rocks:6969/announce',
+      'udp://exodus.desync.com:6969/announce',
+      'https://tracker.bt4g.com:2095/announce',
+      'udp://tracker.coppersurfer.tk:6969/announce',
+    );
+  }
+
+  // Try to download metadata from peers via tracker announce + BEP-9
+  const allPeers: Peer[] = [];
+
+  // Announce to all trackers to collect peers
+  for (const trackerUrl of magnet.trackers) {
+    try {
+      // Create a minimal meta object for announce
+      const partialMeta = new TorrentMeta();
+      partialMeta.infoHash = magnet.infoHash;
+      partialMeta.infoHashHex = magnet.infoHashHex;
+      partialMeta.trackers = magnet.trackers;
+      partialMeta.name = displayName;
+
+      const result = await announceAny(
+        [trackerUrl],
+        partialMeta,
+        peerId,
+        LISTEN_PORT,
+        0, // uploaded
+        0, // downloaded
+        1  // left (at least 1 byte, we don't know size yet)
+      );
+      for (const p of result.peers) {
+        if (!allPeers.some(ex => ex.ip === p.ip && ex.port === p.port)) {
+          allPeers.push(p);
+        }
+      }
+    } catch (_) {
+      // Try next tracker
+    }
+  }
+
+  if (allPeers.length === 0) {
+    throw new Error(`无法从 tracker 获取到 peers，请检查网络或磁力链接: ${displayName}`);
+  }
+
+  // Try to download metadata from each peer using BEP-9
+  for (const peer of allPeers) {
+    try {
+      const metaResult = await downloadMetadata(peer, magnet.infoHash, peerId, 0);
+      if (metaResult) {
+        // Parse the downloaded metadata into a full TorrentMeta
+        const meta = parseTorrentBytes(metaResult.rawInfo);
+        // Override trackers with the ones from the magnet link
+        meta.trackers = magnet.trackers;
+        return meta;
+      }
+    } catch (_) {
+      // Try next peer
+    }
+  }
+
+  throw new Error(`无法从 peers 下载元数据: ${displayName}`);
 }
 
 /**

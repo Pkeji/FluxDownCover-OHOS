@@ -1,8 +1,8 @@
 {
   "modelVersion": "6.1.1",
-  "name": "fluxdownohos",
+  "name": "fluxdowncover",
   "version": "1.0.0",
-  "description": "FluxDown — multi-protocol download manager ported to HarmonyOS (ArkTS/ArkUI).",
+  "description": "FluxDown Cover — multi-protocol download manager ported to HarmonyOS (ArkTS/ArkUI).",
   "dependencies": {},
   "devDependencies": {
     "@ohos/hypium": "1.0.19",

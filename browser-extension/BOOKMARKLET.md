@@ -1,4 +1,4 @@
-# FluxDown Bookmarklet
+# FluxDown Cover Bookmarklet
 
 ## 安装
 
@@ -10,12 +10,12 @@ javascript:void(window.open('fluxdown://download?url='+encodeURIComponent(locati
 
 或者手动添加书签：
 1. 在浏览器中按 `Ctrl+D` / `Cmd+D` 添加书签
-2. 将书签名称改为 `发送到 FluxDown`
+2. 将书签名称改为 `发送到 FluxDown Cover`
 3. 将书签 URL 替换为上面的代码
 
 ## 使用
 
-在任意网页点击「发送到 FluxDown」书签，当前页面 URL 将通过 `fluxdown://` 深度链接发送到 HarmonyOS 上的 FluxDown 下载管理器。
+在任意网页点击「发送到 FluxDown Cover」书签，当前页面 URL 将通过 `fluxdown://` 深度链接发送到 HarmonyOS 上的 FluxDown Cover 下载管理器。
 
 ## 针对链接的 Bookmarklet
 

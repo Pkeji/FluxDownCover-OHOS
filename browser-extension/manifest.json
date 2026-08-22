@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "FluxDown — Download Manager",
+  "name": "FluxDown Cover — Download Manager",
   "version": "1.0.0",
-  "description": "Send current page or link URL to FluxDown download manager on HarmonyOS",
+  "description": "Send current page or link URL to FluxDown Cover download manager on HarmonyOS",
   "permissions": ["contextMenus", "activeTab", "storage", "tabs"],
   "action": {
     "default_popup": "popup.html",

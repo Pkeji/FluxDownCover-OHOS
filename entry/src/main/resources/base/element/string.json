@@ -2,19 +2,19 @@
   "string": [
     {
       "name": "app_name",
-      "value": "FluxDown"
+      "value": "FluxDown Cover"
     },
     {
       "name": "module_desc",
-      "value": "FluxDown download manager module"
+      "value": "FluxDown Cover download manager module"
     },
     {
       "name": "EntryAbility_desc",
-      "value": "FluxDown main ability"
+      "value": "FluxDown Cover main ability"
     },
     {
       "name": "EntryAbility_label",
-      "value": "FluxDown"
+      "value": "FluxDown Cover"
     },
     {
       "name": "perm_internet_reason",
@@ -27,6 +27,10 @@
     {
       "name": "perm_pasteboard_reason",
       "value": "需要读取剪贴板以自动检测下载链接"
+    },
+    {
+      "name": "perm_background_reason",
+      "value": "需要在后台保持运行以继续下载任务"
     },
     {
       "name": "page_title",

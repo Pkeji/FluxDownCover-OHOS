@@ -1,5 +1,5 @@
 /**
- * FluxDown browser extension — background service worker.
+ * FluxDown Cover browser extension — background service worker.
  *
  * Registers a context menu item so the user can right-click any link
  * on any page and send it directly to FluxDown.
@@ -9,12 +9,12 @@
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'fluxdown-send-link',
-    title: '发送到 FluxDown 下载',
+    title: '发送到 FluxDown Cover 下载',
     contexts: ['link']
   });
   chrome.contextMenus.create({
     id: 'fluxdown-send-page',
-    title: '发送本页到 FluxDown 下载',
+    title: '发送本页到 FluxDown Cover 下载',
     contexts: ['page']
   });
 });

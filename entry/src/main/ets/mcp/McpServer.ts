@@ -130,7 +130,7 @@ const TOOLS = [
 /**
  * Minimal MCP (Model Context Protocol) server over a local HTTP endpoint.
  * Listens on 127.0.0.1:17800, speaks JSON-RPC 2.0, and exposes 5 tools so an
- * AI agent can drive FluxDown. Bearer-token protected.
+ * AI agent can drive FluxDown Cover. Bearer-token protected.
  *
  * Implemented with @ohos.net.socket (TCPSocket server). Validated structurally
  * against the official socket API; verify on-device with a real MCP client.
@@ -161,9 +161,9 @@ export class McpServer {
     });
     try {
       await server.bind({ address: '127.0.0.1', port: MCP_PORT });
-      console.info(`FluxDown MCP server listening on 127.0.0.1:${MCP_PORT}`);
+      console.info(`FluxDown Cover MCP server listening on 127.0.0.1:${MCP_PORT}`);
     } catch (e) {
-      console.error(`FluxDown MCP bind failed: ${JSON.stringify(e)}`);
+      console.error(`FluxDown Cover MCP bind failed: ${JSON.stringify(e)}`);
       this.server = null;
     }
   }
@@ -253,7 +253,7 @@ export class McpServer {
       return ok(id, {
         protocolVersion: '2024-11-05',
         capabilities: { tools: {} },
-        serverInfo: { name: 'FluxDown', version: '1.0.0' }
+        serverInfo: { name: 'FluxDown Cover', version: '1.0.0' }
       });
     }
     if (method === 'notifications/initialized') {

@@ -1,6 +1,6 @@
 /**
  * Named download queue / task group.
- * Ported from FluxDown's queue system for organizing downloads into groups
+ * Ported from FluxDown Cover's queue system for organizing downloads into groups
  * with priority and concurrent-limit settings.
  */
 @ObservedV2

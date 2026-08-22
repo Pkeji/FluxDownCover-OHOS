@@ -1,6 +1,6 @@
 /**
  * RSS subscription for auto-downloading.
- * Ported from FluxDown's RSS feed polling system.
+ * Ported from FluxDown Cover's RSS feed polling system.
  * Polls an RSS/Atom feed at intervals and auto-adds matching items as downloads.
  */
 @ObservedV2

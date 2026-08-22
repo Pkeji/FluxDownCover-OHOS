@@ -1,6 +1,6 @@
 /**
  * Download task lifecycle states.
- * Mirrors FluxDown's state machine: queued -> downloading -> (paused | completed | error) -> verifying.
+ * Mirrors FluxDown Cover's state machine: queued -> downloading -> (paused | completed | error) -> verifying.
  */
 export enum TaskStatus {
   Pending = 'pending',

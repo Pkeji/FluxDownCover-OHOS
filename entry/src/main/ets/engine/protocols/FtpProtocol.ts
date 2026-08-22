@@ -5,6 +5,7 @@ import { DownloadTask } from '../../model/DownloadTask';
 import { EngineHooks } from '../EngineHooks';
 import { Ctrl } from '../types';
 import { parseFtpUrl } from '../../utils/common';
+import { SpeedLimiter } from '../../utils/SpeedLimiter';
 
 /**
  * Minimal but functional FTP download client (anonymous, passive mode).
@@ -62,7 +63,7 @@ export async function downloadFtp(task: DownloadTask, ctrl: Ctrl, hooks: EngineH
   await ctrlSock.connect({ address: { address: host, port }, timeout: 15000 });
 
   await cmd('USER anonymous');
-  await cmd('PASS anonymous@fluxdown.local');
+  await cmd('PASS anonymous@fluxdowncover.local');
   await cmd('TYPE I');
 
   const pasv = await cmd('PASV');
@@ -94,7 +95,17 @@ export async function downloadFtp(task: DownloadTask, ctrl: Ctrl, hooks: EngineH
     const cur = offset;
     offset += chunk.byteLength;
     writeChain = writeChain
-      .then(() => fs.write(file.fd, chunk, { offset: cur }))
+      .then(() => {
+        const n = chunk.byteLength;
+        const waitMs = SpeedLimiter.global().waitTime(n);
+        if (waitMs > 0) {
+          return new Promise<void>(r => setTimeout(r, waitMs));
+        }
+      })
+      .then(() => {
+        SpeedLimiter.global().tryConsume(chunk.byteLength);
+        return fs.write(file.fd, chunk, { offset: cur });
+      })
       .then((len: number) => {
         hooks.onChunk(task, len);
       })

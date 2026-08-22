@@ -6,7 +6,7 @@ import { Ctrl } from '../types';
 
 /**
  * DASH (Dynamic Adaptive Streaming over HTTP) protocol.
- * Ported from FluxDown's DASH support — parses MPD (Media Presentation Description)
+ * Ported from FluxDown Cover's DASH support — parses MPD (Media Presentation Description)
  * XML to extract media segment URLs, then downloads them sequentially.
  * Similar to HLS but uses .mpd XML manifests instead of .m3u8 playlists.
  */

@@ -2,16 +2,22 @@ import { socket } from '@kit.NetworkKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import {
   asciiToBytes,
-  concatBytes
+  concatBytes,
+  bdecode,
+  bencode,
+  BencodeDict,
+  BencodeList,
+  dictGetInt,
+  dictGetBytes
 } from './Bencode';
 
 /**
- * Peer Wire Protocol implementation.
+ * Peer Wire Protocol implementation with BEP-10 Extension Protocol support.
  *
  * Handshake:  <pstrlen><pstr><reserved><info_hash><peer_id>
  *   pstrlen   = 1 byte (19)
  *   pstr      = "BitTorrent protocol"
- *   reserved  = 8 bytes (all zero)
+ *   reserved  = 8 bytes (bit 20 set for extension support)
  *   info_hash = 20 bytes
  *   peer_id   = 20 bytes
  *
@@ -20,7 +26,12 @@ import {
  *   id        = 1 byte (0-8), or length=0 means keep-alive
  *
  * IDs: 0=choke 1=unchoke 2=interested 3=not_interested 4=have
- *      5=bitfield 6=request 7=piece 8=cancel
+ *      5=bitfield 6=request 7=piece 8=cancel 20=extended
+ *
+ * BEP-10 Extension:
+ *   Extended message (id=20): <1 byte sub-type><payload>
+ *   Sub-type 0 = extended handshake (bencoded dict)
+ *   Sub-type 1+ = registered extensions (ut_metadata, etc.)
  */
 
 export const MSG_CHOKE = 0;
@@ -32,9 +43,13 @@ export const MSG_BITFIELD = 5;
 export const MSG_REQUEST = 6;
 export const MSG_PIECE = 7;
 export const MSG_CANCEL = 8;
+export const MSG_EXTENDED = 20;
 
 const PSTR = asciiToBytes('BitTorrent protocol');
-const HANDSHAKE_PREFIX = concatBytes([new Uint8Array([19]), PSTR, new Uint8Array(8)]);
+// Reserved bytes with bit 20 (extension) set: byte 5 (0-indexed), bit 4
+const RESERVED = new Uint8Array(8);
+RESERVED[5] = 0x10; // set bit 20 for BEP-10 extension support
+const HANDSHAKE_PREFIX = concatBytes([new Uint8Array([19]), PSTR, RESERVED]);
 
 /** A received piece block. */
 export interface PieceBlock {
@@ -50,6 +65,10 @@ export interface PeerMessageHandler {
   onHave(piece: number): void;
   onBitfield(bits: Uint8Array): void;
   onPiece(block: PieceBlock): void;
+  /** BEP-10 extended handshake received (dict with supported extensions). */
+  onExtendedHandshake?(data: Record<string, Object>): void;
+  /** BEP-10 extended message (non-handshake). */
+  onExtendedMessage?(subType: number, payload: Uint8Array): void;
 }
 
 /**
@@ -140,6 +159,29 @@ export class PeerConnection {
     writeUint32BE(payload, 5, begin);
     writeUint32BE(payload, 9, length);
     await this.sendMessage(payload);
+  }
+
+  /** Send an extended message (BEP-10). subType 0=handshake, 1+=extension. */
+  async sendExtended(subType: number, extPayload: Uint8Array): Promise<void> {
+    const msg = concatBytes([new Uint8Array([MSG_EXTENDED, subType]), extPayload]);
+    await this.sendMessage(msg);
+  }
+
+  /** Send BEP-10 extended handshake with supported extensions. */
+  async sendExtendedHandshake(m: Record<string, number>, metadataSize?: number): Promise<void> {
+    const dict: Record<string, Object> = {
+      m: Object.keys(m).reduce((acc, k) => {
+        (acc as Record<string, number>)[k] = m[k];
+        return acc;
+      }, {} as Record<string, number>),
+      v: 'FluxDownCover/1.0',
+      p: 6881
+    };
+    if (metadataSize !== undefined) {
+      (dict as Record<string, Object>)['metadata_size'] = metadataSize;
+    }
+    const bencoded = bencode(dict as unknown as BencodeDict);
+    await this.sendExtended(0, new Uint8Array(bencoded));
   }
 
   /** Send a "have" message. */
@@ -288,7 +330,21 @@ export class PeerConnection {
         }
         break;
       default:
-        // ignore unknown messages (extended, port, etc.)
+        if (id === MSG_EXTENDED && payload.length >= 1) {
+          const subType = payload[0];
+          const extPayload = payload.subarray(1);
+          if (subType === 0) {
+            // Extended handshake
+            try {
+              const decoded = bdecode(extPayload);
+              if (decoded instanceof BencodeDict) {
+                h.onExtendedHandshake?.(decoded as unknown as Record<string, Object>);
+              }
+            } catch (_) { /* ignore malformed handshake */ }
+          } else {
+            h.onExtendedMessage?.(subType, extPayload);
+          }
+        }
         break;
     }
   }

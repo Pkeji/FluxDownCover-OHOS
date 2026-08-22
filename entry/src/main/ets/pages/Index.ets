@@ -1,10 +1,13 @@
 import { promptAction } from '@kit.ArkUI';
-import { common, Want } from '@kit.AbilityKit';
+import { common, Want, OpenLinkOptions } from '@kit.AbilityKit';
+import { picker, fileUri } from '@kit.CoreFileKit';
+import { wantConstant } from '@kit.AbilityKit';
+
 import { DownloadViewModel } from '../viewmodel/DownloadViewModel';
 import { DownloadTask } from '../model/DownloadTask';
 import { TaskStatus } from '../model/TaskStatus';
 import { ProtocolType } from '../model/ProtocolType';
-import { formatBytes, formatSpeed, detectProtocol, protocolMeta, ALL_PROTOCOLS, fileNameFromUrl } from '../utils/common';
+import { formatBytes, formatSpeed, formatDateTime, formatDuration, detectProtocol, protocolMeta, ALL_PROTOCOLS, fileNameFromUrl, ProtocolMeta } from '../utils/common';
 import { COLOR_SCHEMES, getScheme, ColorScheme } from '../utils/ColorSchemes';
 import { DownloadQueue } from '../model/DownloadQueue';
 import { RssSubscription } from '../model/RssSubscription';
@@ -80,7 +83,10 @@ struct IndexPage {
   @Local vm: DownloadViewModel = new DownloadViewModel();
   navPathStack: NavPathStack = new NavPathStack();
   @Local currentTab: number = 0;
+  @Local selectMode: boolean = false;
+  @Local selectedTaskIds: Set<string> = new Set();
   private deepLinkTimer: number = -1;
+  private contextMenuTask: DownloadTask | null = null;
 
   @Computed
   get p(): Palette {
@@ -120,12 +126,37 @@ struct IndexPage {
     }
   }
 
-  private async doExport(task: DownloadTask): Promise<void> {
+  private async openFile(task: DownloadTask): Promise<void> {
     try {
-      const path = await this.vm.exportToDownload(task);
-      promptAction.showToast({ message: '已导出到公共 Download: ' + path });
+      // Ensure file is exported first
+      if (!task.publicPath) {
+        await this.vm.exportToDownload(task);
+      }
+      const fileUriObj = fileUri.getUriFromPath(task.publicPath);
+      const want: Want = {
+        action: 'ohos.want.action.viewData',
+        uri: fileUriObj,
+        flags: wantConstant.Flags.FLAG_AUTH_READ_URI_PERMISSION | wantConstant.Flags.FLAG_AUTH_WRITE_URI_PERMISSION,
+      };
+      (getContext(this) as common.UIAbilityContext).startAbility(want);
     } catch (e) {
-      promptAction.showToast({ message: '导出失败: ' + ((e as Error)?.message || String(e)) });
+      promptAction.showToast({ message: '打开文件失败: ' + ((e as Error)?.message || String(e)) });
+    }
+  }
+
+  private async openFileLocation(task: DownloadTask): Promise<void> {
+    try {
+      if (!task.publicPath) {
+        await this.vm.exportToDownload(task);
+      }
+      // Use openLink to open the system file manager at the file's directory
+      const fileUriObj = fileUri.getUriFromPath(task.publicPath);
+      const ctx = getContext(this) as common.UIAbilityContext;
+      ctx.openLink('filemanager://openDirectory', {
+        parameters: { 'fileUri': fileUriObj }
+      } as OpenLinkOptions);
+    } catch (e) {
+      promptAction.showToast({ message: '打开文件目录失败: ' + ((e as Error)?.message || String(e)) });
     }
   }
 
@@ -140,7 +171,7 @@ struct IndexPage {
     Navigation(this.navPathStack) {
       this.MasterView()
     }
-    .title('FluxDown')
+    .title('FluxDown Cover')
     .backgroundColor(this.p.bg)
     .mode(NavigationMode.Auto)
     .navBarWidth(360)
@@ -180,7 +211,7 @@ struct IndexPage {
       .mode(NavDestinationMode.STANDARD)
     } else if (name === 'add') {
       NavDestination() {
-        AddContent({ vm: this.vm, navStack: this.navPathStack })
+        AddContent({ vm: this.vm, navStack: this.navPathStack, onDownloadStart: () => { this.currentTab = 0; } })
       }
       .title('新建下载')
       .mode(NavDestinationMode.STANDARD)
@@ -211,6 +242,18 @@ struct IndexPage {
       Row() {
         this.TabButton('下载中', 0, '↓')
         this.TabButton('已完成', 1, '✓')
+        Blank()
+        if (this.visibleTasks.length > 0) {
+          Text(this.selectMode ? '取消' : '选择')
+            .fontSize(14)
+            .fontColor(this.p.primary)
+            .onClick(() => {
+              this.selectMode = !this.selectMode;
+              if (!this.selectMode) {
+                this.selectedTaskIds = new Set();
+              }
+            })
+        }
       }
       .width('100%')
       .padding({ left: 12, right: 12, top: 8, bottom: 8 })
@@ -232,7 +275,31 @@ struct IndexPage {
                 this.TaskRow(task)
               }
               .onClick(() => {
-                this.navPathStack.pushPath({ name: 'detail', param: task });
+                if (this.selectMode) {
+                  const s = new Set(this.selectedTaskIds);
+                  if (s.has(task.id)) {
+                    s.delete(task.id);
+                  } else {
+                    s.add(task.id);
+                  }
+                  this.selectedTaskIds = s;
+                } else {
+                  this.navPathStack.pushPath({ name: 'detail', param: task });
+                }
+              })
+              .onMouse((event: MouseEvent) => {
+                if (event.button === MouseButton.Right) {
+                  this.contextMenuTask = task;
+                }
+              })
+              .bindContextMenu(this.selectMode ? undefined : this.RightClickMenu, ResponseType.RightClick)
+              .swipeAction(this.selectMode ? undefined : {
+                end: {
+                  builder: () => {
+                    this.SwipeActionForTask(task);
+                  },
+                  actionAreaDistance: 56
+                }
               })
               .transition(TransitionEffect.translate({ y: 20 }).combine(TransitionEffect.OPACITY)
                 .animation({ duration: 300, curve: Curve.EaseOut }))
@@ -245,6 +312,70 @@ struct IndexPage {
         .divider({ strokeWidth: 1, color: this.p.border })
         .transition(TransitionEffect.OPACITY.animation({ duration: 300, curve: Curve.EaseInOut }))
         .edgeEffect(EdgeEffect.Spring)
+      }
+
+      // ── 选择模式底部操作栏 ──
+      if (this.selectMode) {
+        Row() {
+          Text(`已选 ${this.selectedTaskIds.size} 项`)
+            .fontSize(14)
+            .fontColor(this.p.text)
+          Blank()
+          Button(this.selectedTaskIds.size === this.visibleTasks.length ? '取消全选' : '全选')
+            .type(ButtonType.Capsule)
+            .fontSize(13)
+            .backgroundColor(this.p.surface)
+            .fontColor(this.p.primary)
+            .height(36)
+            .onClick(() => {
+              if (this.selectedTaskIds.size === this.visibleTasks.length) {
+                this.selectedTaskIds = new Set();
+              } else {
+                this.selectedTaskIds = new Set(this.visibleTasks.map(t => t.id));
+              }
+            })
+          Button(`删除${this.selectedTaskIds.size > 0 ? `(${this.selectedTaskIds.size})` : ''}`)
+            .type(ButtonType.Capsule)
+            .fontSize(13)
+            .backgroundColor('#E8553B')
+            .fontColor('#FFFFFF')
+            .enabled(this.selectedTaskIds.size > 0)
+            .height(36)
+            .margin({ left: 8 })
+            .onClick(() => {
+              if (this.selectedTaskIds.size === 0) {
+                return;
+              }
+              const count = this.selectedTaskIds.size;
+              AlertDialog.show(
+                {
+                  title: '批量删除',
+                  message: `确定要删除选中的 ${count} 个下载任务吗？\n相关文件将被同时删除。`,
+                  autoCancel: true,
+                  alignment: DialogAlignment.Center,
+                  primaryButton: {
+                    value: '取消',
+                    action: () => {}
+                  },
+                  secondaryButton: {
+                    value: '删除',
+                    fontColor: '#FF3B30',
+                    action: () => {
+                      const ids = Array.from(this.selectedTaskIds);
+                      this.vm.removeTasks(ids);
+                      this.selectedTaskIds = new Set();
+                      this.selectMode = false;
+                    }
+                  }
+                }
+              );
+            })
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, top: 8, bottom: 8 })
+        .backgroundColor(this.p.surface)
+        .borderRadius({ topLeft: 12, topRight: 12 })
+        .margin({ left: 12, right: 12, bottom: 6 })
       }
     }
     .width('100%')
@@ -270,12 +401,154 @@ struct IndexPage {
     .animation({ duration: 250, curve: Curve.EaseInOut })
     .onClick(() => {
       this.currentTab = index;
+      this.selectMode = false;
+      this.selectedTaskIds = new Set();
     })
+  }
+
+  @Builder
+  RightClickMenu() {
+    if (this.contextMenuTask?.status === TaskStatus.Completed) {
+      Menu() {
+        MenuItem({ content: '打开文件' })
+          .onChange(() => {
+            this.openFile(this.contextMenuTask!);
+          })
+        MenuItem({ content: '打开文件所在目录' })
+          .onChange(() => {
+            this.openFileLocation(this.contextMenuTask!);
+          })
+        MenuItem({ content: '删除' })
+          .onChange(() => {
+            AlertDialog.show(
+              {
+                title: '删除任务',
+                message: '确定要删除此下载任务吗？\n相关文件将被同时删除。',
+                autoCancel: true,
+                alignment: DialogAlignment.Center,
+                primaryButton: {
+                  value: '取消',
+                  action: () => {}
+                },
+                secondaryButton: {
+                  value: '删除',
+                  fontColor: '#FF3B30',
+                  action: () => {
+                    this.vm.remove(this.contextMenuTask!);
+                  }
+                }
+              }
+            );
+          })
+      }
+    }
+  }
+
+  @Builder
+  SwipeActionForTask(task: DownloadTask) {
+    Row() {
+      if (task.status === TaskStatus.Downloading) {
+        Button() {
+          Text('暂停').fontSize(13).fontColor('#FFFFFF')
+        }
+        .type(ButtonType.Capsule)
+        .backgroundColor('#FFA940')
+        .width(60)
+        .height(40)
+        .margin({ right: 6 })
+        .onClick(() => {
+          this.vm.pause(task);
+        })
+      } else if (task.status === TaskStatus.Paused || task.status === TaskStatus.Error) {
+        Button() {
+          Text('继续').fontSize(13).fontColor('#FFFFFF')
+        }
+        .type(ButtonType.Capsule)
+        .backgroundColor('#52C41A')
+        .width(60)
+        .height(40)
+        .margin({ right: 6 })
+        .onClick(() => {
+          this.vm.resume(task);
+        })
+      } else if (task.status === TaskStatus.Completed) {
+        Button() {
+          Text('打开文件').fontSize(13).fontColor('#FFFFFF')
+        }
+        .type(ButtonType.Capsule)
+        .backgroundColor('#007DFF')
+        .width(76)
+        .height(40)
+        .margin({ right: 6 })
+        .onClick(() => {
+          this.openFile(task);
+        })
+        Button() {
+          Text('打开位置').fontSize(13).fontColor('#FFFFFF')
+        }
+        .type(ButtonType.Capsule)
+        .backgroundColor('#666C78')
+        .width(76)
+        .height(40)
+        .margin({ right: 6 })
+        .onClick(() => {
+          this.openFileLocation(task);
+        })
+      }
+      Button() {
+        Text('删除').fontSize(13).fontColor('#FFFFFF')
+      }
+      .type(ButtonType.Capsule)
+      .backgroundColor('#E8553B')
+      .width(60)
+      .height(40)
+      .onClick(() => {
+        AlertDialog.show(
+          {
+            title: '删除任务',
+            message: '确定要删除此下载任务吗？\n相关文件将被同时删除。',
+            autoCancel: true,
+            alignment: DialogAlignment.Center,
+            primaryButton: {
+              value: '取消',
+              action: () => {}
+            },
+            secondaryButton: {
+              value: '删除',
+              fontColor: '#FF3B30',
+              action: () => {
+                this.vm.remove(task);
+              }
+            }
+          }
+        );
+      })
+    }
+    .height('100%')
+    .padding({ left: 8, right: 8 })
+    .alignItems(VerticalAlign.Center)
   }
 
   @Builder
   TaskRow(task: DownloadTask) {
     Row() {
+      if (this.selectMode) {
+        Checkbox()
+          .select(this.selectedTaskIds.has(task.id))
+          .shape(CheckBoxShape.ROUNDED_SQUARE)
+          .width(22)
+          .height(22)
+          .margin({ right: 10 })
+          .onChange((isChecked: boolean) => {
+            const s = new Set(this.selectedTaskIds);
+            if (isChecked) {
+              s.add(task.id);
+            } else {
+              s.delete(task.id);
+            }
+            this.selectedTaskIds = s;
+          })
+      }
       Column() {
         Row() {
           Text(task.fileName)
@@ -328,39 +601,7 @@ struct IndexPage {
       .layoutWeight(1)
       .alignItems(HorizontalAlign.Start)
 
-      Row() {
-        if (task.status === TaskStatus.Downloading) {
-          Button('暂停')
-            .height(32)
-            .fontSize(12)
-            .onClick(() => {
-              this.vm.pause(task);
-            })
-        } else if (task.status === TaskStatus.Paused || task.status === TaskStatus.Error) {
-          Button('继续')
-            .height(32)
-            .fontSize(12)
-            .onClick(() => {
-              this.vm.resume(task);
-            })
-        } else if (task.status === TaskStatus.Completed) {
-          Button('导出')
-            .height(32)
-            .fontSize(12)
-            .backgroundColor(this.p.primary)
-            .fontColor('#FFFFFF')
-            .onClick(() => {
-              this.doExport(task);
-            })
-        }
-        Button('删除')
-          .height(32)
-          .fontSize(12)
-          .margin({ left: 6 })
-          .onClick(() => {
-            this.vm.remove(task);
-          })
-      }
+      // 所有操作移至左滑菜单
     }
     .padding(12)
     .backgroundColor(this.p.surface)
@@ -375,6 +616,7 @@ struct IndexPage {
 struct AddContent {
   @Param vm: DownloadViewModel = new DownloadViewModel();
   @Param navStack: NavPathStack = new NavPathStack();
+  @Param onDownloadStart: () => void = (): void => {};
   @Local url: string = '';
   @Local autoFileName: string = '';
   @Local detectedLabel: string = '';
@@ -383,6 +625,38 @@ struct AddContent {
   @Local detectedImpl: boolean = true;
   @Local hasDetection: boolean = false;
   @Local batchUrls: string = '';
+  @Local selectedTorrentPath: string = '';
+
+  /** Open system file picker to select a .torrent file. */
+  async pickTorrentFile(): Promise<void> {
+    try {
+      const context = getContext(this) as common.UIAbilityContext;
+      const documentPicker = new picker.DocumentViewPicker(context);
+      const options = new picker.DocumentSelectOptions();
+      // Filter for .torrent files
+      options.fileSuffixFilters = ['.torrent'];
+      const results = await documentPicker.select(options);
+      if (results && results.length > 0) {
+        const uri = results[0];
+        this.selectedTorrentPath = uri;
+        this.url = uri;
+        // Auto-detect protocol
+        const trimmed = uri.trim();
+        if (trimmed.length > 0) {
+          const meta = protocolMeta(detectProtocol(trimmed));
+          this.detectedLabel = meta.label;
+          this.detectedColor = meta.color;
+          this.detectedDesc = meta.desc;
+          this.detectedImpl = meta.implemented;
+          this.hasDetection = true;
+          this.autoFileName = fileNameFromUrl(trimmed) || uri.split('/').pop() || '';
+        }
+        promptAction.showToast({ message: '已选择种子文件' });
+      }
+    } catch (e) {
+      promptAction.showToast({ message: '选择文件失败: ' + (e as Error).message });
+    }
+  }
 
   @Computed
   get p(): Palette {
@@ -466,6 +740,30 @@ struct AddContent {
         .margin({ top: 12 })
       }
 
+      // 选择种子文件
+      Row() {
+        Button('📂 选择 .torrent 种子文件')
+          .fontSize(13)
+          .height(40)
+          .backgroundColor(this.p.surfaceSolid)
+          .fontColor(this.p.text)
+          .borderRadius(8)
+          .onClick(() => {
+            this.pickTorrentFile();
+          })
+        if (this.selectedTorrentPath.length > 0) {
+          Text('已选择: ' + this.selectedTorrentPath.split('/').pop())
+            .fontSize(11)
+            .fontColor(this.p.success)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .layoutWeight(1)
+            .margin({ left: 8 })
+        }
+      }
+      .width('100%')
+      .margin({ top: 12 })
+
       // 支持协议标签
       Text('支持协议')
         .fontSize(13)
@@ -501,6 +799,7 @@ struct AddContent {
           this.autoFileName = '';
           this.hasDetection = false;
           promptAction.showToast({ message: '已添加下载任务' });
+          this.onDownloadStart?.();
           this.navStack.pop();
         })
 
@@ -533,6 +832,7 @@ struct AddContent {
           this.vm.addBatchDownloads(urls).then((n: number) => {
             promptAction.showToast({ message: `已添加 ${n} 个下载` });
             this.batchUrls = '';
+            this.onDownloadStart?.();
             this.navStack.pop();
           });
         })
@@ -593,7 +893,7 @@ struct SettingsContent {
           Slider({
             value: this.vm.maxSegments,
             min: 1,
-            max: 16,
+            max: 32,
             step: 1,
             style: SliderStyle.OutSet
           })
@@ -615,20 +915,6 @@ struct SettingsContent {
           }
           .width('100%')
           .padding(16)
-
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
-
-          Row() {
-            Text('自动导出到公共 Download').fontColor(this.p.text).layoutWeight(1).fontSize(15)
-            Toggle({ isOn: this.vm.autoExport, type: ToggleType.Switch })
-              .onChange((v: boolean) => {
-                this.vm.setAutoExport(v);
-              })
-          }
-          .width('100%')
-          .padding(16)
-
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // 全局限速
           Row() {
@@ -942,7 +1228,7 @@ struct AboutContent {
             .borderRadius(20)
             .margin({ bottom: 12 })
 
-          Text('FluxDown')
+          Text('FluxDown Cover')
             .fontSize(22)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.p.text)
@@ -965,7 +1251,7 @@ struct AboutContent {
             .width('100%')
             .margin({ bottom: 10 })
 
-          Text('FluxDown 是一款多协议下载管理器，支持 HTTP/HTTPS、FTP、HLS 流媒体、BitTorrent P2P 及 eD2K 协议。基于 HarmonyOS NEXT 原生开发，提供流畅的下载体验与任务管理功能。')
+          Text('FluxDown Cover 是一款多协议下载管理器，支持 HTTP/HTTPS、FTP、HLS/DASH 流媒体、BitTorrent P2P、eD2K 网络及迅雷/快车/旋风专用链接。基于 HarmonyOS NEXT 原生开发，提供流畅的下载体验与任务管理功能。')
             .fontSize(14)
             .fontColor(this.p.text)
             .lineHeight(22)
@@ -987,13 +1273,9 @@ struct AboutContent {
             .width('100%')
             .margin({ bottom: 12 })
 
-          this.ProtocolItem('HTTP / HTTPS', '网页直链下载，支持多线程分片')
-          this.ProtocolItem('FTP', '文件传输协议，被动模式')
-          this.ProtocolItem('SFTP', 'SSH 文件传输协议（开发中）')
-          this.ProtocolItem('HLS (m3u8)', 'HTTP Live Streaming 流媒体分段下载')
-          this.ProtocolItem('BitTorrent', 'P2P 下载，磁力链接 / .torrent 种子')
-          this.ProtocolItem('迅雷 (thunder://)', '迅雷专用链接（开发中）')
-          this.ProtocolItem('eD2K', 'eDonkey 网络（开发中）')
+          ForEach(ALL_PROTOCOLS, (pt: ProtocolType) => {
+            this.ProtocolItem(protocolMeta(pt))
+          }, (pt: ProtocolType) => pt)
         }
         .width('100%')
         .padding(16)
@@ -1051,7 +1333,7 @@ struct AboutContent {
         .borderRadius(12)
         .margin({ left: 16, right: 16, bottom: 16 })
 
-        Text('© 2026 FluxDown for HarmonyOS')
+        Text('© 2026 FluxDown Cover for HarmonyOS')
           .fontSize(12)
           .fontColor(this.p.textSecondary)
           .margin({ bottom: 32 })
@@ -1067,18 +1349,33 @@ struct AboutContent {
   }
 
   @Builder
-  ProtocolItem(name: string, desc: string) {
+  ProtocolItem(meta: ProtocolMeta) {
     Row() {
-      Text('•').fontSize(14).fontColor(this.p.primaryDark).margin({ right: 8 })
+      // Colored dot indicating protocol
+      Circle({ width: 8, height: 8 })
+        .fill(meta.color)
+        .margin({ right: 10 })
+
       Column() {
-        Text(name).fontSize(13).fontColor(this.p.text).fontWeight(FontWeight.Medium)
-        Text(desc).fontSize(12).fontColor(this.p.textSecondary).margin({ top: 2 })
+        Row() {
+          Text(meta.label).fontSize(13).fontColor(this.p.text).fontWeight(FontWeight.Medium)
+          if (!meta.implemented) {
+            Text('开发中')
+              .fontSize(10)
+              .fontColor('#FFFFFF')
+              .backgroundColor('#9E9E9E')
+              .borderRadius(4)
+              .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+              .margin({ left: 8 })
+          }
+        }
+        Text(meta.fullDesc).fontSize(12).fontColor(this.p.textSecondary).margin({ top: 2 })
       }
       .layoutWeight(1)
       .alignItems(HorizontalAlign.Start)
     }
     .width('100%')
-    .margin({ bottom: 8 })
+    .margin({ bottom: 10 })
   }
 }
 
@@ -1108,8 +1405,13 @@ struct TaskDetailContent {
         this.Row2('大小', this.task.totalBytes > 0 ? formatBytes(this.task.totalBytes) : '未知')
         this.Row2('已下载', formatBytes(this.task.downloadedBytes))
         this.Row2('进度', this.task.totalBytes > 0 ? this.task.percent + '%' : '-')
-        this.Row2('速度', formatSpeed(this.task.speed))
+        this.Row2('速度', formatSpeed(this.task.status === TaskStatus.Completed ? this.task.peakSpeed : this.task.speed))
         this.Row2('分片数', String(this.task.segments.length))
+        this.Row2('创建时间', formatDateTime(this.task.createdAt))
+        if (this.task.finishedAt > 0) {
+          this.Row2('完成时间', formatDateTime(this.task.finishedAt))
+          this.Row2('下载耗时', formatDuration(this.task.finishedAt - this.task.createdAt))
+        }
         if (this.task.sha256) {
           this.Row2('SHA-256', this.task.sha256)
         }

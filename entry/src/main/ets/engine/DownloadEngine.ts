@@ -8,7 +8,8 @@ import { TaskStatus } from '../model/TaskStatus';
 import { ProtocolType } from '../model/ProtocolType';
 import { genId, sanitizeFileName, fileNameFromUrl, detectProtocol } from '../utils/common';
 import { TaskRepository } from '../store/TaskRepository';
-import { EngineListener, Ctrl } from './types';
+import { EngineListener, Ctrl } from './types'
+import { SpeedLimiter } from '../utils/SpeedLimiter';;
 import { EngineHooks } from './EngineHooks';
 import { hashFile } from './HashTask';
 import { buildHlsSegments, downloadHls } from './protocols/HlsProtocol';
@@ -19,7 +20,7 @@ import { downloadEd2k } from './protocols/Ed2kProtocol';
 import { decodeWrapperLink } from './protocols/ThunderProtocol';
 
 /**
- * Core download engine. Implements FluxDown's headline features:
+ * Core download engine. Implements FluxDown Cover's headline features:
  *  - multi-threaded / multi-segment HTTP(S) download with dynamic segmentation
  *  - resumable transfers (per-segment progress persisted to SQLite)
  *  - HLS (m3u8) and FTP (passive) protocols
@@ -139,13 +140,14 @@ export class DownloadEngine implements EngineHooks {
         this.listener?.onTaskError(task, task.errorMessage);
         return;
       }
-      // Update task with the real URL and protocol, then re-dispatch
+      // Update task with the real URL, keeping the original wrapper protocol for UI display.
       task.url = decoded.url;
-      task.protocol = decoded.protocol;
       if (!task.fileName || task.fileName === '') {
         task.fileName = fileNameFromUrl(decoded.url);
       }
-      return this.start(task);
+      // Do NOT overwrite task.protocol — keep THUNDER/FLASHGET/QQDL so the UI shows
+      // the correct wrapper label. The dispatch section below will re-detect protocol
+      // from the decoded URL to route to the correct handler.
     }
 
     // BitTorrent: skip ensureFile — the output filename comes from .torrent metadata,
@@ -155,6 +157,13 @@ export class DownloadEngine implements EngineHooks {
     if (task.protocol !== ProtocolType.BITTORRENT) {
       this.ensureFile(task);
     }
+
+    // MUST set status BEFORE any I/O (probe / segment building) that could throw,
+    // otherwise the task stays stuck in Queued forever.
+    task.status = TaskStatus.Downloading;
+    this.active.add(task);
+    this.ensureTicker();
+    this.listener?.onTaskUpdated(task);
 
     if (task.protocol === ProtocolType.HLS) {
       if (task.segments.length === 0) {
@@ -176,27 +185,35 @@ export class DownloadEngine implements EngineHooks {
         }
         this.ensureFile(task);
         this.buildSegments(task, info.total, info.acceptRanges);
+        // Pre-allocate file space to avoid on-demand extent growth during writes
+        if (info.total > 0) {
+          try { fs.truncateSync(task.filePath, info.total); } catch (_) {}
+        }
       }
     }
-
-    task.status = TaskStatus.Downloading;
-    this.active.add(task);
-    this.ensureTicker();
-    this.listener?.onTaskUpdated(task);
 
     const ctrl: Ctrl = { aborted: false };
     this.controls.set(task.id, ctrl);
 
+    // For wrapper protocols (thunder://, flashget://, qqdl://), the URL has been
+    // decoded above; re-detect protocol from the actual URL for dispatching.
+    const dispatchProtocol: ProtocolType =
+      task.protocol === ProtocolType.THUNDER ||
+      task.protocol === ProtocolType.FLASHGET ||
+      task.protocol === ProtocolType.QQDL
+        ? detectProtocol(task.url)
+        : task.protocol;
+
     try {
-      if (task.protocol === ProtocolType.FTP) {
+      if (dispatchProtocol === ProtocolType.FTP) {
         await downloadFtp(task, ctrl, this);
-      } else if (task.protocol === ProtocolType.HLS) {
+      } else if (dispatchProtocol === ProtocolType.HLS) {
         await downloadHls(task, ctrl, this);
-      } else if (task.protocol === ProtocolType.DASH) {
+      } else if (dispatchProtocol === ProtocolType.DASH) {
         await downloadDash(task, ctrl, this);
-      } else if (task.protocol === ProtocolType.BITTORRENT) {
+      } else if (dispatchProtocol === ProtocolType.BITTORRENT) {
         await downloadBittorrent(task, ctrl, this);
-      } else if (task.protocol === ProtocolType.ED2K) {
+      } else if (dispatchProtocol === ProtocolType.ED2K) {
         await downloadEd2k(task, ctrl, this);
       } else {
         const pending = task.segments.filter((s) => !s.done);
@@ -226,6 +243,7 @@ export class DownloadEngine implements EngineHooks {
   }
 
   pause(task: DownloadTask): void {
+    task.status = TaskStatus.Paused;
     const ctrl = this.controls.get(task.id);
     if (ctrl) {
       ctrl.aborted = true;
@@ -241,10 +259,21 @@ export class DownloadEngine implements EngineHooks {
     if (ctrl) {
       ctrl.aborted = true;
     }
+    // Delete sandbox file
     try {
-      fs.unlinkSync(task.filePath);
+      if (task.filePath) {
+        fs.unlinkSync(task.filePath);
+      }
     } catch (e) {
       // file may not exist yet
+    }
+    // Delete public export copy if one exists
+    try {
+      if (task.publicPath) {
+        fs.unlinkSync(task.publicPath);
+      }
+    } catch (e) {
+      // public file may not exist
     }
     this.repo.delete(task.id).catch(() => {});
   }
@@ -369,7 +398,7 @@ export class DownloadEngine implements EngineHooks {
       ];
       return;
     }
-    const n = Math.min(this.maxSegments, Math.max(1, Math.floor(total / (512 * 1024))));
+    const n = Math.min(this.maxSegments, Math.max(1, Math.floor(total / (256 * 1024))));
     const size = Math.floor(total / n);
     const segs: Segment[] = [];
     for (let i = 0; i < n; i++) {
@@ -394,6 +423,28 @@ export class DownloadEngine implements EngineHooks {
       segReject = rej;
     });
 
+    // Write buffering: collect chunks and flush at 64KB to reduce I/O syscalls
+    const WRITE_BUF_THRESHOLD = 256 * 1024;
+    const bufQueue: Array<{ data: ArrayBuffer; offset: number }> = [];
+    let bufSize = 0;
+
+    const flushBuf = async (): Promise<number> => {
+      if (bufQueue.length === 0) return 0;
+      const batch = bufQueue.splice(0);
+      bufSize = 0;
+      // Apply global speed limit before writing
+      const totalBytes = batch.reduce((s, item) => s + item.data.byteLength, 0);
+      const waitMs = SpeedLimiter.global().waitTime(totalBytes);
+      if (waitMs > 0) {
+        await new Promise(r => setTimeout(r, waitMs));
+      }
+      SpeedLimiter.global().tryConsume(totalBytes);
+      const results = await Promise.all(
+        batch.map(item => fs.write(file.fd, item.data, { offset: item.offset }))
+      );
+      return results.reduce((a, b) => a + b, 0);
+    };
+
     req.on('dataReceive', (chunk: ArrayBuffer) => {
       if (ctrl.aborted) {
         req.destroy();
@@ -402,24 +453,32 @@ export class DownloadEngine implements EngineHooks {
       }
       const cur = offset;
       offset += chunk.byteLength;
+      bufQueue.push({ data: chunk, offset: cur });
+      bufSize += chunk.byteLength;
+
+      if (bufSize >= WRITE_BUF_THRESHOLD) {
+        writeChain = writeChain
+          .then(() => flushBuf())
+          .then((len: number) => {
+            seg.downloaded += len;
+            this.onChunk(task, len);
+          })
+          .catch((e: BusinessError) => {
+            writeErr = e as Error;
+          });
+      }
+    });
+    req.on('dataEnd', () => {
       writeChain = writeChain
-        .then(() => fs.write(file.fd, chunk, { offset: cur }))
+        .then(() => flushBuf())
         .then((len: number) => {
           seg.downloaded += len;
           this.onChunk(task, len);
-        })
-        .catch((e: BusinessError) => {
-          writeErr = e as Error;
-        });
-    });
-    req.on('dataEnd', () => {
-      if (writeErr) {
-        req.destroy();
-        segReject(writeErr);
-        return;
-      }
-      writeChain
-        .then(() => {
+          if (writeErr) {
+            req.destroy();
+            segReject(writeErr);
+            return;
+          }
           seg.done = true;
           req.destroy();
           segResolve();
@@ -477,7 +536,7 @@ export class DownloadEngine implements EngineHooks {
     try {
       task.sha256 = await hashFile(task.filePath);
     } catch (e) {
-      console.error(`FluxDown hash failed: ${JSON.stringify(e)}`);
+      console.error(`FluxDown Cover hash failed: ${JSON.stringify(e)}`);
       task.sha256 = '';
     }
   }
@@ -495,6 +554,9 @@ export class DownloadEngine implements EngineHooks {
         const dt = (now - lt) / 1000;
         if (dt > 0) {
           task.speed = Math.max(0, Math.floor((task.liveBytes - prev) / dt));
+          if (task.speed > task.peakSpeed) {
+            task.peakSpeed = task.speed;
+          }
         }
         this.prevLive.set(task.id, task.liveBytes);
         this.lastTick.set(task.id, now);
