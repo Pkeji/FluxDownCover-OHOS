@@ -14,7 +14,7 @@ import { RssStore } from '../store/RssStore';
 import { StatsCalculator, DownloadStats } from '../utils/StatsCalculator';
 import { SpeedLimiter } from '../utils/SpeedLimiter';
 import { RssParser } from '../utils/RssParser';
-import { genId } from '../utils/common';
+import { genId, fileNameFromUrl } from '../utils/common';
 import { common } from '@kit.AbilityKit';
 import { pasteboard } from '@kit.BasicServicesKit';
 
@@ -50,6 +50,8 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   private rssTimer: number = -1;
   private clipboardTimer: number = -1;
   private lastClipboardText: string = '';
+  /** URLs currently being added (in-flight), to prevent concurrent duplicates. */
+  private pendingUrls: Set<string> = new Set();
 
   async init(context: common.UIAbilityContext): Promise<void> {
     // Load persisted settings before anything else
@@ -93,9 +95,48 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     if (!url || !url.trim()) {
       return;
     }
-    const task = await this.engine.addTask(url, { fileName, verify: this.verifyIntegrity });
-    this.tasks.push(task);
-    await this.engine.start(task);
+    const trimmed = url.trim();
+    // Concurrent safety: same URL being added at the exact same moment
+    if (this.pendingUrls.has(trimmed)) {
+      return;
+    }
+    this.pendingUrls.add(trimmed);
+    try {
+      // Resolve file name conflict: if a task already uses this filePath, auto-rename
+      const resolvedName = fileName || this.resolveFileName(trimmed);
+      const task = await this.engine.addTask(trimmed, { fileName: resolvedName, verify: this.verifyIntegrity });
+      this.tasks.push(task);
+      await this.engine.start(task);
+    } finally {
+      this.pendingUrls.delete(trimmed);
+    }
+  }
+
+  /** If the auto-generated filePath collides with an existing task, append a suffix. */
+  private resolveFileName(url: string): string | undefined {
+    const baseName = fileNameFromUrl(url) || '';
+    if (!baseName) {
+      return undefined; // let engine use its fallback
+    }
+    const dir = this.engine.defaultDir();
+    const extIndex = baseName.lastIndexOf('.');
+    const stem = extIndex > 0 ? baseName.slice(0, extIndex) : baseName;
+    const ext = extIndex > 0 ? baseName.slice(extIndex) : '';
+    // Collect filePaths already claimed by existing tasks
+    const usedPaths = new Set(this.tasks.map(t => t.filePath));
+    let candidate = `${dir}/${baseName}`;
+    if (!usedPaths.has(candidate)) {
+      return undefined; // no conflict, use original
+    }
+    // Find the first available suffix
+    for (let i = 1; i < 100; i++) {
+      candidate = `${dir}/${stem} (${i})${ext}`;
+      if (!usedPaths.has(candidate)) {
+        return `${stem} (${i})${ext}`;
+      }
+    }
+    // Fallback: include task id
+    return `${stem} (${genId().slice(0, 8)})${ext}`;
   }
 
   pause(task: DownloadTask): void {
