@@ -5,33 +5,33 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "storeFile": "/Users/Zhuanz/Downloads/fluxdown.p12",
-          "storePassword": "0000001847144B54B5DEA0F3CDC08A17B89552F9AA275605783F342F5C37AD5504AD4FC80A073B48",
-          "keyAlias": "fluxdownohos",
-          "keyPassword": "00000018FAAF74CB2B09C0484155754C5F9D84E2959BABE4A3DFADE5CE01CB733D2A977C5B61C3EC",
+          "certpath": "/Users/Zhuanz/Downloads/FluxDown Cover.cer",
+          "keyAlias": "fluxdowncover",
+          "keyPassword": "00000018EC6B49E8017B6A48E9D0CF8E4DC00AFABF0A603E8771F5CA8F595BBE9FDCE7BD0D795F79",
+          "profile": "/Users/Zhuanz/Downloads/fluxdowncoverRelease.p7b",
           "signAlg": "SHA256withECDSA",
-          "profile": "/Users/Zhuanz/Downloads/fluxdownRelease.p7b",
-          "certpath": "/Users/Zhuanz/Downloads/fluxdown.cer"
+          "storeFile": "/Users/Zhuanz/Downloads/fluxdowncover.p12",
+          "storePassword": "00000018F11D6968F160327FAAAD1B8927233395A53735C77B447DA414304FECAE5CD3224BB574DD"
         }
       },
       {
-        "name": "ceshi",
+        "name": "release",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "/Users/Zhuanz/.ohos/config/ceshi_FluxDownOHOS_uczUCa4FGgDqkEL7bPXYMMxO_PS4Lol1CE_1aBnke2o=.cer",
-          "keyAlias": "debugKey",
-          "keyPassword": "0000001B7CEF9D5FAFD79854F1DFD2237B0F866A25585C6465DBAAE6DC04A2E1F50BD5D67F64C978102060",
-          "profile": "/Users/Zhuanz/.ohos/config/ceshi_FluxDownOHOS_uczUCa4FGgDqkEL7bPXYMMxO_PS4Lol1CE_1aBnke2o=.p7b",
+          "storeFile": "/Users/Zhuanz/Downloads/fluxdowncover.p12",
+          "storePassword": "00000018FB5C34A67BAF3667D483420BB266D5D1E6C9915D031131F8A717F5C735F0402D1D9DBDC7",
+          "keyAlias": "fluxdowncover",
+          "keyPassword": "00000018198E008FE5CAA0B5C2124C5D24787B122962980BE39DEA1DD823C656BD9205A758E7D7F6",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "/Users/Zhuanz/.ohos/config/ceshi_FluxDownOHOS_uczUCa4FGgDqkEL7bPXYMMxO_PS4Lol1CE_1aBnke2o=.p12",
-          "storePassword": "0000001B8996B7B73C0F445C0471936F9D14D26A5FE39D4ED33BA5067B095EFA842C8A99C47CF3AD93A37A"
+          "profile": "/Users/Zhuanz/Downloads/fluxdowncoverRelease-2.p7b",
+          "certpath": "/Users/Zhuanz/Downloads/fluxdowncover.cer"
         }
       }
     ],
     "products": [
       {
         "name": "default",
-        "signingConfig": "ceshi",
+        "signingConfig": "release",
         "compatibleSdkVersion": "6.1.0(23)",
         "compileSdkVersion": "6.1.1(24)",
         "targetSdkVersion": "6.1.1(24)",
@@ -44,7 +44,7 @@
           }
         },
         "output": {
-          "artifactName": "fluxdownohos"
+          "artifactName": "fluxdowncoverohos"
         }
       }
     ],
@@ -59,8 +59,8 @@
   },
   "modules": [
     {
-      "name": "entry",
-      "srcPath": "./entry",
+      "name": "fluxdowncover",
+      "srcPath": "./fluxdowncover",
       "targets": [
         {
           "name": "default",

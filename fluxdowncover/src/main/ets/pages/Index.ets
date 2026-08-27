@@ -119,7 +119,9 @@ struct IndexPage {
       AppStorage.setOrCreate<string>('pendingDownloadUrl', '');
       // Auto-add the download
       this.vm.addDownload(url).then(() => {
-        promptAction.showToast({ message: '已从浏览器扩展接收链接，开始下载' });
+        if (!this.vm.duplicatePrompt) {
+          promptAction.showToast({ message: '已从浏览器扩展接收链接，开始下载' });
+        }
       }).catch((e: Error) => {
         promptAction.showToast({ message: '链接接收失败: ' + (e?.message || String(e)) });
       });
@@ -673,6 +675,36 @@ struct AddContent {
       .backgroundColor(color)
   }
 
+  /** 检测到重复下载链接时弹出询问对话框。 */
+  private showDuplicateDialog(): void {
+    const info = this.vm.duplicatePrompt;
+    if (!info) {
+      return;
+    }
+    AlertDialog.show({
+      title: '重复下载',
+      message: `链接「${info.url.length > 60 ? info.url.slice(0, 57) + '...' : info.url}」\n已存在下载任务，是否重新下载？原文件将保留。`,
+      autoCancel: false,
+      alignment: DialogAlignment.Center,
+      primaryButton: {
+        value: '跳过',
+        action: () => {
+          this.vm.confirmDuplicateDownload('skip');
+        }
+      },
+      secondaryButton: {
+        value: '重新下载',
+        fontColor: '#007AFF',
+        action: () => {
+          this.vm.confirmDuplicateDownload('redownload');
+          promptAction.showToast({ message: '已重新添加下载任务' });
+          this.onDownloadStart?.();
+          this.navStack.pop();
+        }
+      }
+    });
+  }
+
   build() {
     Column() {
       Text('下载链接')
@@ -795,6 +827,10 @@ struct AddContent {
             return;
           }
           this.vm.addDownload(this.url.trim(), undefined);
+          if (this.vm.duplicatePrompt) {
+            this.showDuplicateDialog();
+            return;
+          }
           this.url = '';
           this.autoFileName = '';
           this.hasDetection = false;
@@ -1233,7 +1269,7 @@ struct AboutContent {
             .fontWeight(FontWeight.Bold)
             .fontColor(this.p.text)
 
-          Text('v1.0.0')
+          Text('v1.1.3')
             .fontSize(14)
             .fontColor(this.p.textSecondary)
             .margin({ top: 4 })

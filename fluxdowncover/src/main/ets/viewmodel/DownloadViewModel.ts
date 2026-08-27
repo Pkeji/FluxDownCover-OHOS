@@ -40,6 +40,8 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   @Trace queues: DownloadQueue[] = [];
   @Trace rssSubs: RssSubscription[] = [];
   @Trace filterCategory: string = ''; // current category filter ('' = all)
+  /** When non-null, the UI should show a duplicate-download dialog. */
+  @Trace duplicatePrompt: { url: string } | null = null;
 
   private engine: DownloadEngine = DownloadEngine.getInstance();
   private mcp: McpServer = McpServer.getInstance();
@@ -100,15 +102,41 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     if (this.pendingUrls.has(trimmed)) {
       return;
     }
+    // Duplicate URL detected — ask user via dialog
+    if (this.tasks.some(t => t.url === trimmed)) {
+      this.pendingUrls.add(trimmed);
+      this.duplicatePrompt = { url: trimmed };
+      return;
+    }
     this.pendingUrls.add(trimmed);
     try {
-      // Resolve file name conflict: if a task already uses this filePath, auto-rename
       const resolvedName = fileName || this.resolveFileName(trimmed);
       const task = await this.engine.addTask(trimmed, { fileName: resolvedName, verify: this.verifyIntegrity });
       this.tasks.push(task);
       await this.engine.start(task);
     } finally {
       this.pendingUrls.delete(trimmed);
+    }
+  }
+
+  /** Callback invoked after user makes a choice in the duplicate-download dialog. */
+  confirmDuplicateDownload(action: 'redownload' | 'skip'): void {
+    const info = this.duplicatePrompt;
+    this.duplicatePrompt = null;
+    if (!info) {
+      return;
+    }
+    if (action === 'redownload') {
+      const resolvedName = this.resolveFileName(info.url);
+      this.engine.addTask(info.url, { fileName: resolvedName, verify: this.verifyIntegrity })
+        .then(task => {
+          this.tasks.push(task);
+          return this.engine.start(task);
+        })
+        .catch((e) => console.error('confirmDuplicateDownload error', e))
+        .finally(() => this.pendingUrls.delete(info.url));
+    } else {
+      this.pendingUrls.delete(info.url);
     }
   }
 
