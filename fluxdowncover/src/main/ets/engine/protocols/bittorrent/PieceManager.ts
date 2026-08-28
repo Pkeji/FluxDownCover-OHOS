@@ -82,6 +82,41 @@ export class PieceManager {
     return this.havePieces;
   }
 
+  /** Whether piece *i* is fully verified (used by the upload/seeding path). */
+  hasPiece(i: number): boolean {
+    return i >= 0 && i < this.havePieces.length && this.havePieces[i];
+  }
+
+  /**
+   * Read raw bytes for a piece block directly from the output file.
+   * Used by the seeding/upload path to serve "piece" messages to peers.
+   * Returns an empty array if the requested range is not (yet) available.
+   */
+  readPieceData(index: number, begin: number, length: number): Uint8Array {
+    if (this.fileFd < 0 || !this.hasPiece(index)) {
+      return new Uint8Array(0);
+    }
+    const offset = index * this.meta.pieceLength + begin;
+    if (offset < 0 || offset >= this.meta.totalLength) {
+      return new Uint8Array(0);
+    }
+    const clampedLen = Math.min(length, this.meta.totalLength - offset);
+    if (clampedLen <= 0) {
+      return new Uint8Array(0);
+    }
+    const buf = new ArrayBuffer(clampedLen);
+    const bytesRead = fs.readSync(this.fileFd, buf, { offset });
+    if (bytesRead <= 0) {
+      return new Uint8Array(0);
+    }
+    return new Uint8Array(buf, 0, bytesRead);
+  }
+
+  /** Total verified bytes — alias used by the seeding stats path. */
+  get verifiedBytesPublic(): number {
+    return this.verifiedBytes;
+  }
+
   /** Check if all pieces are done. */
   isComplete(): boolean {
     return this.verifiedBytes >= this.meta.totalLength;

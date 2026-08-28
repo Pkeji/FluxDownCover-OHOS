@@ -48,12 +48,29 @@ export class DownloadTask {
   @Trace authHeader: string = ''; // HTTP Authorization header for protected downloads
   @Trace proxyUrl: string = ''; // per-task proxy URL (empty = use global)
 
+  // ── BitTorrent / seeding fields (FluxDown 0.4.7 parity) ──
+  @Trace uploadedBytes: number = 0; // bytes uploaded to peers (BT only)
+  @Trace seedRatio: number = 0; // uploaded / downloaded ratio (BT only)
+  @Trace seedingStatus: string = 'none'; // none|queued|seeding|ratioReached|timeReached|inactiveReached|userStopped|deleted|sessionReleased
+  @Trace seedStartedAt: number = 0; // timestamp when current seeding session began (0 = not seeding)
+  @Trace seedSeconds: number = 0; // accumulated seeding seconds across sessions
+  @Trace connectedPeers: number = 0; // currently connected peer count (BT only)
+  @Trace totalPeers: number = 0; // known/available peer count (BT only)
+
   // Non-observed state
   segments: Segment[] = [];
   isHls: boolean = false;
   isDash: boolean = false; // DASH (MPD) streaming flag
   liveBytes: number = 0; // high-frequency accumulator updated per chunk
   verifyIntegrity: boolean = true;
+  hlsQualityIndex: number = -1; // selected master-playlist variant (-1 = auto/highest)
+  retryCount: number = 0; // consecutive auto-retry attempts for this task (in-memory)
+  serverMtime: number = 0; // Last-Modified from server probe (ms epoch, 0 = unknown)
+  ua: string = ''; // per-task User-Agent override ('' = engine default)
+  segmentCount: number = 0; // per-task segment count (0 = engine default)
+  cookie: string = ''; // per-task Cookie header value
+  referer: string = ''; // per-task Referer header value
+  customHeaders: string = ''; // per-task custom headers, one "Key: Value" per line
 
   get percent(): number {
     if (this.totalBytes <= 0) {

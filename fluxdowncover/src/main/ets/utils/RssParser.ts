@@ -45,6 +45,7 @@ export class RssParser {
         link: RssParser.extractTag(block, 'link'),
         description: RssParser.extractTag(block, 'description'),
         pubDate: RssParser.parseDate(RssParser.extractTag(block, 'pubDate')),
+        sizeBytes: RssParser.extractEnclosureSize(block),
       });
     }
     // Atom: <entry>...</entry>
@@ -55,18 +56,51 @@ export class RssParser {
         link: RssParser.extractAtomLink(block),
         description: RssParser.extractTag(block, 'summary'),
         pubDate: RssParser.parseDate(RssParser.extractTag(block, 'updated') || RssParser.extractTag(block, 'published')),
+        sizeBytes: RssParser.extractEnclosureSize(block),
       });
     }
     items.sort((a, b) => b.pubDate - a.pubDate);
     return items;
   }
 
-  /** Check if an item matches a keyword filter (case-insensitive). */
-  static matchesFilter(item: RssItem, filter: string): boolean {
-    if (!filter || filter.trim().length === 0) return true;
-    const keywords = filter.toLowerCase().split(/[,\s]+/).filter(s => s.length > 0);
+  /**
+   * Check if an item matches include/exclude keyword filters (case-insensitive).
+   * include: any keyword hit passes (empty = match all).
+   * exclude: any keyword hit rejects the item.
+   */
+  static matchesFilter(item: RssItem, include: string, exclude: string = ''): boolean {
     const text = `${item.title} ${item.description}`.toLowerCase();
+    if (exclude && exclude.trim().length > 0) {
+      const exKw = exclude.toLowerCase().split(/[,\s]+/).filter(s => s.length > 0);
+      if (exKw.some(kw => text.includes(kw))) {
+        return false;
+      }
+    }
+    if (!include || include.trim().length === 0) return true;
+    const keywords = include.toLowerCase().split(/[,\s]+/).filter(s => s.length > 0);
     return keywords.some(kw => text.includes(kw));
+  }
+
+  /** Check an item against size bounds (MB). 0 = no limit. */
+  static matchesSize(item: RssItem, sizeMinMB: number, sizeMaxMB: number): boolean {
+    if (item.sizeBytes <= 0) return true; // size unknown → pass
+    const mb = item.sizeBytes / (1024 * 1024);
+    if (sizeMinMB > 0 && mb < sizeMinMB) return false;
+    if (sizeMaxMB > 0 && mb > sizeMaxMB) return false;
+    return true;
+  }
+
+  /** Extract enclosure length (bytes) from an <enclosure length="..."> tag. */
+  private static extractEnclosureSize(block: string): number {
+    const encStart = block.indexOf('<enclosure');
+    if (encStart < 0) return 0;
+    const encEnd = block.indexOf('>', encStart);
+    if (encEnd < 0) return 0;
+    const tag = block.substring(encStart, encEnd + 1);
+    const m = tag.match(/length\s*=\s*"(\d+)"/);
+    if (!m) return 0;
+    const n = parseInt(m[1], 10);
+    return isNaN(n) ? 0 : n;
   }
 
   private static extractAll(xml: string, startTag: string, endTag: string): string[] {

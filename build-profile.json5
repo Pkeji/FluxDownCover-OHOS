@@ -26,12 +26,25 @@
           "profile": "/Users/Zhuanz/Downloads/fluxdowncoverRelease-2.p7b",
           "certpath": "/Users/Zhuanz/Downloads/fluxdowncover.cer"
         }
+      },
+      {
+        "name": "ceshi",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "/Users/Zhuanz/.ohos/config/ceshi_FluxDownCoverOHOS_Uf34VH7nFQqTCad3Jj5CuH8emxV_NsVt1MvAQVpDSy8=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B74499532A93C513861177C5F9C4982EE4F9F450A0D41DCF529F9F7FB33720D47C77B2C00854C7F",
+          "profile": "/Users/Zhuanz/.ohos/config/ceshi_FluxDownCoverOHOS_Uf34VH7nFQqTCad3Jj5CuH8emxV_NsVt1MvAQVpDSy8=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "/Users/Zhuanz/.ohos/config/ceshi_FluxDownCoverOHOS_Uf34VH7nFQqTCad3Jj5CuH8emxV_NsVt1MvAQVpDSy8=.p12",
+          "storePassword": "0000001B81129DC8B4C87520428716C1E6B8111563F7144B4CC1E87F17BCDEC76DF7674E1A9C71A20E1103"
+        }
       }
     ],
     "products": [
       {
         "name": "default",
-        "signingConfig": "release",
+        "signingConfig": "ceshi",
         "compatibleSdkVersion": "6.1.0(23)",
         "compileSdkVersion": "6.1.1(24)",
         "targetSdkVersion": "6.1.1(24)",

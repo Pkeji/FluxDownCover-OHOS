@@ -1,4 +1,5 @@
 import { http } from '@kit.NetworkKit';
+import { logCollector } from '../../utils/LogCollector';
 import fs from '@ohos.file.fs';
 import { DownloadTask } from '../../model/DownloadTask';
 import { EngineHooks } from '../EngineHooks';
@@ -21,10 +22,16 @@ import {
 import { PieceManager } from './bittorrent/PieceManager';
 import { parseMagnetLink } from './bittorrent/MagnetLink';
 import { downloadMetadata } from './bittorrent/MetadataExchange';
+import { BtEngine } from '../BtEngine';
 
 const MAX_PEERS = 10;
-const LISTEN_PORT = 6881; // reported to tracker (we don't actually listen)
+const DEFAULT_LISTEN_PORT = 6881; // fallback if BtEngine hasn't bound yet
 const REANNOUNCE_INTERVAL = 30; // seconds
+
+/** The actual shared listen port chosen by BtEngine (TCP+UDP). */
+function listenPort(): number {
+  return BtEngine.getInstance().port || DEFAULT_LISTEN_PORT;
+}
 
 /**
  * BitTorrent download protocol.
@@ -79,12 +86,17 @@ export async function downloadBittorrent(
     return;
   }
 
-  // ── 4. Announce to tracker ──────────────────────────────────────────
-  const left = meta.totalLength - pieceManager.verifiedBytes;
-  let announceResult = await announceAny(
-    meta.trackers, meta, peerId, LISTEN_PORT,
-    0, pieceManager.verifiedBytes, left
-  );
+  // Bring up shared BT listeners (DHT / PeerServer / UPnP) and register this
+  // torrent so the seeding tick can find it later.
+  await BtEngine.getInstance().ensureListeners();
+  BtEngine.getInstance().registerTaskMeta(task.id, meta, pieceManager);
+
+  // ── 4. Discover peers (trackers + DHT) ──────────────────────────────
+  let peers: Peer[] = await BtEngine.getInstance().discoverPeers(meta, ctrl);
+  task.totalPeers = peers.length;
+  if (peers.length === 0) {
+    logCollector.warn('Warn', `FluxDown Cover: no peers found for ${meta.name}`);
+  }
 
   // ── 5. Connect to peers and download ────────────────────────────────
   let connections: PeerConnection[] = [];
@@ -97,12 +109,15 @@ export async function downloadBittorrent(
   while (!pieceManager.isComplete() && !ctrl.aborted) {
     // Re-announce if needed
     const now = Date.now();
-    if (now - lastAnnounce > REANNOUNCE_INTERVAL * 1000 && peerIdx >= announceResult.peers.length) {
+    if (now - lastAnnounce > REANNOUNCE_INTERVAL * 1000 && peerIdx >= peers.length) {
       try {
-        announceResult = await announceAny(
-          meta.trackers, meta, peerId, LISTEN_PORT,
-          0, pieceManager.verifiedBytes, meta.totalLength - pieceManager.verifiedBytes
-        );
+        const more = await BtEngine.getInstance().discoverPeers(meta, ctrl);
+        for (const p of more) {
+          if (!peers.some((ex) => ex.ip === p.ip && ex.port === p.port)) {
+            peers.push(p);
+          }
+        }
+        task.totalPeers = peers.length;
         lastAnnounce = now;
         peerIdx = 0;
       } catch (e) {
@@ -113,10 +128,10 @@ export async function downloadBittorrent(
     // Connect to new peers if we have capacity
     while (
       connections.filter((c) => !c.isDisposed).length < MAX_PEERS &&
-      peerIdx < announceResult.peers.length &&
+      peerIdx < peers.length &&
       !ctrl.aborted
     ) {
-      const peer = announceResult.peers[peerIdx++];
+      const peer = peers[peerIdx++];
       try {
         const conn = await connectToPeer(peer, meta, peerId, pieceManager, task, ctrl, activeRequests);
         if (conn) {
@@ -143,13 +158,24 @@ export async function downloadBittorrent(
   for (const conn of connections) {
     conn.close();
   }
-  pieceManager.closeFile();
 
   if (ctrl.aborted) {
+    pieceManager.closeFile();
     return;
   }
   if (!pieceManager.isComplete()) {
+    pieceManager.closeFile();
     throw new Error('BitTorrent: 下载未完成（可能没有足够的 peers）');
+  }
+
+  // Download finished. Hand the torrent to the BtEngine to seed in the
+  // background (keeps the file open so inbound peers can be served). If
+  // seeding is disabled, close the file now.
+  const bt = BtEngine.getInstance();
+  await bt.onDownloadComplete(task, meta, pieceManager);
+  if (task.seedingStatus === 'userStopped' || task.seedingStatus === 'none') {
+    // Seeding disabled — nothing more to do.
+    pieceManager.closeFile();
   }
 }
 
@@ -241,7 +267,7 @@ async function resolveMagnetLink(uri: string): Promise<TorrentMeta> {
         [trackerUrl],
         partialMeta,
         peerId,
-        LISTEN_PORT,
+        listenPort(),
         0, // uploaded
         0, // downloaded
         1  // left (at least 1 byte, we don't know size yet)

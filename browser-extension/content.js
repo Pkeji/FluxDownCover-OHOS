@@ -9,6 +9,7 @@
 const DOWNLOAD_EXTENSIONS = [
   '.zip', '.rar', '.7z', '.tar', '.gz', '.bz2',
   '.exe', '.msi', '.dmg', '.pkg', '.deb', '.rpm', '.apk',
+  '.hap', '.hsp', '.har', // HarmonyOS 包格式
   '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv',
   '.mp3', '.flac', '.wav', '.aac', '.ogg',
   '.iso', '.img', '.bin',

@@ -6,6 +6,8 @@ const RSS_TABLE = 'rss_subscriptions';
 
 /**
  * SQLite persistence for RSS subscriptions.
+ * Supports progressive schema migration: new columns added in later
+ * versions are appended via ALTER TABLE when missing.
  */
 export class RssStore {
   private db = DatabaseManager.getInstance();
@@ -30,6 +32,40 @@ export class RssStore {
       createdAt INTEGER NOT NULL DEFAULT 0
     )`;
     await s.executeSql(sql);
+    // Migrate older databases: append columns added after the initial schema.
+    const cols = await this.columnNames(s);
+    const migrations: Array<[string, string]> = [
+      ['excludeFilter', 'TEXT NOT NULL DEFAULT \'\''],
+      ['sizeMinMB', 'INTEGER NOT NULL DEFAULT 0'],
+      ['sizeMaxMB', 'INTEGER NOT NULL DEFAULT 0'],
+      ['queueId', 'TEXT NOT NULL DEFAULT \'\''],
+    ];
+    for (const [col, def] of migrations) {
+      if (!cols.includes(col)) {
+        try {
+          await s.executeSql(`ALTER TABLE ${RSS_TABLE} ADD COLUMN ${col} ${def}`);
+        } catch (e) {
+          // column already exists (race or duplicate) — ignore
+        }
+      }
+    }
+  }
+
+  private async columnNames(s: relationalStore.RdbStore): Promise<string[]> {
+    const names: string[] = [];
+    try {
+      const rs = await s.querySql(`PRAGMA table_info(${RSS_TABLE})`);
+      while (rs.goToNextRow()) {
+        const idx = rs.getColumnIndex('name');
+        if (idx >= 0) {
+          names.push(rs.getString(idx));
+        }
+      }
+      rs.close();
+    } catch (e) {
+      // table may not exist yet
+    }
+    return names;
   }
 
   async insert(sub: RssSubscription): Promise<void> {
@@ -40,6 +76,10 @@ export class RssStore {
       'url': sub.url,
       'name': sub.name,
       'filter': sub.filter,
+      'excludeFilter': sub.excludeFilter,
+      'sizeMinMB': sub.sizeMinMB,
+      'sizeMaxMB': sub.sizeMaxMB,
+      'queueId': sub.queueId,
       'intervalMin': sub.intervalMin,
       'autoDownload': sub.autoDownload ? 1 : 0,
       'lastChecked': sub.lastChecked,
@@ -57,6 +97,10 @@ export class RssStore {
       'url': sub.url,
       'name': sub.name,
       'filter': sub.filter,
+      'excludeFilter': sub.excludeFilter,
+      'sizeMinMB': sub.sizeMinMB,
+      'sizeMaxMB': sub.sizeMaxMB,
+      'queueId': sub.queueId,
       'intervalMin': sub.intervalMin,
       'autoDownload': sub.autoDownload ? 1 : 0,
       'lastChecked': sub.lastChecked,
@@ -81,7 +125,9 @@ export class RssStore {
     if (!s) return [];
     const pred = new relationalStore.RdbPredicates(RSS_TABLE);
     pred.orderByDesc('createdAt');
-    const rs = await s.query(pred, ['id', 'url', 'name', 'filter', 'intervalMin', 'autoDownload', 'lastChecked', 'enabled', 'downloadedUrls', 'createdAt']);
+    const rs = await s.query(pred,
+      ['id', 'url', 'name', 'filter', 'excludeFilter', 'sizeMinMB', 'sizeMaxMB', 'queueId',
+        'intervalMin', 'autoDownload', 'lastChecked', 'enabled', 'downloadedUrls', 'createdAt']);
     const subs: RssSubscription[] = [];
     while (rs.goToNextRow()) {
       const sub = new RssSubscription(
@@ -90,6 +136,10 @@ export class RssStore {
         rs.getString(rs.getColumnIndex('name')),
       );
       sub.filter = rs.getString(rs.getColumnIndex('filter'));
+      sub.excludeFilter = rs.getString(rs.getColumnIndex('excludeFilter'));
+      sub.sizeMinMB = rs.getLong(rs.getColumnIndex('sizeMinMB'));
+      sub.sizeMaxMB = rs.getLong(rs.getColumnIndex('sizeMaxMB'));
+      sub.queueId = rs.getString(rs.getColumnIndex('queueId'));
       sub.intervalMin = rs.getLong(rs.getColumnIndex('intervalMin'));
       sub.autoDownload = rs.getLong(rs.getColumnIndex('autoDownload')) === 1;
       sub.lastChecked = rs.getLong(rs.getColumnIndex('lastChecked'));

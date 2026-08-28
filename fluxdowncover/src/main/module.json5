@@ -6,6 +6,7 @@
     "mainElement": "EntryAbility",
     "deviceTypes": [
       "phone",
+      "tablet",
       "2in1"
     ],
     "deliveryWithInstall": true,
@@ -41,6 +42,27 @@
               {
                 "scheme": "fluxdown",
                 "host": "download"
+              },
+              {
+                "scheme": "thunder"
+              },
+              {
+                "scheme": "flashget"
+              },
+              {
+                "scheme": "qqdl"
+              },
+              {
+                "scheme": "magnet"
+              },
+              {
+                "scheme": "ed2k"
+              },
+              {
+                "scheme": "ftp"
+              },
+              {
+                "scheme": "sftp"
               }
             ]
           },

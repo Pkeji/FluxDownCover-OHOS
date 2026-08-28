@@ -253,3 +253,89 @@ export const ALL_PROTOCOLS: ProtocolType[] = [
   ProtocolType.QQDL,
   ProtocolType.ED2K,
 ];
+
+/** Built-in file categories (matching FluxDown's FileCategory enum). */
+export interface BuiltinCategory {
+  id: string;
+  name: string;
+  icon: string;
+  extensions: string[];
+}
+
+export const BUILTIN_CATEGORIES: BuiltinCategory[] = [
+  { id: 'builtin_video', name: '视频', icon: 'film', extensions: ['.mp4', '.mkv', '.avi', '.mov', '.flv', '.wmv', '.webm', '.m4v', '.ts', '.rmvb'] },
+  { id: 'builtin_audio', name: '音频', icon: 'music', extensions: ['.mp3', '.flac', '.wav', '.aac', '.ogg', '.m4a', '.wma', '.ape', '.opus'] },
+  { id: 'builtin_image', name: '图片', icon: 'image', extensions: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.ico', '.tiff'] },
+  { id: 'builtin_document', name: '文档', icon: 'file_text', extensions: ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.epub', '.mobi', '.csv', '.md'] },
+  { id: 'builtin_archive', name: '压缩包', icon: 'archive', extensions: ['.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz', '.iso'] },
+  { id: 'builtin_apk', name: '安装包', icon: 'package', extensions: ['.apk', '.aab', '.hap', '.app', '.ipa', '.dmg', '.exe', '.msi', '.deb', '.rpm', '.pkg'] },
+];
+
+/** Check if a filename matches a builtin category id. */
+export function matchesBuiltinCategory(fileName: string, catId: string): boolean {
+  const cat = BUILTIN_CATEGORIES.find(c => c.id === catId);
+  if (!cat) return false;
+  const lower = fileName.toLowerCase();
+  return cat.extensions.some(ext => lower.endsWith(ext));
+}
+
+/** 文件类型图标和颜色 */
+export interface FileTypeMeta {
+  icon: string;
+  color: string;
+  label?: string; // 安装包类型显示格式缩写，如 HAP、DMG
+}
+
+/** 根据文件名返回文件类型图标、颜色和标签 */
+export function fileTypeMeta(fileName: string): FileTypeMeta {
+  const lower = fileName.toLowerCase();
+  // 视频
+  if (['.mp4', '.mkv', '.avi', '.mov', '.flv', '.wmv', '.webm', '.m4v', '.ts', '.rmvb', '.3gp', '.m2ts'].some(ext => lower.endsWith(ext))) {
+    return { icon: 'file_video', color: '#FF6B6B' };
+  }
+  // 音频
+  if (['.mp3', '.flac', '.wav', '.aac', '.ogg', '.m4a', '.wma', '.ape', '.opus', '.dsf'].some(ext => lower.endsWith(ext))) {
+    return { icon: 'file_audio', color: '#4ECDC4' };
+  }
+  // 图片
+  if (['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.ico', '.tiff', '.heic', '.raw'].some(ext => lower.endsWith(ext))) {
+    return { icon: 'file_image', color: '#FFD93D' };
+  }
+  // 文档
+  if (['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.epub', '.mobi', '.csv', '.md', '.rtf'].some(ext => lower.endsWith(ext))) {
+    return { icon: 'file_text', color: '#54A0FF' };
+  }
+  // 压缩包
+  if (['.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz', '.iso', '.zst'].some(ext => lower.endsWith(ext))) {
+    return { icon: 'file_archive', color: '#FF9F43' };
+  }
+  // 安装包 - 显示格式缩写
+  const pkgExts: { ext: string; label: string }[] = [
+    { ext: '.hap', label: 'HAP' },
+    { ext: '.apk', label: 'APK' },
+    { ext: '.aab', label: 'AAB' },
+    { ext: '.app', label: 'APP' },
+    { ext: '.ipa', label: 'IPA' },
+    { ext: '.dmg', label: 'DMG' },
+    { ext: '.exe', label: 'EXE' },
+    { ext: '.msi', label: 'MSI' },
+    { ext: '.deb', label: 'DEB' },
+    { ext: '.rpm', label: 'RPM' },
+    { ext: '.pkg', label: 'PKG' },
+  ];
+  for (const p of pkgExts) {
+    if (lower.endsWith(p.ext)) {
+      return { icon: 'package', color: '#5F27CD', label: p.label };
+    }
+  }
+  // 代码
+  if (['.js', '.ts', '.py', '.java', '.c', '.cpp', '.h', '.go', '.rs', '.html', '.css', '.json', '.xml', '.yaml', '.yml', '.sh'].some(ext => lower.endsWith(ext))) {
+    return { icon: 'file_code', color: '#00D2D3' };
+  }
+  // 种子
+  if (lower.endsWith('.torrent')) {
+    return { icon: 'file_type', color: '#FF6B6B', label: 'BT' };
+  }
+  // 其他
+  return { icon: 'file_type', color: '#A1A1A6' };
+}

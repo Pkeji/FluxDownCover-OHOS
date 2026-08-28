@@ -14,6 +14,7 @@
  */
 
 import fs from '@ohos.file.fs';
+import { logCollector } from '../../utils/LogCollector';
 import { DownloadTask } from '../../model/DownloadTask';
 import { EngineHooks } from '../EngineHooks';
 import { Ctrl } from '../types';
@@ -217,7 +218,7 @@ export async function downloadEd2k(
       const actualHash = md4(new Uint8Array(buf));
       if (!verifyMd4(new Uint8Array(buf), fileHash)) {
         // Hash mismatch — warn but don't fail (file may still be usable)
-        console.warn(`eD2K hash mismatch: expected ${md4ToHex(fileHash)}, got ${md4ToHex(actualHash)}`);
+        logCollector.warn('Warn', `eD2K hash mismatch: expected ${md4ToHex(fileHash)}, got ${md4ToHex(actualHash)}`);
       }
     }
 

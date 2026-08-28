@@ -1,4 +1,5 @@
 import { socket } from '@kit.NetworkKit';
+import { logCollector } from '../utils/LogCollector';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { McpBackend } from './McpBackend';
 
@@ -163,7 +164,7 @@ export class McpServer {
       await server.bind({ address: '127.0.0.1', port: MCP_PORT });
       console.info(`FluxDown Cover MCP server listening on 127.0.0.1:${MCP_PORT}`);
     } catch (e) {
-      console.error(`FluxDown Cover MCP bind failed: ${JSON.stringify(e)}`);
+      logCollector.error('Error', `FluxDown Cover MCP bind failed: ${JSON.stringify(e)}`);
       this.server = null;
     }
   }
@@ -218,7 +219,7 @@ export class McpServer {
       closed = true;
     });
     client.on('error', (err: BusinessError) => {
-      console.error(`MCP client error: ${err.code} ${err.message}`);
+      logCollector.error('Error', `MCP client error: ${err.code} ${err.message}`);
       closed = true;
       try {
         client.close();

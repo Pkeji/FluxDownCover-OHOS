@@ -64,6 +64,28 @@ function extractUrlFromWant(want: Want): string {
     }
   }
 
+  // Path 3: direct download protocol links (viewData action)
+  if (want.action === 'ohos.want.action.viewData' && want.uri) {
+    const uri = want.uri;
+    // HTTP/HTTPS/FTP/SFTP 直链
+    if (uri.startsWith('http://') || uri.startsWith('https://') ||
+        uri.startsWith('ftp://') || uri.startsWith('sftp://')) {
+      return uri;
+    }
+    // 迅雷/快车/旋风专用链接
+    if (uri.startsWith('thunder://') || uri.startsWith('flashget://') || uri.startsWith('qqdl://')) {
+      return uri;
+    }
+    // 磁力链接
+    if (uri.startsWith('magnet:')) {
+      return uri;
+    }
+    // eD2K 链接
+    if (uri.startsWith('ed2k://')) {
+      return uri;
+    }
+  }
+
   return '';
 }
 

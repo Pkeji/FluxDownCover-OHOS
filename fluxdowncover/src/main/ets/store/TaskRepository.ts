@@ -21,7 +21,8 @@ export class TaskRepository {
       'id', 'url', 'fileName', 'dirPath', 'filePath', 'protocol', 'totalBytes',
       'downloadedBytes', 'status', 'segments', 'createdAt', 'finishedAt',
       'errorMessage', 'sha256', 'isHls', 'verifyIntegrity',
-      'category', 'priority', 'queueId', 'speedLimit', 'scheduledAt', 'authHeader', 'proxyUrl', 'isDash'
+      'category', 'priority', 'queueId', 'speedLimit', 'scheduledAt', 'authHeader', 'proxyUrl', 'isDash',
+      'uploadedBytes', 'seedRatio', 'seedingStatus', 'seedStartedAt', 'seedSeconds'
     ];
   }
 
@@ -93,7 +94,12 @@ export class TaskRepository {
       scheduledAt: task.scheduledAt,
       authHeader: task.authHeader,
       proxyUrl: task.proxyUrl,
-      isDash: task.isDash ? 1 : 0
+      isDash: task.isDash ? 1 : 0,
+      uploadedBytes: task.uploadedBytes,
+      seedRatio: task.seedRatio,
+      seedingStatus: task.seedingStatus,
+      seedStartedAt: task.seedStartedAt,
+      seedSeconds: task.seedSeconds
     };
   }
 
@@ -125,6 +131,12 @@ export class TaskRepository {
     try { task.authHeader = rs.getString(col('authHeader')) || ''; } catch (_) { }
     try { task.proxyUrl = rs.getString(col('proxyUrl')) || ''; } catch (_) { }
     try { task.isDash = rs.getLong(col('isDash')) === 1; } catch (_) { }
+    // BitTorrent / seeding fields (safe-read for migrated rows)
+    try { task.uploadedBytes = rs.getLong(col('uploadedBytes')); } catch (_) { }
+    try { task.seedRatio = rs.getDouble(col('seedRatio')); } catch (_) { }
+    try { task.seedingStatus = rs.getString(col('seedingStatus')) || 'none'; } catch (_) { }
+    try { task.seedStartedAt = rs.getLong(col('seedStartedAt')); } catch (_) { }
+    try { task.seedSeconds = rs.getLong(col('seedSeconds')); } catch (_) { }
     task.liveBytes = task.downloadedBytes;
     return task;
   }

@@ -8,9 +8,13 @@ export class RssSubscription {
   @Trace id: string;
   @Trace url: string; // feed URL
   @Trace name: string; // display name
-  @Trace filter: string = ''; // keyword filter (empty = match all)
+  @Trace filter: string = ''; // include keyword filter (empty = match all)
+  @Trace excludeFilter: string = ''; // exclude keywords (any hit → skip)
   @Trace intervalMin: number = 30; // poll interval in minutes
   @Trace autoDownload: boolean = true; // auto-add matching items
+  @Trace sizeMinMB: number = 0; // minimum item size in MB (0 = no limit)
+  @Trace sizeMaxMB: number = 0; // maximum item size in MB (0 = no limit)
+  @Trace queueId: string = ''; // target queue id ('' = default queue)
   @Trace lastChecked: number = 0; // timestamp of last poll
   @Trace enabled: boolean = true;
   @Trace downloadedUrls: string[] = []; // already-seen item URLs (dedup)
@@ -29,4 +33,5 @@ export interface RssItem {
   link: string;
   description: string;
   pubDate: number;
+  sizeBytes: number; // enclosure length when present (0 = unknown)
 }

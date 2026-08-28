@@ -12,6 +12,14 @@ export class DownloadQueue {
   @Trace priority: number = 0; // higher = started first
   @Trace autoStart: boolean = true; // auto-start queued tasks when slots free
   @Trace createdAt: number = Date.now();
+  // ── Queue-level enhancements (FluxDown 0.4.7 "队列设置") ──
+  @Trace speedLimit: number = 0; // per-queue download speed cap, bytes/sec (0 = unlimited)
+  @Trace startAt: number = 0; // daily auto-start time, minutes since midnight (-1 = disabled)
+  @Trace stopAt: number = 0; // daily auto-stop time, minutes since midnight (-1 = disabled)
+  @Trace scheduledEnabled: boolean = false; // master switch for daily schedule
+  @Trace segments: number = 0; // default segment/thread count for tasks in this queue (0 = global)
+  @Trace ua: string = ''; // User-Agent override for this queue ('' = global)
+  @Trace saveDir: string = ''; // save directory override for this queue ('' = default)
 
   constructor(id: string, name: string) {
     this.id = id;

@@ -1,4 +1,5 @@
 import { relationalStore } from '@kit.ArkData';
+import { logCollector } from '../utils/LogCollector';
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 
@@ -33,7 +34,7 @@ export class DatabaseManager {
         this.createTable();
       })
       .catch((err: BusinessError) => {
-        console.error(`FluxDown Cover DB init failed: ${err.code} ${err.message}`);
+        logCollector.error('Error', `FluxDown Cover DB init failed: ${err.code} ${err.message}`);
       });
   }
 
@@ -62,7 +63,12 @@ export class DatabaseManager {
       scheduledAt INTEGER DEFAULT 0,
       authHeader TEXT DEFAULT '',
       proxyUrl TEXT DEFAULT '',
-      isDash INTEGER DEFAULT 0
+      isDash INTEGER DEFAULT 0,
+      uploadedBytes INTEGER DEFAULT 0,
+      seedRatio REAL DEFAULT 0,
+      seedingStatus TEXT DEFAULT 'none',
+      seedStartedAt INTEGER DEFAULT 0,
+      seedSeconds INTEGER DEFAULT 0
     )`;
     this.rdbStore
       ?.executeSql(sql)
@@ -77,6 +83,12 @@ export class DatabaseManager {
           `ALTER TABLE ${TABLE_NAME} ADD COLUMN authHeader TEXT DEFAULT ''`,
           `ALTER TABLE ${TABLE_NAME} ADD COLUMN proxyUrl TEXT DEFAULT ''`,
           `ALTER TABLE ${TABLE_NAME} ADD COLUMN isDash INTEGER DEFAULT 0`,
+          // ── BitTorrent / seeding fields ──
+          `ALTER TABLE ${TABLE_NAME} ADD COLUMN uploadedBytes INTEGER DEFAULT 0`,
+          `ALTER TABLE ${TABLE_NAME} ADD COLUMN seedRatio REAL DEFAULT 0`,
+          `ALTER TABLE ${TABLE_NAME} ADD COLUMN seedingStatus TEXT DEFAULT 'none'`,
+          `ALTER TABLE ${TABLE_NAME} ADD COLUMN seedStartedAt INTEGER DEFAULT 0`,
+          `ALTER TABLE ${TABLE_NAME} ADD COLUMN seedSeconds INTEGER DEFAULT 0`,
         ];
         for (const m of migrations) {
           this.rdbStore?.executeSql(m).catch(() => { /* column already exists */ });
@@ -84,7 +96,7 @@ export class DatabaseManager {
         console.info('FluxDown Cover: tasks table ready');
       })
       .catch((err: BusinessError) => {
-        console.error(`FluxDown Cover create table failed: ${err.code} ${err.message}`);
+        logCollector.error('Error', `FluxDown Cover create table failed: ${err.code} ${err.message}`);
       });
   }
 
