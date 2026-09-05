@@ -9,3 +9,6 @@ oh_modules/
 *.map
 .idea/
 .vscode/
+.DS_Store
+.workbuddy/
+decompiled/

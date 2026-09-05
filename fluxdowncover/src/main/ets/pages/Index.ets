@@ -3054,6 +3054,16 @@ struct SettingsContent {
           .width('100%')
           .padding(16)
 
+          // 实况窗胶囊
+          Row() {
+            Image(iconRes('eye')).width(17).height(17).fillColor(this.p.primary).margin({ right: 10 })
+            Text('实况窗胶囊').fontColor(this.p.text).layoutWeight(1).fontSize(15)
+            Toggle({ isOn: this.vm.liveViewEnabled, type: ToggleType.Switch })
+              .onChange((v: boolean) => { this.vm.setLiveViewEnabled(v); })
+          }
+          .width('100%')
+          .padding(16)
+
           Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // 清理失效任务

@@ -1,0 +1,1720 @@
+# FluxDown 0.4.7 功能规格清单（从 APK i18n 提取，1685 条）
+
+
+## 账号/用户（184）
+
+- `accountAlreadyHaveAccount` → 已有账号？
+- `accountCloudFeaturesDesc` → 逐项默认关闭，需登录后显式开启
+- `accountCloudRefresh` → 刷新云端信息
+- `accountCloudRefreshDone` → 云端信息已刷新
+- `accountCodeExpireIn` → 验证码 {seconds} 秒后过期
+- `accountCodePlaceholder` → 6 位验证码
+- `accountComingSoon` → 即将推出
+- `accountDeviceCurrent` → 当前设备
+- `accountDeviceDeleteAction` → 删除设备
+- `accountDeviceDeleteConfirmDesc` → 删除后该设备需重新验证邮箱才能登录
+- `accountDeviceDeleteConfirmTitle` → 删除设备？
+- `accountDeviceDeleteCurrentWarning` → 这是你当前使用的设备，删除后将立即退出登录
+- `accountDeviceDetailTitle` → 设备详情
+- `accountDeviceFieldAppVersion` → App 版本
+- `accountDeviceFieldCreatedAt` → 首次信任时间
+- `accountDeviceFieldId` → 设备 ID
+- `accountDeviceFieldLastIp` → 最近登录 IP
+- `accountDeviceFieldLastSeenAt` → 最近活跃
+- `accountDeviceFieldPlatform` → 平台
+- `accountDevicePlatformAndroid` → Android
+- `accountDevicePlatformIos` → iOS
+- `accountDevicePlatformLinux` → Linux
+- `accountDevicePlatformMacos` → Mac
+- `accountDevicePlatformWeb` → Web 浏览器
+- `accountDevicePlatformWindows` → Windows
+- `accountDeviceRenameInvalid` → 设备名需为 1-64 个字符
+- `accountDeviceRenameTitle` → 重命名设备
+- `accountDeviceVerifySubtitle` → 此设备尚未登录过，请输入发送到 {email} 的验证码以信任该设备
+- `accountDeviceVerifySubtitleGeneric` → 此设备尚未登录过，请输入发送到你账号绑定邮箱的验证码以信任该设备
+- `accountDeviceVerifyTitle` → 新设备验证
+- `accountDevicesDesc` → 管理已信任此账户的设备，删除后需重新验证邮箱
+- `accountDevicesEmpty` → 暂无已信任设备
+- `accountDevicesLoadFailed` → 加载设备列表失败
+- `accountDevicesManageAll` → 管理全部 {count} 台设备
+- `accountDevicesManageAllTitle` → 全部已信任设备
+- `accountDevicesRetry` → 重试
+- `accountDevicesSearchHint` → 按名称或平台搜索
+- `accountDevicesSearchNoResults` → 未找到匹配的设备
+- `accountDevicesTitle` → 已信任设备
+- `accountEmailChangeCodeSubtitle` → 验证码已发送至 {email}，输入后即可完成邮箱修改。
+- `accountEmailChangeInvalid` → 请输入有效的邮箱地址
+- `accountEmailChangeNewPlaceholder` → 新邮箱
+- `accountEmailChangeOldCodeHint` → 请输入原邮箱验证码
+- `accountEmailChangeOldCodePlaceholder` → 原邮箱验证码
+- `accountEmailChangeOldSubtitle` → 为验证身份，验证码已发送至当前邮箱 {email}。
+- `accountEmailChangeSame` → 新邮箱与当前邮箱相同
+- `accountEmailChangeSendNewCode` → 发送新邮箱验证码
+- `accountEmailChangeSuccess` → 邮箱已更新
+- `accountEmailChangeTitle` → 修改邮箱
+- `accountEmailPlaceholder` → 邮箱
+- `accountErrorAccountDisabled` → 账号已被封禁
+- `accountErrorDeviceLimit` → 设备数量已达套餐上限，删除不再使用的设备或升级专业版后可继续添加
+- `accountErrorEmailTaken` → 该邮箱已被注册
+- `accountErrorInvalidCode` → 验证码错误或已过期
+- `accountErrorInvalidCredentials` → 邮箱或密码错误
+- `accountErrorInvalidEmail` → 请输入正确的邮箱格式
+- `accountErrorNetwork` → 网络请求失败，请检查网络或服务器地址
+- `accountErrorPasswordTooShort` → 密码需至少 8 位字符
+- `accountErrorRateLimited` → 请求过于频繁，请稍后再试
+- `accountErrorRegistrationClosed` → 注册功能已关闭
+- `accountErrorRegistrationIncomplete` → 注册未完成，请先完成邮箱验证
+- `accountErrorUnknown` → 出了点问题，请重试
+- `accountErrorValidation` → 请检查邮箱格式，密码需至少 8 位
+- `accountFeatureConfigSync` → 配置同步
+- `accountFeatureConfigSyncDesc` → 在多台设备间同步设置与主题
+- `accountFeatureMultiDevice` → 多设备协同
+- `accountFeatureMultiDeviceDesc` → 跨设备发现与连接、推送下载任务、查看进度与取回文件
+- `accountGroupCloudFeatures` → 云功能
+- `accountHeroSubtitle` → 登录后即可使用配置同步等云功能；不登录则保持纯本地，不产生任何账户网络请求
+- `accountLogin` → 登录
+- `accountLoginAccountPlaceholder` → 邮箱 / Origin ID
+- `accountLoginDialogTitle` → 登录 FluxDown 账户
+- `accountLoginTabCode` → 验证码登录
+- `accountLoginTabPassword` → 密码登录
+- `accountLoginTerms` → 登录即表示同意服务条款与隐私政策
+- `accountLogout` → 退出登录
+- `accountNicknameEditInvalid` → 昵称需为 1-32 个字符
+- `accountNicknameEditSuccess` → 昵称已更新
+- `accountNicknameEditTitle` → 修改昵称
+- `accountNicknameEditTooltip` → 修改昵称
+- `accountNicknamePlaceholder` → 昵称（已为你开盲盒，可改）
+- `accountNicknameReroll` → 换一个
+- `accountNoAccountYet` → 还没有账号？
+- `accountOriginIdCopied` → Origin ID 已复制
+- `accountOriginIdEditConfirm` → 确认修改
+- `accountOriginIdEditDesc` → 选一个新的 Origin ID，也可以点骰子随机推荐一个。此操作仅可进行一次。
+- `accountOriginIdEditPlaceholder` → 新 Origin ID
+- `accountOriginIdEditRoll` → 随机推荐一个
+- `accountOriginIdEditSuccess` → Origin ID 已更新
+- `accountOriginIdEditTitle` → 修改 Origin ID
+- `accountOriginIdEditTooltip` → 修改 Origin ID
+- `accountOriginIdEditWarning` → Origin ID 仅可修改一次，请谨慎操作。
+- `accountOriginIdErrorAlreadyChanged` → 修改机会已用完
+- `accountOriginIdErrorNotAllowed` → 当前套餐不支持修改 Origin ID
+- `accountOriginIdErrorTaken` → 该 Origin ID 已被占用
+- `accountOriginIdInvalid` → Origin ID 需为不小于 10000 的整数
+- `accountPasswordHint` → 至少 8 位字符
+- `accountPasswordPlaceholder` → 密码
+- `accountPlanBuy` → 立即购买
+- `accountPlanCreditApplied` → 已抵扣当前套餐 {amount}
+- `accountPlanCurrent` → 当前套餐
+- `accountPlanDialogTitle` → 升级套餐
+- `accountPlanEmpty` → 暂无可购买的套餐
+- `accountPlanErrorAlreadyOwned` → 您已拥有该套餐
+- `accountPlanErrorGateway` → 支付网关请求失败，请稍后重试
+- `accountPlanErrorNotPurchasable` → 该套餐暂不可购买
+- `accountPlanErrorNotUpgrade` → 已付金额不低于该套餐价格，无需差价购买
+- `accountPlanErrorPaymentDisabled` → 支付功能暂未开放
+- `accountPlanErrorReferralAlreadyUsed` → 你已使用过邀请码，每个账号仅可使用一次
+- `accountPlanErrorReferralInvalid` → 邀请码无效
+- `accountPlanErrorReferralNotFound` → 邀请码不存在
+- `accountPlanErrorReferralPlanExcluded` → 该套餐不参与推介返利，无法使用邀请码
+- `accountPlanErrorReferralSelfUse` → 不能使用自己的邀请码
+- `accountPlanErrorTierNotHigher` → 已拥有更高档位套餐，买断制仅支持购买价格更高的套餐
+- `accountPlanExpiresIn` → 剩余 {time}
+- `accountPlanLimitedSold` → 已售 {sold}/{quota}
+- `accountPlanLowerTier` → 低于当前套餐
+- `accountPlanOrderExpired` → 该订单已失效，请重新选择套餐
+- `accountPlanPaidSuccess` → 支付成功！套餐已升级
+- `accountPlanPayingTitle` → 扫码支付
+- `accountPlanReferralCodePlaceholder` → 邀请码（可选）
+- `accountPlanReferralDiscountApplied` → 邀请码已减 {amount}
+- `accountPlanScanHint` → 使用微信扫码完成支付
+- `accountPlanUpgrade` → 升级套餐
+- `accountReferralCodeCopied` → 推荐码已复制
+- `accountReferralCodeCopy` → 复制
+- `accountReferralCodeCreate` → 创建邀请码
+- `accountReferralCodeCreateDesc` → 自定义 4-16 位字母或数字，留空则由系统随机生成
+- `accountReferralCodeCreateInvalid` → 邀请码需为 4-16 位字母或数字
+- `accountReferralCodeCreatePlaceholder` → 留空随机生成
+- `accountReferralCodeCreateTitle` → 创建邀请码
+- `accountReferralCodeDeleteConfirmDesc` → 删除后该码将无法再用于新订单，已产生的记录不受影响
+- `accountReferralCodeDeleteConfirmTitle` → 删除推荐码？
+- `accountReferralCodeEmpty` → 还没有推荐码，创建一个开始邀请好友吧
+- `accountReferralCodeStats` → {count} 笔有效订单 · 累计返利 {amount}
+- `accountReferralCodeTaken` → 该邀请码已被占用
+- `accountReferralDisabledNotice` → 推介有奖活动暂未开启
+- `accountReferralPageIndicator` → 第 {x} / {y} 页
+- `accountReferralRecordOrderAmount` → 订单 {amount}
+- `accountReferralRecordsEmpty` → 暂无收益记录
+- `accountReferralRedeemHint` → 返利需人工兑付，请联系 {contact}
+- `accountReferralRewardDisabledNotice` → 当前账号不参与返现
+- `accountReferralRuleItem` → 每邀请一位购买 {planName} 返 {percent}%，买家立减 {discount}
+- `accountReferralRulesTitle` → 邀请规则
+- `accountReferralSearchEmpty` → 没有匹配的收益记录
+- `accountReferralSearchPlaceholder` → 搜索买家昵称/邮箱
+- `accountReferralStatInvited` → 邀请人数
+- `accountReferralStatPaid` → 已兑付返利
+- `accountReferralStatPending` → 待兑付返利
+- `accountReferralStatusPaid` → 已兑付
+- `accountReferralStatusPending` → 待兑付
+- `accountReferralStatusRevoked` → 已撤销
+- `accountReferralTabCode` → 我的推荐码
+- `accountReferralTabIntro` → 说明
+- `accountReferralTabRecords` → 收益记录
+- `accountRegister` → 注册
+- `accountRegisterDialogTitle` → 注册 FluxDown 账户
+- `accountRegisterVerifySubtitle` → 我们已向 {email} 发送验证码，输入以完成注册
+- `accountRegisterVerifyTitle` → 验证邮箱
+- `accountResendCode` → 重新发送
+- `accountResendCodeIn` → {seconds} 秒后可重发
+- `accountSecurityGroup` → 账号与安全
+- `accountSecurityGroupDesc` → 登录凭证与安全设置
+- `accountSendCode` → 发送验证码
+- `accountServerAddress` → 服务器地址
+- `accountServerAddressDesc` → FluxCloud 服务地址，修改后立即生效
+- `accountServerAddressInvalid` → 请输入合法的服务器地址（需以 http:// 或 https:// 开头）
+- `accountServerAddressReset` → 恢复默认
+- `accountServerAddressSaved` → 服务器地址已保存
+- `accountVerifySubmit` → 验证
+- `deviceLocalTag` → 局域网
+- `deviceOffline` → 离线
+- `deviceOnline` → 在线
+- `deviceSection` → 设备
+- `userAgent` → 用户代理 (User-Agent)
+- `userAgentDesc` → 下载请求时使用的浏览器标识
+- `userAgentPlaceholder` → 留空使用默认标识 FluxDown/版本号
+- `userAgentPresetChrome` → Chrome
+- `userAgentPresetCustom` → 自定义
+- `userAgentPresetDefault` → 默认（FluxDown）
+- `userAgentPresetEdge` → Edge
+- `userAgentPresetFirefox` → Firefox
+- `userAgentPresetSafari` → Safari（macOS）
+- `userAgentTaskPlaceholder` → 留空使用全局设置
+
+## 设置（120）
+
+- `close` → 关闭
+- `closeToTray` → 关闭时最小化到托盘
+- `closeToTrayDesc` → 点击关闭按钮时隐藏到系统托盘，而非退出应用
+- `colorBlue` → 蓝色
+- `colorCustom` → 自定义
+- `colorGreen` → 绿色
+- `colorRose` → 玫红
+- `colorViolet` → 紫色
+- `densityHintDismissTooltip` → 不再提示
+- `densityHintMessage` → 任务较多，试试紧凑密度
+- `densityHintSwitchAction` → 切换
+- `language` → 语言
+- `languageChinese` → 中文
+- `languageDesc` → 选择界面显示语言
+- `languageEnglish` → English
+- `languageNativeName` → 简体中文
+- `languageSystem` → 跟随系统
+- `notifyGroupSystem` → 系统通知
+- `notifyGroupWebhook` → Webhook 推送 · 自托管
+- `notifyOnComplete` → 完成通知
+- `notifyOnCompleteDesc` → 任务完成时弹出系统通知，关闭后所有任务完成将不再通知
+- `settingFailed` → 设置失败
+- `settings` → 设置
+- `settingsCatAbout` → 关于
+- `settingsCatAboutDesc` → 版本信息与更新
+- `settingsCatAccount` → 账户
+- `settingsCatAccountDesc` → 登录与云功能（预览）
+- `settingsCatApiService` → API 服务
+- `settingsCatApiServiceDesc` → 浏览器脚本接管、aria2 RPC 兼容与管理 API
+- `settingsCatAppearance` → 外观
+- `settingsCatAppearanceDesc` → 主题与配色
+- `settingsCatBt` → BitTorrent
+- `settingsCatBtDesc` → BT 下载设置
+- `settingsCatComponents` → 组件
+- `settingsCatDoctor` → 诊断
+- `settingsCatDoctorDesc` → 环境自检与一键修复
+- `settingsCatDownload` → 下载
+- `settingsCatDownloadDesc` → 下载引擎配置
+- `settingsCatEd2k` → eD2K
+- `settingsCatEd2kDesc` → 电驴 / eMule 下载设置
+- `settingsCatExtensions` → 扩展
+- `settingsCatExtensionsDesc` → 管理插件与可选的外部组件
+- `settingsCatGeneral` → 通用
+- `settingsCatGeneralDesc` → 基本行为设置
+- `settingsCatNotify` → 通知
+- `settingsCatNotifyDesc` → 系统通知与 Webhook 推送
+- `settingsCatPlugins` → 插件
+- `settingsCatProxy` → 代理
+- `settingsCatProxyDesc` → 网络代理配置
+- `settingsCatReferral` → 推介有奖
+- `settingsCatReferralDesc` → 推荐码与收益记录
+- `settingsGroupAdvanced` → 高级
+- `settingsGroupBehavior` → 行为
+- `settingsGroupConnection` → 连接与性能
+- `settingsGroupInterface` → 界面
+- `settingsGroupRetry` → 失败自动重试
+- `settingsGroupSaveLocation` → 保存位置
+- `settingsGroupStartupTray` → 启动与托盘
+- `settingsGroupSystem` → 系统
+- `settingsGroupTheme` → 主题与配色
+- `settingsSearchHint` → 搜索设置...
+- `settingsSearchNoResults` → 无匹配的设置项
+- `settingsSearchSubtitle` → 设置 · {catLabel} · {desc}
+- `settingsSiteAuthAdd` → 添加凭据
+- `settingsSiteAuthCount` → 共 {n} 条
+- `settingsSiteAuthCountFiltered` → 匹配 {m} / 共 {n}
+- `settingsSiteAuthDelete` → 删除凭据
+- `settingsSiteAuthDesc` → 按网站保存的 HTTP 认证凭据，仅存储在本设备，创建新任务时自动套用
+- `settingsSiteAuthEdit` → 编辑凭据
+- `settingsSiteAuthEmpty` → 暂无已保存的网站凭据
+- `settingsSiteAuthNoMatch` → 无匹配的凭据
+- `settingsSiteAuthSave` → 保存
+- `settingsSiteAuthSearchHint` → 搜索网站或用户名
+- `settingsSiteAuthSite` → 站点
+- `settingsSiteAuthSitePlaceholder` → example.com、host:8080 或完整 URL
+- `settingsSiteAuthTitle` → 已保存的网站凭据
+- `settingsTabGeneral` → 常规
+- `settingsTabSeeding` → 做种
+- `settingsTabServers` → 服务器
+- `settingsTabTracker` → Tracker
+- `silentDownload` → 免打扰下载
+- `silentDownloadDesc` → 浏览器扩展等外部下载请求不再弹出确认框，直接按默认设置开始下载
+- `silentSkipSelection` → 跳过二次选择弹窗
+- `silentSkipSelectionDesc` → BT 文件选择、HLS/DASH 画质、插件清晰度等需要二次确认的任务不再弹窗，直接按默认（全部文件 / 最高画质）开始下载
+- `startAll` → 全部开始
+- `startBatchDownload` → 下载 {count} 个文件
+- `startDownload` → 开始下载
+- `startIntoQueueTooltip` → 下载到「{name}」；点右侧箭头选择其他队列
+- `startMinimizedToTray` → 启动时最小化到托盘
+- `startMinimizedToTrayDesc` → 启动后不显示主窗口，仅托盘驻留
+- `startQueueAction` → 启动队列
+- `themeColor` → 主题色
+- `themeColorDesc` → 选择应用的主色调
+- `themeDarkTheme` → 深色主题
+- `themeDefaultDark` → 默认深色
+- `themeDefaultLight` → 默认亮色
+- `themeExport` → 导出
+- `themeExportSuccess` → 主题导出成功
+- `themeImport` → 导入
+- `themeImportError` → 主题导入失败
+- `themeImportSuccess` → 主题导入成功
+- `themeLightTheme` → 亮色主题
+- `themeMidnightBlue` → 午夜蓝
+- `themeMode` → 主题模式
+- `themeModeDark` → 暗色
+- `themeModeDesc` → 选择亮色、暗色或跟随系统
+- `themeModeLight` → 亮色
+- `themeModeSystem` → 跟随系统
+- `themeMore` → 更多主题
+- `themeNord` → Nord
+- `themeSelection` → 主题
+- `themeSelectionDesc` → 选择界面主题风格
+- `themeWarmLight` → 暖光
+- `titlebarButtons` → 标题栏按钮
+- `titlebarButtonsDesc` → 选择在标题栏显示哪些工具按钮，也可右键按钮直接隐藏
+- `trayExit` → 退出
+- `trayShowFloatingBall` → 显示悬浮球
+- `trayShowWindow` → 显示主窗口
+- `uiScale` → 界面缩放
+- `uiScaleDesc` → 调整界面整体缩放比例
+
+## 任务/详情（198）
+
+- `colCreated` → 创建时间
+- `colEta` → 剩余时间
+- `colFileName` → 文件名
+- `colProgress` → 进度
+- `colProtocol` → 协议
+- `colQueue` → 队列
+- `colSize` → 大小
+- `colSource` → 来源
+- `colSpeed` → 速度
+- `colStatus` → 状态
+- `connPolicyCache` → 已学习的服务器策略
+- `connPolicyCacheClear` → 清除
+- `connPolicyCacheCleared` → 已清除服务器策略缓存
+- `connPolicyCacheDesc` → 服务器拒绝多连接（403/429）后引擎会记住其连接上限 24 小时；若服务器已解除限制，可手动清除重新学习
+- `connPolicyCacheEmpty` → 暂无记录
+- `detail` → 详情
+- `detailActionCopyLink` → 复制链接
+- `detailActionFolder` → 文件夹
+- `detailBoostActive` → Boost 优先
+- `detailCdnAutoSuffix` → （自动）
+- `detailCdnKickBuild` → 连接初始化失败
+- `detailCdnKickFail` → 连续失败 {n} 次
+- `detailCdnKickValidator` → 内容校验不一致
+- `detailCdnNodeSys` → 系统直连
+- `detailCdnOriginDoh` → DoH {ep}
+- `detailCdnOriginEcs` → DoH·ECS {ep}
+- `detailCdnOriginSys` → 系统 DNS
+- `detailCdnPrior` → 基准 {speed}/s
+- `detailFollowGlobal` → 跟随全局
+- `detailLogCdnBreaker` → 多 CDN 熔断：节点过半失效，回退系统直连（24 小时内不再对 {host} 聚合）
+- `detailLogCdnFallbackError` → 多 CDN 未生效：候选聚合异常，使用单节点下载
+- `detailLogCdnFallbackFew` → 多 CDN 未生效：可用节点不足（候选 {candidates} · 存活 {alive}），使用单节点下载
+- `detailLogCdnKick` → CDN 节点 {ip} 已移除：{reason}
+- `detailLogCdnLeases` → 节点并发快照：{host}
+- `detailLogCdnLeasesNode` → {ip} · {count} 个并发段
+- `detailLogCdnPool` → 多 CDN 并发已启用：{host} · {n} 个节点 + 系统直连兜底
+- `detailLogCdnPoolStats` → 候选 {candidates} · 预筛存活 {alive} · 节点上限 {cap}
+- `detailLogCdnSummary` → 多 CDN 传输统计：{host}
+- `detailLogCdnSummaryNode` → {ip} · {bytes} · 均速 {speed}/s
+- `detailLogCompleted` → 下载完成
+- `detailLogCreated` → 创建任务
+- `detailLogEmpty` → 暂无事件记录
+- `detailLogFailed` → 失败：{message}
+- `detailLogHint` → 仅显示本次会话记录的近期事件
+- `detailLogRoute` → 链路定论：{label}
+- `detailLogSplit` → 分段拆分：#{parentNum} → #{childNum}（{size}，{kind}）
+- `detailNotSet` → 未设置
+- `detailQueueMoveHint` → 下载中移动不会打断当前传输，仅变更归属；目标队列的并发/限速/定时在下次启动或恢复时生效。
+- `detailQueueMovedToast` → 已移动到「{name}」
+- `detailSegsSummary` → {total} 分段 · {active} 活跃 · 动态拆分：开启
+- `detailSplitProactive` → 主动
+- `detailSplitReactive` → 接力
+- `detailTabAdvanced` → 高级
+- `detailTabGeneral` → 常规
+- `detailTabLog` → 日志
+- `detailTabQueue` → 队列
+- `fileCopiedToClipboard` → 已复制文件到剪贴板
+- `fileExistsBehavior` → 文件已存在时
+- `fileExistsBehaviorDesc` → 重名文件自动追加序号重命名，或直接覆盖旧文件
+- `fileExistsOverwrite` → 覆盖旧文件
+- `fileExistsRename` → 自动重命名
+- `fileManagerSection` → 文件管理器
+- `fileMissingAction` → 文件被删除或移动时
+- `fileMissingActionDesc` → 已完成任务的文件在磁盘上消失后，默认保留任务记录（可随时重新下载）；也可以自动删除任务记录
+- `fileMissingDelete` → 自动删除任务记录
+- `fileMissingKeep` → 保留任务记录
+- `filePickerErrorGeneric` → 打开文件选择器失败，请重试。
+- `filePickerErrorNative` → 无法打开文件选择对话框，请重试。
+- `filePickerErrorNoTool` → 未找到系统文件选择工具 请安装 xdg-desktop-portal-gtk（推荐）或 zenity / kdialog： sudo pacman -S xdg
+- `filePickerErrorTimeout` → 目录选择超时，请重试。 如果文件选择窗口在后台打开，请先关闭它再重试。
+- `groupCopySourceLink` → 复制来源链接
+- `groupDelete` → 删除组
+- `groupDeleteWithFiles` → 删除组和文件
+- `groupDetailCreatedAt` → 创建时间
+- `groupDetailLazyRenewHint` → 惰性续期：每次启动自动重新解析
+- `groupDetailMembersTab` → 成员
+- `groupDetailNoMembers` → 暂无成员
+- `groupDetailOverviewTab` → 概览
+- `groupDetailQueue` → 队列
+- `groupDetailResolverPlugin` → 解析插件
+- `groupDetailSaveDir` → 保存目录
+- `groupDetailSource` → 来源
+- `groupDetailSubtitle` → 任务组 · {status}
+- `groupDirMeta` → {count} 个文件 · {size}
+- `groupDoneCount` → {n} 完成
+- `groupDoneOfTotal` → {done}/{total}
+- `groupDownloadingCount` → {n} 下载中
+- `groupEtaRemaining` → 剩余约 {eta}
+- `groupFailedCount` → {n} 失败
+- `groupItemsCount` → {n} 项
+- `groupMemberExpiredResolve` → 直链已过期 · 下次启动时自动重新解析 ↻
+- `groupMemberOfLabel` → 所属任务组
+- `groupOpenFolder` → 打开组文件夹
+- `groupPauseAll` → 全部暂停
+- `groupPausedCount` → {n} 暂停
+- `groupPendingCount` → {n} 等待
+- `groupPluginBadge` → 插件
+- `groupResumeAll` → 全部恢复
+- `groupRetryFailed` → 重试失败项
+- `moveDownAction` → 下移
+- `moveToQueueAction` → 移动到队列
+- `moveUpAction` → 上移
+- `openFile` → 打开文件
+- `openFileFolder` → 打开文件夹
+- `openFolder` → 打开所在文件夹
+- `openTorrentFile` → 打开种子文件
+- `renameErrBtUnsupported` → BT 任务不支持重命名。
+- `renameErrInvalidName` → 文件名无效。
+- `renameErrNotFound` → 任务不存在。
+- `renameErrTargetExists` → 已存在同名文件。
+- `renameErrTaskActive` → 任务下载中，无法重命名。
+- `renameOptional` → 重命名（可选，留空自动识别）
+- `renameTask` → 重命名
+- `renameTaskPlaceholder` → 输入新的文件名
+- `renameTaskSuccess` → 文件已重命名。
+- `renameTaskTimeout` → 重命名超时，请重试。
+- `renameTaskTitle` → 重命名文件
+- `revealFileCmdDesc` → 打开文件/目录时调用的第三方文件管理器命令模板。占位符 {path} = 当前路径（下载完成的文件用完整文件路径，多数管理器会定位并选中该文件；打开目录时为目录
+- `revealFileCmdLabel` → 文件管理器命令
+- `revealFileCmdPlaceholder` → 例如："C:\Program Files\GPSoftware\Directory Opus\dopusrt.exe" /cmd Go {path} NEW
+- `segmentsDownloading` → {active}/{total} 线程并发下载
+- `statusBarProxyLabel` → 代理
+- `statusCanceled` → 已取消
+- `statusCompleted` → 已完成
+- `statusDownloading` → 下载中
+- `statusDownloadingLabel` → 下载中
+- `statusError` → 失败
+- `statusFileMissing` → 文件已删除
+- `statusIdle` → 空闲
+- `statusPaused` → 已暂停
+- `statusPending` → 等待中
+- `statusPreparing` → 准备中
+- `statusResuming` → 恢复中
+- `statusScopeHidden` →  · 已隐藏 {count} 个已完成
+- `statusScopeSummary` → {count} 个任务 · 合计 {size}
+- `statusSeeding` → 做种中
+- `statusSpeedLimitHint` → 自定义速率
+- `statusSpeedLimitKbs` → KB/s
+- `statusSpeedLimitOff` → 无限制
+- `statusSummary` → {active} 活跃 · {paused} 暂停 · {total} 总计
+- `statusVerifying` → 校验文件中
+- `statusViewGroupedByLabel` → 按{dim}分组
+- `statusViewSortedByLabel` → {key}排序
+- `subtitleCanceled` → 已取消
+- `subtitleError` → 下载失败
+- `subtitlePaused` → 已暂停
+- `subtitlePending` → 等待中...
+- `subtitlePreparing` → 准备中...
+- `subtitleQueued` → 排队 #{pos}
+- `subtitleResuming` → 恢复中...
+- `subtitleWaitingQueue` → 等待队列启动
+- `taskChecksum` → 哈希校验
+- `taskChecksumDesc` → 下载完成后校验文件完整性（留空则跳过）
+- `taskChecksumPlaceholder` → 粘贴哈希值
+- `taskCookie` → Cookie
+- `taskCookieBatchDesc` → 批量下载：留空 = 各条目使用自己捕获的 Cookie；填写 = 覆盖整批
+- `taskCookieDesc` → 用于需要登录认证的下载（留空则不发送）
+- `taskCookiePlaceholder` → 例如 name=value; name2=value2
+- `taskHeaders` → 自定义请求头
+- `taskHeadersAdd` → 添加请求头
+- `taskHeadersDesc` → 为此任务附加额外的 HTTP 请求头（Cookie 请用上方独立入口）
+- `taskHeadersKeyPlaceholder` → 请求头名称
+- `taskHeadersValuePlaceholder` → 值
+- `taskHttpAuth` → HTTP 认证
+- `taskHttpAuthDesc` → 此网站的 HTTP Basic 凭据。留空时自动使用已为该网站保存的凭据；保存的凭据以明文存储在本地
+- `taskHttpAuthPassword` → 密码
+- `taskHttpAuthSaveForSite` → 为此网站保存
+- `taskHttpAuthUser` → 用户名
+- `taskIgnorePluginRetry` → 忽略插件重试
+- `taskIgnorePluginRetryMsg` → 此任务在插件解析阶段失败。忽略后将跳过该插件，直接使用原始链接重试下载。如果问题持续出现，可前往「设置 → 扩展 → 插件」检查该插件的配置。
+- `taskIgnorePluginRetryTitle` → 忽略插件重试
+- `taskIgnoreTlsErrors` → 忽略 HTTPS 证书错误
+- `taskIgnoreTlsErrorsDesc` → 仅对当前任务接受过期、自签名或域名不匹配的证书，下载可能遭到中间人拦截。
+- `taskProxy` → 任务代理
+- `taskProxyAdvanced` → 高级选项
+- `taskProxyChoiceCustom` → 自定义…
+- `taskProxyChoiceDirect` → 直连（不使用代理）
+- `taskProxyChoiceFollow` → 跟随全局
+- `taskProxyChoiceGlobalManual` → 手动代理（全局配置）
+- `taskProxyChoiceSystem` → 系统代理
+- `taskProxyDesc` → 为此任务使用独立代理（留空则使用全局设置）
+- `taskProxyFormatHint` → 支持的代理格式：  不带认证：   http://host:port   socks5://host:port  带用户名密码：   http://user:p
+- `taskProxyPlaceholder` → 例如 socks5://127.0.0.1:1080
+- `taskProxyRouteDirect` → 直连（此任务）
+- `taskQueueLabel` → 下载队列
+- `taskRoute` → 链路
+- `taskRouteDirect` → 直连
+- `taskRouteDirectPinned` → 直连（内容不一致，拒绝切换）
+- `taskRouteDirectSampled` → 直连（已采样）
+- `taskRouteProxyCached` → 代理（同站决策）
+- `taskRouteProxyFailover` → 代理（直连失败转移）
+- `taskRouteProxySampled` → 代理（采样切换）
+- `taskRouteViaManual` → 手动代理
+- `taskRouteViaSystem` → 系统代理
+- `threads` → 线程数
+- `threadsChangeRejected` → 已完成的任务无法修改线程数。
+- `threadsChanged` → 线程数已更新。
+- `threadsInvalidRange` → 线程数须在 1-256 之间
+
+## 下载核心（195）
+
+- `batchDeleteConfirmDescKeepFile` → 确定要删除选中的 {count} 个任务吗？已下载的文件将保留在磁盘上。
+- `batchDeleteConfirmDescWithFile` → 确定要删除选中的 {count} 个任务并删除已下载的文件吗？此操作不可撤销。
+- `batchDeleteTask` → 批量删除任务
+- `batchDeleteTaskAndFile` → 批量删除任务和文件
+- `batchDeletingProgress` → 正在删除 {done} / {total} 个任务...
+- `batchDeletingTitle` → 批量删除中
+- `batchDownloadCompleted` → {count} 个任务下载完成
+- `batchDownloadDesc` → 每行一个链接，支持 HTTP / FTP / 磁力链接
+- `batchUrlPlaceholder` → 每行一个链接，例如： https://example.com/file1.zip https://example.com/file2.zip magnet:?x
+- `batchUrls` → 下载链接列表
+- `btAutoReseed` → 启动时自动继续做种
+- `btAutoReseedDesc` → 重启后自动为已完成任务继续做种（手动停止做种的任务除外）
+- `btEnableDht` → 启用 DHT
+- `btEnableDhtDesc` → 分布式哈希表，无需 Tracker 即可发现对等节点
+- `btEnableUpnp` → 启用 UPnP 端口映射
+- `btEnableUpnpDesc` → 自动配置路由器端口转发，提高连接性
+- `btFileListView` → 列表视图
+- `btFileSelectAll` → 全部文件
+- `btFileSelectConfirm` → 下载 {count} 个文件（{size}）
+- `btFileSelectDesc` → 该种子包含 {count} 个文件，请选择要下载的文件。
+- `btFileSelectDescSingle` → 该种子包含 1 个文件，确认后开始下载。
+- `btFileSelectTitle` → 选择要下载的文件
+- `btFileTreeView` → 树形视图
+- `btListenPort` → 监听端口范围
+- `btListenPortDesc` → 用于接收 BT 连接的端口范围
+- `btListenPortEnd` → 结束端口
+- `btListenPortStart` → 起始端口
+- `btPortInvalid` → 端口范围无效（1024-65535，起始 ≤ 结束）
+- `btProbeError` → 种子文件解析失败，将在下载开始后重新解析
+- `btProbing` → 正在解析种子文件...
+- `btResetTrackers` → 重置为默认
+- `btResetTrackersConfirm` → 确定要恢复默认的 Tracker 列表吗？
+- `btResolveFailed` → 磁力链接解析失败：未获取到元数据（无可用 peers 或 DHT 被屏蔽）。任务已标记为错误，可稍后在任务列表重试。
+- `btResolvingMagnet` → 正在解析磁力链接，请稍候...
+- `btSeedConditionsOperator` → 条件组合方式
+- `btSeedDeleteTask` → 删除任务
+- `btSeedDeleteTaskAndFiles` → 删除任务和文件
+- `btSeedEnabled` → 任务完成后自动做种
+- `btSeedEnabledDesc` → BT 任务下载完成后自动开始做种；关闭后任务完成即停止做种
+- `btSeedInactiveTimeLimit` → 达到不活跃做种时间
+- `btSeedLimitsModeCustom` → 自定义
+- `btSeedLimitsModeGlobal` → 跟随全局设置
+- `btSeedLimitsModeUnlimited` → 不限制
+- `btSeedLimitsTitle` → 做种限制
+- `btSeedMaxActive` → 最大活动做种数
+- `btSeedMaxActiveDesc` → 同时处于做种状态的任务数量上限（0 = 不限制），超出上限的已完成任务将排队等待做种。
+- `btSeedMaxActiveUnlimited` → 不限制
+- `btSeedOperatorAnd` → 满足所有条件
+- `btSeedOperatorOr` → 满足任一条件
+- `btSeedPostRatioLimit` → 当做种后分享率达到
+- `btSeedRatioLimit` → 当总分享率达到
+- `btSeedStopSeeding` → 停止做种
+- `btSeedThenAction` → 然后
+- `btSeedTimeLimit` → 达到总做种时间
+- `btSeedUploadLimit` → 上传限速
+- `btSeedUploadLimitHint` → 上传限速将在任务下次开始或重新挂载做种时生效
+- `btSeedingTitle` → 做种设置
+- `btSettings` → BT 下载设置
+- `btSettingsDesc` → BitTorrent 协议相关配置
+- `btSettingsRestartHint` → 部分设置需要重启 BT 引擎后生效
+- `btStartWithSelection` → 下载 {count} 个文件（{size}）
+- `btTrackerCount` → {n} 个 Tracker
+- `btTrackerList` → Tracker 列表
+- `btTrackerListDesc` → 用于发现对等节点的 Tracker 服务器，每行一个地址
+- `btTrackerPlaceholder` → 每行一个 Tracker 地址，例如： udp://tracker.opentrackr.org:1337/announce https://tracker.e
+- `btTrackerSub` → Tracker 订阅
+- `btTrackerSubDesc` → 定期从社区维护的订阅源获取最新 Tracker，自动与上方列表合并去重
+- `btTrackerSubNeverUpdated` → 尚未更新
+- `btTrackerSubPlaceholder` → 每行一个订阅地址，例如： https://trackerslist.com/best.txt https://ngosang.github.io/tracker
+- `btTrackerSubResetConfirm` → 确定要恢复默认的订阅地址吗？
+- `btTrackerSubStatus` → 已订阅 {n} 个 Tracker
+- `btTrackerSubUpdateFailed` → 更新失败
+- `btTrackerSubUpdateNow` → 立即更新
+- `btTrackerSubUpdatedAt` → 更新于 {time}
+- `btTrackerSubUpdating` → 更新中…
+- `btWaitingFiles` → 请选择要下载的文件
+- `cancel` → 取消
+- `cancelBoost` → 取消优先
+- `categoryAll` → 全部文件
+- `categoryArchive` → 压缩包
+- `categoryAudio` → 音频
+- `categoryDocument` → 文档
+- `categoryIcon` → 图标
+- `categoryImage` → 图片
+- `categoryName` → 分类名称
+- `categoryNameHint` → 例如：电子书
+- `categoryNameRequired` → 请输入分类名称
+- `categoryOther` → 其他
+- `categoryPriorityNote` → 自定义分类优先于内置分类匹配，上下箭头可调整顺序
+- `categoryProgram` → 程序
+- `categorySaveDir` → 分类保存目录
+- `categorySaveDirDesc` → 留空则使用全局默认目录
+- `categoryVideo` → 视频
+- `checking` → 检查中...
+- `cleanStaleTasks` → 清理失效任务
+- `cleanStaleTasksDesc` → 确定要清理 {count} 个失效任务吗？「文件已删除」的任务只删记录；失败的任务会连同已下载的残片文件一并删除。
+- `cleanStaleTasksTitle` → 清理失效任务
+- `clipboardUrlDetectedBody` → 点击创建下载任务
+- `clipboardUrlDetectedTitle` → 检测到下载链接
+- `clipboardWatch` → 剪贴板监听
+- `clipboardWatchDesc` → 主窗口隐藏时监测剪贴板中的下载链接并通知（仅部分桌面环境可用）
+- `downloadComplete` → 下载完成，可以安装
+- `downloadCompleted` → 下载完成
+- `downloadDistribution` → 下载分布
+- `downloadLater` → 稍后下载
+- `downloadTo` → 下载到
+- `downloadToHint` → 选择在哪台设备上下载
+- `downloadUpdate` → 下载更新 ({size})
+- `downloadUpdateVersion` → 下载更新 v{v}
+- `downloadUrl` → 下载链接
+- `downloadingUpdate` → 正在下载更新...
+- `etaHours` → {n} 小时
+- `etaMinutes` → {n} 分钟
+- `etaSeconds` → {n} 秒
+- `magnetLinkAssociation` → 接管磁力链接
+- `magnetLinkAssociationDesc` → 将 FluxDown 设为 magnet: 链接的默认打开方式
+- `maxConcurrent` → 最大同时下载数
+- `maxConcurrentDesc` → 同时进行的最大下载任务数量
+- `pause` → 暂停
+- `pauseAll` → 全部暂停
+- `queueDefaultSegments` → 线程数量
+- `queueDefaultSegmentsHint` → 0 = 自动
+- `queueDefaultUserAgent` → 默认 User-Agent
+- `queueDeleteConfirmDesc` → 确定要删除队列「{name}」吗？队列中的任务将移至主队列。
+- `queueDirInheritHint` → 留空使用全局默认目录
+- `queueMaxConcurrent` → 最大同时下载数
+- `queueMaxConcurrentHint` → 0 = 使用全局设置
+- `queueNameHint` → 输入队列名称
+- `queueNameLabel` → 队列名称
+- `queueNoPendingTasks` → 队列中没有待下载任务
+- `queueRunningBadge` → 运行中
+- `queueSaveDir` → 默认保存目录
+- `queueScheduleDays` → 重复
+- `queueScheduleDesc` → 到点自动启动/停止队列；休眠或重启错过的时刻，当天恢复后会补触发
+- `queueScheduleEnable` → 启用每日定时
+- `queueScheduleStartLabel` → 启动时间
+- `queueScheduleStopLabel` → 停止时间
+- `queueScheduleTimeHint` → HH:MM，留空不定时
+- `queueScheduleTimeInvalid` → 时间格式应为 HH:MM
+- `queueSpeedLimit` → 下载限速 (KB/s)
+- `queueSpeedLimitHint` → 0 = 不限制
+- `queueStoppedBadge` → 已停止
+- `queueTabSchedule` → 定时
+- `queueTabSettings` → 设置
+- `queueTabTasks` → 任务
+- `queueTasksOrderHint` → 队列启动时按此顺序开始下载
+- `queueUaHint` → 留空继承全局 UA
+- `queueUaInheritGlobal` → 继承全局设置
+- `queueUploadLimit` → 上传限速 (KB/s)
+- `queueUploadLimitDesc` → 仅作用于 BT 上传；已在活动中的任务下次启动时生效
+- `recheck` → 重新检查
+- `redownloadTask` → 重新下载
+- `resume` → 继续
+- `resumeAll` → 全部恢复
+- `resumingClickPause` → 恢复中...（点击暂停）
+- `scheduleHourLabel` → 小时
+- `scheduleMinuteLabel` → 分钟
+- `scheduleNeedOneTime` → 至少填写启动或停止时间之一，否则定时不会生效
+- `scheduleSummaryBoth` → 将于 {start} 自动启动队列，{stop} 自动停止
+- `scheduleSummaryStartOnly` → 将于 {start} 自动启动队列；不会自动停止
+- `scheduleSummaryStopOnly` → 将于 {stop} 自动停止队列；不会自动启动
+- `seedRatio` → 分享率
+- `seedRatioAfter` → 做种后分享率
+- `seedTime` → 做种时间
+- `seedingResume` → 继续做种
+- `seedingStatus` → 做种状态
+- `seedingStatusDeleted` → 任务已删除
+- `seedingStatusInactiveReached` → 已达到不活跃做种时间限制
+- `seedingStatusNone` → 未做种
+- `seedingStatusQueued` → 排队做种
+- `seedingStatusRatioReached` → 已达到分享率限制
+- `seedingStatusSeeding` → 做种中
+- `seedingStatusSessionReleased` → BT 会话已释放
+- `seedingStatusTimeReached` → 已达到做种时间限制
+- `seedingStatusUserStopped` → 已手动停止
+- `seedingSummaryActive` → {n} 个做种中
+- `seedingSummaryQueued` → {n} 个排队
+- `speedLimit` → 下载限速
+- `speedLimitCustom` → 自定义
+- `speedLimitDesc` → 限制所有任务的下载速度（0 表示不限制）
+- `speedLimitTitle` → 下载限速
+- `speedLimitUnit` → KB/s（0 = 不限制）
+- `speedUnitKbps` → KB/s
+- `stopQueueAction` → 停止队列
+- `torrentAssocDialogDesc` → 是否将 FluxDown 设为 .torrent 文件的默认打开方式？ 双击种子文件即可直接开始下载。
+- `torrentAssocDialogTitle` → 关联种子文件
+- `torrentFileAssociation` → 关联 .torrent 文件
+- `torrentFileAssociationDesc` → 将 FluxDown 设为 .torrent 文件的默认打开方式
+- `torrentFileCount` → 已选择 {count} 个种子文件
+- `torrentFileSelected` → 已选择种子文件
+- `unknownFile` → 未知文件
+- `unknownSize` → 未知大小
+- `urlCopied` → 已复制下载地址
+- `urlCount` → {count} 个链接
+- `urlPlaceholder` → HTTP / HTTPS / FTP 链接
+
+## BT/P2P（3）
+
+- `uploadLimit` → 上传限速
+- `uploadLimitDesc` → 限制 BT 任务的上传速度，含做种（0 表示不限制）
+- `uploadedTotal` → 已上传
+
+## RSS（98）
+
+- `rssActionDownload` → 下载
+- `rssActionIgnore` → 忽略
+- `rssActionPreparing` → 准备中…
+- `rssActionRedownload` → 重新下载
+- `rssAddSource` → 新建订阅
+- `rssAutoDownloadDesc` → 关闭 = 收集模式：只收集条目供手动挑选。
+- `rssAutoDownloadLabel` → 自动下载新条目
+- `rssAutoDownloadOn` → 自动下载
+- `rssAutoDownloadedToast` → RSS 自动新建了 {n} 个下载任务
+- `rssCheckConfig` → 检查配置
+- `rssCollectMode` → 收集模式
+- `rssCookiesHint` → key=value; key2=value2
+- `rssCookiesLabel` → 请求 Cookie
+- `rssDaysAgo` → {n} 天前
+- `rssDeleteConfirmDesc` → 删除「{name}」？条目记录会一并清除，已创建的下载任务保留。
+- `rssDeleteSource` → 删除订阅
+- `rssEmptyDesc` → 首轮抓到的历史条目会标记为已读，只有此后新出现的条目才会自动下载。
+- `rssEmptyError` → 抓取失败
+- `rssEmptyErrorHint` → 抓取没能完成。检查订阅链接是否可访问，需要登录的站点要在「高级」里填 Cookie；本机无法直连时配置独立代理。
+- `rssEmptyFetching` → 正在抓取…
+- `rssEmptyFetchingHint` → 首次抓取订阅内容，通常几秒内完成；源站较慢或需要代理时会久一些。
+- `rssEmptyRetry` → 重试
+- `rssEmptyTitle` → 还没有条目
+- `rssEnabledDesc` → 停用 = 保留配置与历史，但不再抓取。
+- `rssEnabledLabel` → 启用订阅
+- `rssEveryHours` → 每 {n} 小时
+- `rssEveryMinutes` → 每 {n} 分钟
+- `rssExcludeHint` → 同上语法；留空 = 不排除
+- `rssExcludeLabel` → 排除关键词
+- `rssFailedTimes` → 连续失败 {n} 次
+- `rssHoursAgo` → {n} 小时前
+- `rssIncludeHint` → | = 或，空格 = 且；留空 = 全部
+- `rssIncludeLabel` → 包含关键词
+- `rssInheritGlobalHint` → 留空 = 继承全局
+- `rssIntervalLabel` → 抓取间隔
+- `rssJustNow` → 刚刚
+- `rssLastFetch` → 上次抓取 {when}
+- `rssManageTitle` → 管理订阅
+- `rssMarkAllRead` → 全部标记已读
+- `rssMaxPerFetchLabel` → 每轮最多新建任务数（1–100）
+- `rssMinutesAgo` → {n} 分钟前
+- `rssNameHint` → 留空则用 feed 标题
+- `rssNameLabel` → 名称
+- `rssNeverFetched` → 尚未抓取
+- `rssNoMatch` → 没有匹配「{query}」的条目
+- `rssNotifyDesc` → 每轮合并成一条通知，不会逐条轰炸。
+- `rssNotifyLabel` → 自动下载时通知
+- `rssPreviewEmpty` → 还没有缓存条目 —— 先抓取一次即可预览规则效果。
+- `rssPreviewFiltered` → 过滤
+- `rssPreviewHeader` → 规则预览 —— 对已缓存的 {n} 个条目实时试跑
+- `rssPreviewSummary` → 命中 {hit} · 过滤 {miss}
+- `rssPreviewWillDownload` → 下载
+- `rssProxyLabel` → 独立代理
+- `rssQueueLabel` → 目标队列
+- `rssReasonDupEpisode` → 该集已有版本
+- `rssReasonExcluded` → 命中排除词
+- `rssReasonNotIncluded` → 未含包含词
+- `rssReasonTooLarge` → 超过体积上限
+- `rssReasonTooSmall` → 小于体积下限
+- `rssRefreshNow` → 立即抓取
+- `rssRefreshing` → 抓取中…
+- `rssSaveDirHint` → 留空 = 队列目录
+- `rssSaveDirLabel` → 保存目录
+- `rssSearchHint` → 搜索条目
+- `rssSendRefererDesc` → 自动带上 feed 站点地址；部分 PT 站校验来源。
+- `rssSendRefererLabel` → 下载时携带 Referer
+- `rssSidebarEmptyHint` → 还没有订阅 —— 点 + 粘贴一个 feed 链接。
+- `rssSizeMaxLabel` → 体积上限（留空 = 不限）
+- `rssSizeMinLabel` → 体积下限（留空 = 不限）
+- `rssSmartEpisodeDesc` → 识别 S01E02 / 1x02 / - 02 / 第02话，同一集只保留一个版本；识别不出的标题一律放行。
+- `rssSmartEpisodeLabel` → 智能剧集去重
+- `rssSortNewest` → 发布时间：新 → 旧
+- `rssSortOldest` → 发布时间：旧 → 新
+- `rssSourceLabel` → 来源订阅
+- `rssStartPausedDesc` → 建好即暂停，不占并发；由你手动或队列定时统一开跑。
+- `rssStartPausedLabel` → 新任务以暂停创建
+- `rssStatusDownloaded` → 已下载
+- `rssStatusDuplicate` → 重复剧集
+- `rssStatusFiltered` → 规则未命中
+- `rssStatusHistory` → 历史条目
+- `rssStatusIgnored` → 已忽略
+- `rssStatusNew` → 新
+- `rssTabAdvanced` → 高级
+- `rssTabBasic` → 基本
+- `rssTabFilter` → 过滤规则
+- `rssUrlHint` → https://…
+- `rssUrlLabel` → 订阅链接（RSS 2.0 / Atom / JSON Feed）
+- `rssUseRegexDesc` → 包含/排除按 Rust regex 语法解析；正则写错时一律放行，不会静默漏下。
+- `rssUseRegexLabel` → 使用正则表达式
+- `rssUserAgentLabel` → User-Agent
+- `rssWizardFeedSummary` → 共 {n} 个条目
+- `rssWizardSeedNote` → feed 中已有的条目会标记为已读，只有订阅之后发布的新条目才会自动下载。
+- `rssWizardStep1` → 第 1 步，共 2 步 —— 验证 feed
+- `rssWizardStep2` → 第 2 步，共 2 步 —— 下载往哪放
+- `rssWizardSubscribe` → 订阅
+- `rssWizardUrlNote` → 支持链接里带 token 的私有 feed；需要 Cookie 的站点可在创建后于「管理订阅 · 高级」补充。
+- `rssWizardValidate` → 验证
+- `rssWizardValidating` → 正在抓取并解析 feed…
+
+## 插件/市场（120）
+
+- `builtinCategory` → 内置
+- `builtinQueueRenameHint` → 内置队列不可重命名
+- `extensionCardDesc` → 安装浏览器扩展或用户脚本，可自动接管浏览器下载并发送到 FluxDown，支持 Chrome、Edge、Firefox 及其他 Chromium 内核浏览器。
+- `extensionCardTitle` → 浏览器扩展
+- `extensionChromeStore` → Chrome 网上应用店
+- `extensionEdgeStore` → Edge 附加组件
+- `extensionFirefoxStore` → Firefox 官方商店
+- `extensionOfflinePackages` → 离线安装包
+- `extensionsHint` → 逗号分隔，如：epub, mobi, azw3
+- `extensionsLabel` → 扩展名
+- `extensionsRequired` → 请输入至少一个扩展名
+- `installAndRestart` → 立即安装并重启
+- `manifestAdvancedDotTooltip` → 已修改高级选项
+- `manifestAdvancedHint` → 任务代理 · UA · Cookie · 请求头 · 线程数 —— 组级，应用到全部子任务
+- `manifestAdvancedToggle` → 高级选项
+- `manifestBreadcrumbMoreTooltip` → 显示中间层级
+- `manifestBreadcrumbUpTooltip` → 返回上级
+- `manifestClearSelection` → 清空
+- `manifestCookieHint` → 网盘登录态通常必填（留空则不发送）
+- `manifestDialogTitle` → 选择要下载的文件
+- `manifestDirSizeUnknown` → 未知
+- `manifestFileSizeUnknown` → 大小未知
+- `manifestGroupNamePlaceholder` → 未命名任务组
+- `manifestGroupNameTooltip` → 任务组名称（可编辑）
+- `manifestHeadersHint` → 为本组附加额外的 HTTP 请求头（Cookie 请用上方独立入口）
+- `manifestIgnoreTlsHint` → 仅对本组子任务接受过期/自签名证书，可能遭到中间人拦截
+- `manifestInvertSelection` → 反选
+- `manifestItemsCount` → {count} 项
+- `manifestLaterToQueue` → 稍后下载到 · {name}
+- `manifestNoSelection` → 未选择文件
+- `manifestPluginBadge` → 插件解析
+- `manifestProxyHint` → 留空则使用全局设置
+- `manifestResolvingCancel` → 取消
+- `manifestResolvingLabel` → 正在检测文件清单…
+- `manifestSearchPlaceholder` → 搜索全部层级…
+- `manifestSearchResultCount` → 搜索结果 · {count} 项（全部层级）
+- `manifestSegmentsHint` → 每个子任务
+- `manifestSelectAll` → 全选
+- `manifestSelectedSummary` → 已选 {count} 项 · {size}
+- `manifestSelectedSummaryApprox` → 已选 {count} 项 · ≈ {size}
+- `manifestSortByName` → 按名称
+- `manifestSortBySizeDesc` → 按大小 ↓
+- `manifestStartDownloadWithCount` → 开始下载 ({count})
+- `manifestStartToQueue` → 开始下载到 · {name}
+- `manifestSummary` → {count} 项 · {size}
+- `manifestTreeEmpty` → 没有匹配的文件 — 调整筛选或搜索词
+- `manifestUaCustomPlaceholder` → Mozilla/5.0 …
+- `manifestUnknownSizeNote` → （{count} 项大小未知）
+- `marketEmpty` → 暂无可用插件
+- `marketInstallButton` → 安装
+- `marketInstalledButton` → 已安装
+- `marketInstallingButton` → 安装中…
+- `marketLoadFailed` → 加载市场失败：{message}
+- `marketRefreshTooltip` → 刷新
+- `marketSearchNoResult` → 没有匹配的插件
+- `marketSearchPlaceholder` → 搜索插件（名称 / 描述 / 标签）…
+- `marketSectionDesc` → 浏览并安装社区插件
+- `marketSectionTitle` → 插件市场
+- `marketShowMore` → 显示更多（剩余 {count} 个）
+- `marketYankedDeprecated` → 已弃用
+- `marketYankedMalicious` → 已标记恶意
+- `marketYankedVulnerable` → 存在安全漏洞
+- `pluginAutoDisabledToast` → 插件「{name}」已因连续失败被自动禁用，可在「设置 → 扩展 → 插件」中重新启用
+- `pluginCommonLoading` → 加载中…
+- `pluginCopyHelperScript` → 复制获取脚本
+- `pluginDepsGoToComponents` → 前往组件设置
+- `pluginDepsLater` → 稍后
+- `pluginDepsMissingBody` → 插件已安装，但其声明的能力依赖以下尚未安装的组件：{components}。安装组件前对应功能不可用，是否前往组件设置安装？
+- `pluginDepsMissingTitle` → 缺少基础组件
+- `pluginDetailAuthor` → 作者
+- `pluginDetailDescription` → 描述
+- `pluginDetailHomepage` → 主页
+- `pluginDetailIdentity` → 标识
+- `pluginDetailMinAppVersion` → 最低应用版本
+- `pluginDetailPermissions` → 权限
+- `pluginDetailPublishTime` → 发布时间
+- `pluginDetailSettings` → 设置项
+- `pluginDetailSettingsCount` → {count} 个（安装后可在插件卡片中配置）
+- `pluginDetailUsage` → 使用须知
+- `pluginDetailUsageBody` → 安装后插件默认启用，可在「已安装插件」列表中随时开关。解析器（resolver）插件会在匹配的下载任务开始前自动运行，无需手动触发；带设置项的插件可通过卡片上的
+- `pluginDevModeBadge` → 开发模式
+- `pluginDevModeSwitch` → 开发模式
+- `pluginDisabledCircuitBreaker` → 已自动禁用
+- `pluginDisabledManual` → 已禁用
+- `pluginErrMax` → 不能大于 {max}
+- `pluginErrMin` → 不能小于 {min}
+- `pluginErrNumber` → 请输入有效数字
+- `pluginErrPattern` → 格式不正确
+- `pluginErrRequired` → 此项为必填
+- `pluginErrSelect` → 请选择一个有效选项
+- `pluginFolderPickPlaceholder` → 选择文件夹
+- `pluginHelperScriptCopied` → 脚本已复制，请粘贴到目标网站的开发者工具 Console 中执行
+- `pluginInstallDirButton` → 安装
+- `pluginInstallDirLabel` → 从目录安装（开发模式）
+- `pluginInstallDirPlaceholder` → 选择插件目录
+- `pluginInstallZipButton` → 安装 .zip 插件
+- `pluginInstallZipFailed` → 安装失败：{error}
+- `pluginOpEnabledFailed` → 更新失败：{message}
+- `pluginOpGenericFailed` → 操作失败：{message}
+- `pluginOpInstallFailed` → 安装失败：{message}
+- `pluginOpInstallSuccess` → 插件安装成功
+- `pluginOpUninstallFailed` → 卸载失败：{message}
+- `pluginOpUninstallSuccess` → 插件已卸载
+- `pluginPermFfmpegDesc` → 调用 FFmpeg 处理音视频（合并/转码），需安装 FFmpeg 组件
+- `pluginPermFfmpegName` → FFmpeg
+- `pluginPermUnknownDesc` → 未知权限（当前版本暂不支持）
+- `pluginPermYtdlpDesc` → 调用 yt-dlp 提取媒体直链，需安装 yt-dlp 与 FFmpeg 组件
+- `pluginPermYtdlpName` → yt-dlp
+- `pluginProcessing` → 插件处理中…
+- `pluginSelectPlaceholder` → 请选择…
+- `pluginSettingsDialogTitle` → {name} 设置
+- `pluginSettingsSaveButton` → 保存
+- `pluginSettingsSaveFailed` → 保存失败：{message}
+- `pluginSettingsSaving` → 保存中…
+- `pluginSettingsTooltip` → 设置
+- `pluginUninstallMsg` → 确定要卸载插件「{name}」吗？此操作不可撤销。
+- `pluginUninstallTitle` → 卸载插件
+- `pluginUninstallTooltip` → 卸载
+- `pluginsEmpty` → 暂无已安装插件
+- `pluginsSectionTitle` → 已安装插件
+
+## Webhook/API（169）
+
+- `apiServiceAddress` → 地址
+- `apiServiceApi` → 管理 API
+- `apiServiceApiDesc` → 提供任务查询与控制的 HTTP API，供 MCP、自动化脚本等外部程序调用（强制鉴权）
+- `apiServiceCopied` → 已复制
+- `apiServiceCopy` → 复制
+- `apiServiceCopyScript` → 复制油猴脚本
+- `apiServiceCorsAllowAll` → 允许任意网页跨域访问（CORS）
+- `apiServiceCorsAllowAllDesc` → 关闭时浏览器网页无法调用本机服务。仅当某个网站的「发送到 aria2 / 快速下载」识别不到 FluxDown 时才需要开启。
+- `apiServiceCorsAllowAllHelp` → 本机服务默认不返回 Access-Control-Allow-Origin，网页发来的跨域 fetch 在预检阶段就被浏览器拦下。部分网站用 fetch 探测 
+- `apiServiceEnable` → 启用 API 服务
+- `apiServiceEnableDesc` → 启动本机 HTTP API 服务（仅监听 127.0.0.1），供下方各功能模块使用
+- `apiServiceFeaturesDesc` → 独立控制每个 API 功能模块的开放范围（总开关关闭时整组禁用）
+- `apiServiceFeaturesTitle` → 功能开关
+- `apiServiceHost` → 网卡
+- `apiServiceHostLoopback` → 本机
+- `apiServiceHostNone` → 未检测到可用网卡，当前仅回环地址可用。
+- `apiServiceJsonrpc` → aria2 RPC 兼容
+- `apiServiceJsonrpcDesc` → 兼容 aria2 JSON-RPC 协议，供"发送到 aria2"类脚本或 AriaNg 等客户端使用
+- `apiServiceLanEnable` → 允许局域网 / 组网访问
+- `apiServiceLanEnableDesc` → 关闭时仅本机（127.0.0.1）可访问。开启后绑定 0.0.0.0，同网络或你自建组网内的设备即可访问本机服务与配对。请仅在可信网络启用，并设置访问令牌。
+- `apiServiceMcp` → MCP 端点
+- `apiServiceMcpDesc` → 暴露 Model Context Protocol 端点，供 Claude Desktop、Cursor、Cline 等 AI 客户端接入（与管理 API 共用
+- `apiServicePort` → 监听端口
+- `apiServicePortDesc` → 默认 17800，范围 1024-65535
+- `apiServicePortInvalid` → 端口需在 1024-65535 之间
+- `apiServiceScriptCopied` → 脚本已复制，请在 Tampermonkey 新建脚本粘贴
+- `apiServiceTakeover` → 浏览器脚本接管
+- `apiServiceTakeoverDesc` → 供 FluxDown 油猴脚本接管浏览器下载
+- `apiServiceToken` → 访问令牌
+- `apiServiceTokenClear` → 清空
+- `apiServiceTokenClearConfirmDesc` → 管理 API 已启用并依赖此令牌。清空令牌将同时关闭管理 API 服务。是否继续？
+- `apiServiceTokenClearConfirmTitle` → 清空访问令牌？
+- `apiServiceTokenCleared` → 访问令牌已清空
+- `apiServiceTokenDesc` → 用于校验 API 请求的访问令牌；可自定义或点「生成」随机生成，启用管理 API 时强制要求设置
+- `apiServiceTokenGenerate` → 生成
+- `cdnMaxNodes` → 最大节点数
+- `cdnMaxNodesDesc` → 自动：按文件大小与并发连接数推导；也可手动指定 1–8
+- `cdnMultiEnabled` → 多 CDN 节点并发下载（实验性）
+- `cdnMultiEnabledDesc` → 对同一文件同时从 CDN 的多个节点 IP 并发下载，提升单节点限速场景下的吞吐；仅对 HTTPS 直链生效，代理启用时自动禁用
+- `cdnMultiProxyConfirmDescManual` → 当前已启用手动配置的代理。多 CDN 节点并发下载在代理启用时不会生效，继续开启可能造成“已开启但无效果”的误解。可选择关闭代理并开启该功能，或取消开启。
+- `cdnMultiProxyConfirmDescSystem` → 当前已启用系统代理。多 CDN 节点并发下载在代理启用时不会生效，继续开启可能造成“已开启但无效果”的误解。可选择关闭系统代理并开启该功能，或取消开启。
+- `cdnMultiProxyConfirmDisable` → 关闭代理并开启
+- `cdnMultiProxyConfirmTitle` → 检测到代理已启用
+- `cloudSyncAppliedToast` → 已同步来自 {deviceName} 的 {count} 项设置
+- `cloudSyncDesc` → 在已登录设备间自动同步外观、常规、下载与 BT/ED2K 设置
+- `cloudSyncErrorDeviceLimit` → 同步设备数已达套餐上限，请在其他设备退出登录后重试
+- `cloudSyncErrorDeviceUntrusted` → 当前设备未通过信任校验，请重新登录后再试
+- `cloudSyncErrorNetwork` → 网络连接异常，请检查网络后重试
+- `cloudSyncFailedToast` → 配置同步失败：{reason}
+- `cloudSyncLoginRequired` → 登录后可开启
+- `cloudSyncNow` → 立即同步
+- `cloudSyncOtherDevice` → 其他设备
+- `cloudSyncStatusConnecting` → 连接中
+- `cloudSyncStatusDisabled` → 已关闭
+- `cloudSyncStatusError` → 同步失败：{reason}
+- `cloudSyncStatusSynced` → 已同步
+- `cloudSyncStatusSyncing` → 同步中
+- `cloudSyncTitle` → 配置同步
+- `dispatchFailed` → 下发失败
+- `dispatchedToDevice` → 已下发到 {device}
+- `proxyBtNote` → BT 下载不支持代理
+- `proxyCdnMultiConfirmDesc` → 多 CDN 节点并发下载在代理启用时不会生效。开启代理将同时关闭该功能，以免造成“已开启但无效果”的误解。
+- `proxyCdnMultiConfirmEnable` → 关闭该功能并开启代理
+- `proxyCdnMultiConfirmTitle` → 多 CDN 并发下载已开启
+- `proxyConfigureInSettings` → 在设置中配置…
+- `proxyHost` → 服务器地址
+- `proxyHostPlaceholder` → 例如 127.0.0.1
+- `proxyModeAuto` → 自动（推荐）
+- `proxyModeAutoDesc` → 默认直连，零额外代理流量；仅当直连缓慢且代理明显更快时按站点自动切换代理。直连任务仍保留多 CDN 加速。
+- `proxyModeManual` → 手动配置
+- `proxyModeManualDesc` → 自定义代理服务器
+- `proxyModeNone` → 不使用代理
+- `proxyModeNoneDesc` → 直接连接
+- `proxyModeSystem` → 系统代理
+- `proxyModeSystemDesc` → 从系统设置读取
+- `proxyNoList` → 排除列表
+- `proxyNoListDesc` → 不通过代理的地址，逗号分隔
+- `proxyNoListPlaceholder` → 例如 localhost,192.168.*
+- `proxyNotConfigured` → 未配置
+- `proxyPassword` → 密码
+- `proxyPasswordPlaceholder` → 选填
+- `proxyPort` → 端口
+- `proxyPortPlaceholder` → 例如 1080
+- `proxySettings` → 代理设置
+- `proxySettingsDesc` → 配置 HTTP/FTP 下载的网络代理
+- `proxySystemDetected` → 已检测到系统代理配置（只读）
+- `proxySystemDetecting` → 正在检测系统代理...
+- `proxySystemNotConfigured` → 系统未配置代理
+- `proxySystemNotDetected` → 未检测到系统代理
+- `proxyTestConnection` → 测试连接
+- `proxyTestFailed` → 连接失败: {error}
+- `proxyTestSuccess` → 连接成功，延迟 {ms} ms
+- `proxyTestTlsEndpointHint` → 代理端点未接受 TLS 握手。如果这是混合 HTTP/SOCKS 端口（Clash、V2Ray）或普通 HTTP 代理，请把类型改选为 HTTP 而不是 HTT
+- `proxyTesting` → 测试中...
+- `proxyType` → 代理类型
+- `proxyUsername` → 用户名
+- `proxyUsernamePlaceholder` → 选填
+- `webhookAddEndpoint` → 添加推送目标
+- `webhookAddHeader` → 添加请求头
+- `webhookAdvanced` → 高级 —— 请求头 · 消息模板 · 签名
+- `webhookAllowHttpDesc` → 仅建议局域网设备（如 Home Assistant / NAS 内网地址）开启。
+- `webhookAttempts` → 已尝试 {n} 次
+- `webhookCopied` → 已复制到剪贴板
+- `webhookCopy` → 复制
+- `webhookDeliveryLog` → 推送记录
+- `webhookDialogAddTitle` → 添加推送目标
+- `webhookDialogDesc` → 任务发生变化时，FluxDown 会向这个地址发一条 HTTP 请求 —— 选好服务预设，消息格式自动生成。
+- `webhookDialogEditTitle` → 编辑推送目标
+- `webhookEmptyDesc` → 把任务事件推给 ntfy、Bark、Discord、Telegram、Home Assistant —— 任何能收 HTTP POST 的服务。
+- `webhookEmptyTitle` → 还没有推送目标
+- `webhookEventCompleted` → 完成
+- `webhookEventCreated` → 创建
+- `webhookEventFailed` → 失败
+- `webhookEventPaused` → 暂停
+- `webhookEventQueueDrained` → 队列清空
+- `webhookEventStarted` → 开始
+- `webhookEventsEmpty` → 一个都没选 —— 这个目标收不到任何推送
+- `webhookEventsHint` → 默认「完成 + 失败」覆盖多数场景
+- `webhookFieldAllowHttp` → 允许 HTTP 明文
+- `webhookFieldEvents` → 订阅事件
+- `webhookFieldHeaders` → 自定义请求头
+- `webhookFieldName` → 名称
+- `webhookFieldPreset` → 服务预设
+- `webhookFieldQueue` → 队列过滤
+- `webhookFieldSign` → HMAC-SHA256 签名
+- `webhookFieldTemplate` → 消息模板
+- `webhookFieldUrl` → 推送地址
+- `webhookFieldUseProxy` → 通过全局代理发送
+- `webhookHeaderName` → Header 名
+- `webhookHeaderValue` → 值
+- `webhookHealthDisabled` → 已停用
+- `webhookHealthFail` → 推送失败 · {detail}
+- `webhookHealthNone` → 暂无推送
+- `webhookHealthOk` → 推送成功 · {time}
+- `webhookLogClear` → 清空
+- `webhookLogEmpty` → 还没有推送记录
+- `webhookLogFilterAll` → 全部目标
+- `webhookLogFilterLabel` → 推送目标
+- `webhookLogHint4xx` → 4xx 视为配置错误，不再重试 —— 请检查 webhook 是否已在服务端删除。
+- `webhookLogPending` → 投递中…
+- `webhookLogResponse` → 响应
+- `webhookLogSimulate` → 模拟一次下载完成
+- `webhookLogSimulateHint` → 按各目标自己的订阅规则真发一条样例事件，不用真的下载文件。
+- `webhookLogSubtitle` → 保留最近 1000 条 · 重启不丢，手动清空才没
+- `webhookNameRequired` → 给这个推送目标起个名字
+- `webhookPreviewMeta` → 任意 2xx = 成功 · 单次超时 10s 网络错误与 5xx 重试 3 次（2s/4s/8s） 4xx 不重试（视为配置错误） 同一个目标串行发送，保持事件
+- `webhookPreviewTitle` → 实时请求预览
+- `webhookQueueAll` → 全部队列
+- `webhookRegenerate` → 重新生成
+- `webhookRowDelete` → 删除
+- `webhookRowDeleteConfirm` → 确认删除？
+- `webhookRowEdit` → 编辑
+- `webhookRowLogs` → 日志
+- `webhookRowTest` → 测试
+- `webhookSaveEndpoint` → 保存
+- `webhookSemantics` → 任意 2xx 视为成功 · 单次超时 10s · 失败重试 3 次（2s 起指数退避）· 可选 HMAC-SHA256 签名头
+- `webhookSendTest` → 发送测试
+- `webhookSignDesc` → 添加 X-FluxDown-Signature 头（t=时间戳,v1=签名），接收端可校验来源与防重放。
+- `webhookSimulateNoTarget` → 没有目标订阅「完成」事件，这次没有发出任何请求。
+- `webhookTemplateHint` → 留空使用预设默认。仅占位符替换，无条件、无循环。
+- `webhookTemplatePlaceholder` → {"text":" {task.fileName} 下载完成，共 {task.totalBytesHuman}"}
+- `webhookTestFail` → 失败 · {error}
+- `webhookTestOk` → {status} · {ms}ms
+- `webhookTesting` → 发送中…
+- `webhookUrlHint` → 粘贴该服务给你的推送地址
+- `webhookUrlHintNtfy` → URL 必须带上主题路径，例如 https://ntfy.sh/my-topic
+- `webhookUrlInvalid` → 不是合法的 http(s) 地址
+- `webhookUrlWarnHttp` → 明文 HTTP —— 需在「高级」里开启「允许 HTTP 明文」
+- `webhookUseProxyDesc` → 默认直连 —— 局域网地址走代理必然失败。需要代理才能到达的服务（Telegram、Discord…）再开启。
+
+## 搜索/视图（211）
+
+- `browse` → 浏览
+- `componentsFetchVersionsButton` → 刷新版本列表
+- `componentsFfmpegDesc` → 开源音视频处理工具，FluxDown 用它合并 DASH 等流媒体下载产生的独立音视频轨
+- `componentsFfmpegTitle` → FFmpeg
+- `componentsInstallButton` → 安装
+- `componentsInstallFailed` → 安装失败：{message}
+- `componentsInstallSectionDescFfmpeg` → 按需从官方 BtbN/FFmpeg-Builds 发行版下载静态构建，不随安装包分发
+- `componentsInstallSectionDescYtdlp` → 按需从官方 yt-dlp/yt-dlp GitHub 发行版下载对应平台二进制，不随安装包分发
+- `componentsInstallSectionTitle` → 托管安装
+- `componentsInstallSuccess` → {name} 安装成功
+- `componentsInstallUnknownSize` → 大小未知
+- `componentsInstalling` → 安装中…
+- `componentsManagedUnsupported` → 当前平台不提供托管安装（如 Alpine/OpenWrt 的 musl libc）。请使用系统包管理器 / PATH 中的 {name}，或在上方手动指定路径
+- `componentsManagedVersionLabel` → 已装托管版本：{version}
+- `componentsManualPathClear` → 清除
+- `componentsManualPathDesc` → 直接指定 {name} 可执行文件路径，优先级高于组件安装与系统 PATH
+- `componentsManualPathHintFfmpeg` → 例如 C:\tools\ffmpeg\ffmpeg.exe
+- `componentsManualPathHintYtdlp` → 例如 C:\tools\yt-dlp\yt-dlp.exe
+- `componentsManualPathLabel` → 手动指定路径
+- `componentsManualPathSave` → 保存
+- `componentsReinstallButton` → 更新/重装
+- `componentsRetryVersions` → 重试
+- `componentsSourceManaged` → 组件安装
+- `componentsSourceManual` → 手动指定
+- `componentsSourceSystem` → 系统 PATH
+- `componentsStatusLoading` → 探测中…
+- `componentsStatusNotFound` → 未找到 {name}，请在下方安装或手动指定路径
+- `componentsStatusNotFoundUnsupported` → 未找到 {name}，请将其加入系统 PATH 或在下方手动指定路径
+- `componentsSystemPathLabel` → 系统 PATH：
+- `componentsSystemPathNotFound` → 未找到
+- `componentsUninstallButton` → 卸载
+- `componentsUninstallConfirmMsg` → 这将删除托管安装的 {name}，手动指定路径与系统 PATH 中的 {name} 不受影响
+- `componentsUninstallConfirmTitle` → 卸载 {name}
+- `componentsUninstallFailed` → 卸载失败：{message}
+- `componentsUninstallSuccess` → {name} 已卸载
+- `componentsVersionSelectPlaceholder` → 选择版本
+- `componentsVersionsLoadFailed` → 获取版本列表失败：{message}
+- `componentsVersionsLoading` → 加载版本列表…
+- `componentsYtdlpDesc` → 媒体提取器，FluxDown 插件用它从 1000+ 站点（YouTube 等）提取媒体直链，交给下载引擎
+- `componentsYtdlpTitle` → yt-dlp
+- `copyFileAction` → 复制文件
+- `copyFileErrNoTool` → 未找到剪贴板工具，请安装 wl-copy 或 xclip。
+- `copyFileErrNotFound` → 文件已不存在。
+- `copyFileErrUnsupported` → 当前平台不支持复制文件。
+- `copyFileFailed` → 复制到剪贴板失败。
+- `copyFolderAction` → 复制文件夹
+- `copyUrl` → 复制下载地址
+- `createQueueAction` → 新建队列
+- `deleteCategory` → 删除分类
+- `deleteCategoryConfirm` → 确定要删除此分类吗？已下载的文件不受影响。
+- `deleteConfirmDescKeepFile` → 确定要删除任务「{fileName}」吗？已下载的文件将保留在磁盘上。
+- `deleteConfirmDescWithFile` → 确定要删除任务「{fileName}」并删除已下载的文件吗？此操作不可撤销。
+- `deleteQueueAction` → 删除队列
+- `deleteTask` → 删除任务
+- `deleteTaskAndFile` → 删除任务和文件
+- `editCategory` → 编辑分类
+- `editQueue` → 编辑队列
+- `editThreads` → 修改线程数
+- `editThreadsResetHint` → 下载中的任务会自动暂停并恢复以立即生效，已下载进度完整保留。
+- `editThreadsTitle` → 修改线程数
+- `emptySubtitle` → 点击「新建下载」或右键开始
+- `emptyTitle` → 暂无下载任务
+- `floatingBall` → 桌面悬浮球
+- `floatingBallActiveOnly` → 仅下载时显示
+- `floatingBallActiveOnlyDesc` → 仅在有下载任务进行时显示悬浮球，其余时候自动隐藏
+- `floatingBallDesc` → 桌面常驻置顶小球，显示下载速度与进度，支持拖拽链接/种子快速建任务
+- `floatingBallWaylandUnsupported` → 当前桌面环境（Wayland）不支持悬浮窗定位与置顶，悬浮球不可用。已启用替代方案：托盘显示实时速度；复制链接后唤起主窗口会自动填入下载对话框。本地文件（含 .
+- `hideButton` → 隐藏此按钮
+- `hideFloatingBall` → 隐藏悬浮球
+- `hideSection` → 隐藏此区块
+- `manage` → 管理
+- `manageQueueAction` → 管理队列
+- `menuAbout` → 关于 FluxDown
+- `menuBringAllToFront` → 前置全部窗口
+- `menuCheckForUpdates` → 检查更新…
+- `menuCloseWindow` → 关闭窗口
+- `menuEdit` → 编辑
+- `menuFeedback` → 发送反馈…
+- `menuFile` → 文件
+- `menuFind` → 查找
+- `menuHelp` → 帮助
+- `menuHide` → 隐藏 FluxDown
+- `menuHideOthers` → 隐藏其他
+- `menuMinimize` → 最小化
+- `menuNewDownload` → 新建下载…
+- `menuQuit` → 退出 FluxDown
+- `menuSelectAll` → 全选
+- `menuSettings` → 设置…
+- `menuShowAll` → 全部显示
+- `menuToggleFullScreen` → 切换全屏
+- `menuView` → 视图
+- `menuWebsite` → FluxDown 官网
+- `menuWindow` → 窗口
+- `menuZoom` → 缩放
+- `moreActions` → 更多操作
+- `searchGroupSettings` → 设置
+- `searchGroupTasks` → 下载任务
+- `searchKeywordsApiService` → api,服务,rpc,油猴,脚本,接管,浏览器,aria2,ariang,令牌,token,端口,mcp,自动化,管理
+- `searchKeywordsAppIcon` → 应用图标,图标,任务栏,托盘,自定义
+- `searchKeywordsAutoStartup` → 开机,自启动,启动
+- `searchKeywordsBtSettings` → BT,BitTorrent,种子,磁力,Tracker,DHT,UPnP,端口
+- `searchKeywordsCdnMulti` → CDN,多节点,并发,加速,节点
+- `searchKeywordsClipboardWatch` → 剪贴板,监听,链接,复制
+- `searchKeywordsCloseToTray` → 关闭,托盘,最小化
+- `searchKeywordsConcurrent` → 同时,并发,并行,数量
+- `searchKeywordsCustomCategories` → 自定义,分类,扩展名,正则,文件类型,筛选
+- `searchKeywordsDoctor` → 诊断,自检,体检,排查,故障,扩展,浏览器扩展,nmh,原生消息,注册表,协议,日志,修复
+- `searchKeywordsDonate` → 捐赠,赞助,支持,打赏,donate
+- `searchKeywordsEd2kAssoc` → ed2k,电驴,emule,链接关联,协议,默认程序
+- `searchKeywordsEd2kSettings` → eD2K,电驴,eMule,ed2k,服务器,server.met,订阅
+- `searchKeywordsFileAssoc` → 文件关联,种子,torrent,关联,默认程序
+- `searchKeywordsFileExists` → 覆盖,重命名,重名,已存在,冲突,序号
+- `searchKeywordsFileManager` → 文件管理器,资源管理器,Explorer,Finder,Nautilus,Total Commander,文件夹
+- `searchKeywordsFileMissing` → 文件丢失,文件已删除,已移动,失效,清理,记录
+- `searchKeywordsFloatingBall` → 悬浮球,悬浮窗,桌面,挂件,速度球
+- `searchKeywordsKeepAwake` → 唤醒,睡眠,息屏,锁屏,休眠,屏幕
+- `searchKeywordsLanguage` → 语言,中文,英文,切换语言
+- `searchKeywordsLogExport` → 日志,导出,反馈,调试,排查,log
+- `searchKeywordsMagnetAssoc` → 磁力,magnet,bt,链接关联,协议,默认程序,qbittorrent
+- `searchKeywordsNotifyOnComplete` → 通知,完成,提醒,弹窗,系统通知
+- `searchKeywordsProxy` → 代理,HTTP,SOCKS,SOCKS5,SOCKS4,网络代理,代理服务器
+- `searchKeywordsSaveDir` → 保存,目录,路径,文件夹
+- `searchKeywordsSidebarVisibility` → 侧边栏,显示,隐藏,区块,状态,队列,分类
+- `searchKeywordsSilentDownload` → 免打扰,静默,确认框,弹窗,扩展,自动下载
+- `searchKeywordsSilentSkipSelection` → skip,selection,dialog,bt,file,quality,variant,跳过,二次选择,弹窗
+- `searchKeywordsSpeedLimit` → 速度,限速,限制,带宽
+- `searchKeywordsStartMinimizedToTray` → 启动,最小化,托盘
+- `searchKeywordsThemeColor` → 主题色,颜色,配色,色调
+- `searchKeywordsThemeMode` → 主题,亮色,暗色,深色,模式
+- `searchKeywordsThreads` → 线程,分片,并行
+- `searchKeywordsTitlebarButtons` → 标题栏,按钮,显示,隐藏,暂停,恢复,设置,主题
+- `searchKeywordsUiScale` → 缩放,界面,比例,放大,缩小,DPI
+- `searchKeywordsUpdate` → 更新,升级,版本
+- `searchKeywordsUseServerTime` → 文件时间,修改时间,时间戳,服务器时间
+- `searchKeywordsUserAgent` → UA,用户代理,浏览器标识
+- `searchKeywordsWebhook` → webhook,通知,推送,推送目标,ntfy,bark,discord,telegram,slack,gotify,钩子
+- `searchKeywordsWebhookLog` → 推送记录,投递日志,webhook 日志,调试,送达
+- `searchPlaceholder` → 搜索任务或设置...
+- `selectAll` → 全选
+- `selectDefaultSaveDir` → 选择默认保存目录
+- `selectSaveDir` → 选择保存目录
+- `selectTaskHint` → 选择一个任务查看详情
+- `selectTorrentFile` → 选择种子文件
+- `showSidebarCategory` → 显示分类
+- `showSidebarCategoryDesc` → 在侧边栏显示分类区块
+- `showSidebarDevice` → 显示设备协同
+- `showSidebarDeviceDesc` → 关闭后主页不显示设备区；添加远程设备或手动开启后自动显示
+- `showSidebarQueues` → 显示队列
+- `showSidebarQueuesDesc` → 在侧边栏显示队列区块
+- `showSidebarRss` → 显示 RSS
+- `showSidebarRssDesc` → 在侧边栏显示 RSS 订阅区块
+- `showSidebarStatus` → 显示状态
+- `showSidebarStatusDesc` → 在侧边栏显示状态筛选区块
+- `showTitlebarPauseAll` → 全部暂停按钮
+- `showTitlebarPauseAllDesc` → 在标题栏显示全部暂停按钮
+- `showTitlebarResumeAll` → 全部恢复按钮
+- `showTitlebarResumeAllDesc` → 在标题栏显示全部恢复按钮
+- `showTitlebarSettings` → 设置按钮
+- `showTitlebarSettingsDesc` → 在标题栏显示设置按钮
+- `showTitlebarTheme` → 主题切换按钮
+- `showTitlebarThemeDesc` → 在标题栏显示主题切换按钮
+- `sidebarCategory` → 分类
+- `sidebarQueues` → 队列
+- `sidebarRss` → RSS 订阅
+- `sidebarStatus` → 状态
+- `sidebarVisibility` → 侧边栏显示
+- `sidebarVisibilityDesc` → 选择在侧边栏中显示哪些区块
+- `tabAll` → 全部
+- `tabCompleted` → 已完成
+- `tabDownloading` → 下载中
+- `tabError` → 失败
+- `tabPaused` → 已暂停
+- `tabSeeding` → 做种中
+- `viewBucketRetryAll` → 全部重试
+- `viewColumnHintCompactRow` → 紧凑档为行底条
+- `viewColumnsAtLeastOne` → 至少保留一列
+- `viewColumnsBudgetExceeded` → 宽度不足：先移除其他列，或关闭详情面板
+- `viewColumnsMenuTitle` → 显示列
+- `viewColumnsResetAction` → 重置为默认列
+- `viewDensityComfortable` → 舒适
+- `viewDensityCompact` → 紧凑
+- `viewDensityGridDisabledHint` → 网格形态下不适用
+- `viewEntryTooltip` → 显示选项 · 当前：{state}
+- `viewFormGrid` → 网格
+- `viewFormList` → 列表
+- `viewGroupDate` → 日期
+- `viewGroupNone` → 不分组
+- `viewGroupQueue` → 队列
+- `viewGroupSite` → 站点
+- `viewGroupSmart` → 智能
+- `viewGroupStatus` → 状态
+- `viewGroupType` → 类型
+- `viewOptionsTitle` → 显示选项
+- `viewProtocolBadges` → 协议徽标
+- `viewResetDefault` → 重置为默认
+- `viewResetHint` → 视图偏好按状态页签独立记忆
+- `viewResetToast` → 已重置为默认视图
+- `viewSectionColumns` → 列
+- `viewSectionDensity` → 密度
+- `viewSectionDisplay` → 显示
+- `viewSectionForm` → 形态
+- `viewSectionGroupBy` → 分组
+- `viewSectionSort` → 排序
+- `viewShowCompleted` → 显示已完成
+- `viewSiteBt` → BT · 磁力
+- `viewSortCreated` → 创建时间
+- `viewSortName` → 名称
+- `viewSortProgress` → 进度
+- `viewSortSize` → 大小
+- `viewSortSmart` → 智能
+- `viewSortSpeed` → 速度
+
+## 移动端（209）
+
+- `analyticsEnabled` → 匿名使用统计
+- `analyticsEnabledDesc` → 发送匿名使用数据以帮助改进 FluxDown，不收集任何个人或敏感数据
+- `appDescription` → 多协议高速下载工具
+- `appIcon` → 应用图标
+- `appIconApplyFailed` → 设置应用图标失败
+- `appIconBolt` → 闪电
+- `appIconChooseImage` → 选择图片…
+- `appIconCustom` → 自定义
+- `appIconDefault` → 默认
+- `appIconDesc` → 自定义窗口、任务栏与托盘使用的应用图标
+- `appIconZoomHint` → 滚轮缩放
+- `changelogLater` → 稍后
+- `changelogSubtitle` → FluxDown v{v} 已发布，以下是更新内容：
+- `changelogTitle` → 发现新版本
+- `changelogUpdateNow` → 立即更新
+- `changelogVersionCount` → 跨越 {n} 个版本
+- `currentVersion` → 当前版本
+- `doctorActionEnableService` → 开启服务
+- `doctorActionOpenLogDir` → 打开目录
+- `doctorActionRegister` → 立即注册
+- `doctorActionReregister` → 重新注册
+- `doctorActionRestartListener` → 重启监听
+- `doctorAllHealthy` → 全部检查通过
+- `doctorCheckAppListener` → App 本地监听
+- `doctorCheckLocalServer` → 本地 HTTP 服务
+- `doctorCheckLogDir` → 日志目录
+- `doctorCheckNmhBinary` → NMH 中继程序
+- `doctorCheckNmhBrowser` → 浏览器 NMH 注册
+- `doctorCheckNmhManifest` → NMH 清单文件
+- `doctorCheckTorrentAssociation` → .torrent 文件关联
+- `doctorCheckUrlProtocol` → 协议关联
+- `doctorCopied` → 报告已复制，可直接粘贴到反馈里
+- `doctorCopyReport` → 复制报告
+- `doctorDesc` → 检查浏览器扩展注册、本地服务、协议关联与日志目录
+- `doctorEnvTitle` → 环境信息
+- `doctorHintCheckDisk` → 检查磁盘剩余空间与目录写入权限
+- `doctorHintCheckFirewall` → 检查防火墙或安全软件是否拦截了本地端口
+- `doctorHintEnableLocalServer` → 点本行「开启服务」，或在「设置 › API 服务」里打开
+- `doctorHintEnableProtocol` → 点本行「立即注册」，或在「设置 › 通用」里开启该关联
+- `doctorHintProtocolClaimed` → 该协议已被其他程序占用，点本行「立即注册」可抢回
+- `doctorHintReinstallApp` → 重新安装 FluxDown —— 安装内容不完整
+- `doctorHintReregisterNmh` → 点本行「重新注册」，然后重启浏览器
+- `doctorHintRestartApp` → 点本行「重启监听」重新拉起端点；仍失败再重启 FluxDown
+- `doctorIssuesFound` → 发现 {n} 项问题
+- `doctorLastRun` → 上次运行 {time}
+- `doctorLevelError` → 异常
+- `doctorLevelInfo` → 提示
+- `doctorLevelOk` → 正常
+- `doctorLevelWarn` → 警告
+- `doctorListenerRestartFailed` → 重启失败 · {error}
+- `doctorListenerRestartOk` → 本机监听已重启，可在浏览器扩展里重连
+- `doctorNeverRun` → 尚未运行
+- `doctorNmhLogEmpty` → 暂无中继日志 —— 浏览器扩展还没连上过
+- `doctorNmhLogTitle` → NMH 中继日志
+- `doctorRepairFailed` → 修复失败 · {error}
+- `doctorRepairNmh` → 修复 NMH 注册
+- `doctorRepairOk` → NMH 注册已重写，重启浏览器后生效
+- `doctorRepairing` → 修复中…
+- `doctorRun` → 运行诊断
+- `doctorRunDoneHealthy` → 诊断完成，全部检查通过
+- `doctorRunDoneIssues` → 诊断完成，发现 {n} 项待处理问题
+- `doctorRunning` → 诊断中…
+- `doctorTitle` → 环境诊断
+- `donateBody` → 自 {date} 首次提交以来，FluxDown 已累计发布 {releases} 个版本，提交代码超过 {commits} 次。永久免费、零广告、零追踪的背后
+- `donateButton` → 给开发者捐赠
+- `donateDate` → {y} 年 {m} 月 {d} 日
+- `donateThanks` → 您的支持能让 FluxDown 更好地开发与发展下去，我们会用心做好产品。非常感谢！
+- `donateTitle` → 支持 FluxDown
+- `feedback` → 反馈
+- `feedbackAttachLogs` → 附带今日日志
+- `feedbackAttachLogsHint` → 发送时附带当天日志（已脱敏），有助于我们更快定位问题
+- `feedbackContactHint` → 填写邮箱可收到反馈进度通知，其他联系方式可能无法收到通知
+- `feedbackContactLabel` → 联系方式
+- `feedbackContactPlaceholder` → 邮箱或其他联系方式
+- `feedbackDesc` → 告诉我们你的想法，帮助改进 FluxDown
+- `feedbackDescCount` → {n}/5000
+- `feedbackDescLabel` → 详细描述
+- `feedbackDescPlaceholder` → 请详细说明...
+- `feedbackError` → 提交失败，请稍后重试
+- `feedbackOptional` → 可选
+- `feedbackRateLimited` → 提交过于频繁，请稍后再试
+- `feedbackSubmit` → 提交
+- `feedbackSubmitting` → 提交中...
+- `feedbackSuccess` → 感谢你的反馈！
+- `feedbackSysInfoHint` → 提交时将附带以上应用版本与系统信息，便于定位问题；不含任何个人敏感数据
+- `feedbackSysInfoLabel` → 附带信息
+- `feedbackSysInfoSystem` → 系统
+- `feedbackTitle` → 提交反馈
+- `feedbackTitleCount` → {n}/200
+- `feedbackTitleLabel` → 标题
+- `feedbackTitlePlaceholder` → 简要描述你的反馈
+- `feedbackTypeBug` → 问题反馈
+- `feedbackTypeFeature` → 功能建议
+- `feedbackTypeLabel` → 反馈类型
+- `feedbackTypeOther` → 其他
+- `feedbackVersionAuto` → 自动获取
+- `feedbackVersionLabel` → 应用版本
+- `latestVersion` → 最新版本
+- `localDeviceAddressHint` → 对端需能访问此地址。跨网络时请填写你自建内网穿透 / 组网后的可达地址。回环地址（127.0.0.1）仅本机可访问——如需对外暴露，请在「本机 API 服务」中
+- `localDeviceAddressLabel` → 本机地址
+- `localDeviceCodeCopied` → 已复制配对码
+- `localDeviceCodeExpired` → 已过期，请重新生成
+- `localDeviceCodeRemaining` → 剩余 {seconds} 秒
+- `localDeviceThisDesc` → 在另一台设备的「添加设备 → 直连配对」中，输入此码与下方地址即可配对。
+- `localDeviceThisTitle` → 本机配对码
+- `localDeviceUnpair` → 解除配对
+- `localDeviceUnpairConfirmDesc` → 解除后该设备需要重新完成配对流程才能再次互联。
+- `localDeviceUnpairConfirmTitle` → 解除配对？
+- `localDevicesEmpty` → 尚未配对任何直连设备。
+- `localDevicesSectionDesc` → 让另一台设备帮你下载：登录账户后自动互联；或免账号，与同一局域网 / 自建组网内的设备直连配对。
+- `localDevicesSectionTitle` → 远程设备
+- `localGenerateCode` → 生成本机配对码
+- `localPairingCodeHint` → 在目标设备的设置中获取，2 分钟内有效。
+- `localPairingCodeIncomplete` → 请输入完整的 6 位配对码
+- `localPairingCodeLabel` → 配对码
+- `localPairingCodePlaceholder` → 输入 6 位配对码
+- `localPairingConfirm` → 确认配对
+- `localPairingConnect` → 连接并保存
+- `localPairingDiscovering` → 正在搜索局域网内的设备…
+- `localPairingFailed` → 配对失败
+- `localPairingHint` → 不登录账号，在同一局域网内直接配对设备。
+- `localPairingHostRequired` → 请输入设备地址
+- `localPairingManualAddress` → 高级：手动输入地址
+- `localPairingNoDevices` → 尚未发现设备，请确认两台设备处于同一网络。
+- `localPairingOffline` → 离线
+- `localPairingOnline` → 在线
+- `localPairingPaired` → 已配对 {device}
+- `localPairingPortInvalid` → 端口需在 1-65535 之间
+- `localPairingReject` → 拒绝
+- `localPairingRetryScan` → 重新搜索
+- `localPairingSasHint` → 确认两台设备显示相同数字后再继续。
+- `localPairingSasTitle` → 核对配对数字
+- `localPairingWaitingPeer` → 等待对方设备确认…
+- `logExport` → 导出日志
+- `logExportButton` → 导出日志
+- `logExportDesc` → 导出运行日志，方便提交反馈时附带
+- `logExportEmpty` → 没有可导出的日志文件
+- `logExportFailed` → 日志导出失败
+- `logExportInfo` → {count} 个日志文件，共 {size}
+- `logExportSuccess` → 已导出 {count} 个日志文件
+- `logMaxSize` → 日志占用上限
+- `logMaxSizeDesc` → 日志总大小超出上限时自动从最旧开始清理
+- `logOpenDirButton` → 打开目录
+- `logSelectExportDir` → 选择日志导出目录
+- `mobileAdvancedOptions` → 高级选项（Cookie / User-Agent / 校验）
+- `mobileAllFilesDesc` → 下载到公共目录（如 Download）需要授予「所有文件访问」权限，点击「去授权」前往系统设置开启。
+- `mobileAllFilesTitle` → 需要「所有文件访问」权限
+- `mobileBoostAction` → Boost 优先下载
+- `mobileBoostOff` → 已取消 Boost
+- `mobileBoostOn` → 已启用 Boost 优先下载
+- `mobileBoosted` → 已 Boost
+- `mobileByQueue` → 按队列
+- `mobileClipboardEmpty` → 剪贴板为空
+- `mobileCreatedAt` → 创建时间
+- `mobileDownloadStarted` → 已开始下载
+- `mobileEnterUrl` → 请输入下载链接
+- `mobileFileNotFound` → 文件不存在，可能已被移动或删除
+- `mobileFileType` → 文件类型
+- `mobileFilterTasks` → 筛选任务
+- `mobileFooter` → FluxDown · 零广告 · 零追踪 · 本地优先
+- `mobileGoGrant` → 去授权
+- `mobileIdleSummary` → 空闲 · 无进行中任务
+- `mobileMoveToQueue` → 移动到队列…
+- `mobileMovedToQueue` → 已移动到队列
+- `mobileNavDownloads` → 下载
+- `mobileNoAppToOpen` → 没有应用可以打开此文件
+- `mobileOpenFile` → 打开文件
+- `mobileOpenFileFailed` → 无法打开文件
+- `mobileOpenSource` → 开源许可
+- `mobilePaste` → 粘贴
+- `mobilePasted` → 已从剪贴板粘贴
+- `mobilePausedAllToast` → 已暂停全部任务
+- `mobilePickDirUnmappable` → 无法解析所选目录，请选择设备存储中的文件夹
+- `mobilePrivacyPolicy` → 隐私政策
+- `mobileProtocol` → 协议
+- `mobileResetFilter` → 重置筛选
+- `mobileResumedAllToast` → 已恢复全部任务
+- `mobileRetry` → 重试
+- `mobileSaveTo` → 保存到
+- `mobileSearchHint` → 搜索任务名称…
+- `mobileSegActive` → 下载中
+- `mobileSegDone` → 已完成
+- `mobileSegPending` → 待下载
+- `mobileSegRunning` → 动态拆分运行中
+- `mobileSegStopped` → 已停止
+- `mobileSegTitle` → 分段可视化
+- `mobileSelectQueue` → 选择目标队列
+- `mobileSpeedCurve` → 速度曲线
+- `mobileSpeedPeak` → 峰值 {v}
+- `mobileSpeedSummary` → ↓ {speed} · {n} 个任务
+- `mobileSpeedWindow` → 近 60 秒
+- `mobileTaskDeleted` → 已删除任务
+- `mobileTaskDetail` → 任务详情
+- `mobileTaskFileDeleted` → 已删除任务和文件
+- `mobileTaskInfo` → 任务信息
+- `mobileUrlHint` → 下载链接（支持多行批量 / magnet / m3u8）
+- `publishDate` → 发布时间
+- `softwareUpdate` → 软件更新
+- `updateChannel` → 更新渠道
+- `updateChannelDesc` → 预览版抢先体验尚未正式发布的版本，可能不稳定
+- `updateChannelFrontier` → 预览版
+- `updateChannelStable` → 正式版
+- `updateFailedOpenSite` → 前往官网下载
+- `updateFailedTitle` → 上次更新失败
+- `updateFallbackTaskCreated` → 已将更新加入下载列表
+- `updateFallbackToTask` → 改用下载任务下载
+- `updateLater` → 稍后再说
+- `updateNow` → 立即更新
+- `updatePromptBody` → 新版本 v{v} 已发布（{size}）。现在更新？
+
+## 其他（178）
+
+- `activeGroupLabel` → 正在下载
+- `activeSegments` → 活跃分段
+- `addCategory` → 添加分类
+- `addDeviceAccountFooter` → 跨网络的设备由账户自动连通，无需配置端口转发或内网穿透。
+- `addDeviceAccountLabel` → 登录账号
+- `addDeviceAccountSynced` → 已登录 {account}，设备已自动同步
+- `addDeviceEntry` → 添加设备
+- `addDeviceHint` → 在另一台设备上安装 FluxDown 并登录同一账号，该设备会自动出现在此，无需手动配对；跨网络连接由云端自动完成。
+- `addDeviceLoginRequired` → 请先登录 FluxDown 账号后再添加设备。
+- `addDeviceTabAccount` → 账户自动（推荐）
+- `addDeviceTabLocal` → 直连配对（免账号）
+- `addDownloadTask` → 添加新的下载任务
+- `allDevices` → 全部设备
+- `andMoreFiles` → 等 {count} 个文件
+- `auto` → 自动
+- `autoCategoryDirs` → 一键分类目录
+- `autoCategoryDirsConfirm` → 将每个分类的保存目录设为默认下载目录下的同名子文件夹（如 {example}）？已手动设置的分类目录会被覆盖。
+- `autoCheckUpdate` → 自动检查更新
+- `autoCheckUpdateDesc` → 启动应用时自动检查新版本
+- `autoDetectFilename` → 自动识别文件名
+- `autoMaxConnections` → Auto 模式连接上限
+- `autoMaxConnectionsDesc` → 连接数设为 Auto 时智能调度允许的最大连接数
+- `autoRetryCount` → 失败重试次数
+- `autoRetryCountDesc` → 网络中断等瞬时错误失败后自动重试的次数
+- `autoRetryDelay` → 重试间隔
+- `autoRetryDelayDesc` → 每次自动重试前的等待秒数（按重试次数递增）
+- `autoRetryDelayUnit` → 秒（0 = 立即）
+- `autoRetryOff` → 关闭
+- `autoRetryUnlimited` → 无限
+- `autoStartup` → 开机自启动
+- `autoStartupDesc` → 系统启动时自动运行 FluxDown
+- `autoStartupFailedDesc` → 无法修改开机自启动设置，请检查系统权限。
+- `back` → 返回
+- `boostBannerActive` → ⚡ 优先下载：{fileName} — 完成后自动恢复 {count} 个任务
+- `boostBannerCancel` → 取消
+- `boostDownload` → 优先下载
+- `checkUpdate` → 检查更新
+- `checkUpdateDesc` → 检查是否有新版本可用
+- `clearCategoryDirs` → 清除分类目录
+- `clearCategoryDirsConfirm` → 清除所有分类的保存目录？之后所有下载都会回到默认下载目录。
+- `configuredThreads` → 线程数
+- `confirm` → 确定
+- `customCategories` → 自定义分类
+- `customCategoriesDesc` → 创建自定义文件分类，按扩展名或正则表达式匹配
+- `customCategory` → 自定义
+- `customRangeHint` → 输入 {min}-{max}
+- `customThreads` → 自定义
+- `customThreadsHint` → 输入 1-256
+- `defaultQueue` → 默认队列
+- `defaultQueueSetting` → 默认下载队列
+- `defaultQueueSettingDesc` → 浏览器扩展和新建下载时默认使用的队列
+- `defaultSaveDir` → 默认保存目录
+- `defaultSaveDirDesc` → 新建下载任务时的默认保存位置
+- `defaultThreads` → 最大连接数
+- `defaultThreadsDesc` → 每个任务允许的最大并发连接数上限，下载器从低并发起步按服务器表现逐步提升
+- `deselectAll` → 取消全选
+- `devicesOnlineCount` → {count} 台设备在线
+- `duplicateTorrentToast` → 该种子已在任务「{name}」中（下载或做种），未重复添加
+- `duplicateTorrentToastUnnamed` → 该种子已存在于其他任务，未重复添加
+- `dynamicSplit` → 拆分
+- `ed2kEnableKad` → Kad DHT 找源
+- `ed2kEnableKadDesc` → 通过 Kad 分布式网络去中心化找源，服务器全挂时仍可找到文件源
+- `ed2kEnableUpnp` → UPnP 端口映射
+- `ed2kEnableUpnpDesc` → 通过 UPnP 自动映射端口争取 HighID，可连接更多对等端并接收回连
+- `ed2kLinkAssociation` → 关联 ed2k 链接
+- `ed2kLinkAssociationDesc` → 将 FluxDown 设为 ed2k:// 链接的默认打开方式
+- `ed2kListenPort` → 监听端口
+- `ed2kListenPortDesc` → eD2K 客户端 TCP/UDP 监听端口（0 = 系统自动选择）
+- `ed2kResetServers` → 重置为默认
+- `ed2kResetServersConfirm` → 确定要恢复默认的服务器列表吗？
+- `ed2kServerCount` → {n} 个服务器
+- `ed2kServerList` → 服务器列表
+- `ed2kServerListDesc` → 手动填写的电驴服务器（用于找源），与订阅列表自动合并去重
+- `ed2kServerPlaceholder` → 每行一个服务器地址，例如： 176.123.5.89:4725 45.82.80.155:5687
+- `ed2kServerSub` → 服务器订阅
+- `ed2kServerSubDesc` → 定期从社区维护的 server.met 获取最新服务器，自动与上方列表合并去重
+- `ed2kServerSubNeverUpdated` → 尚未更新
+- `ed2kServerSubPlaceholder` → 每行一个 server.met 地址，例如： http://upd.emule-security.org/server.met https://www.shor
+- `ed2kServerSubResetConfirm` → 确定要恢复默认的订阅地址吗？
+- `ed2kServerSubStatus` → 已订阅 {n} 个服务器
+- `ed2kServerSubUpdateFailed` → 更新失败
+- `ed2kServerSubUpdateNow` → 立即更新
+- `ed2kServerSubUpdatedAt` → 更新于 {time}
+- `ed2kServerSubUpdating` → 更新中…
+- `ed2kSettings` → eD2K 服务器
+- `ed2kSettingsDesc` → 配置电驴服务器与 server.met 订阅
+- `errorCopied` → 已复制错误信息
+- `filenameOptional` → 文件名（留空自动识别）
+- `folderCopiedToClipboard` → 已复制文件夹到剪贴板
+- `fromBrowserExtension` → 来自浏览器扩展的下载请求
+- `hlsQualityDesc` → 检测到多个画质版本，请选择要下载的画质
+- `hlsQualityTitle` → 选择画质
+- `importTxtFile` → 导入 TXT 文件
+- `importTxtFound` → 已导入 {count} 个链接
+- `importTxtNoUrls` → 未在文件中找到有效链接
+- `incomingPairingAccept` → 确认配对
+- `incomingPairingCountdown` → {seconds} 秒后自动拒绝
+- `incomingPairingFrom` → 来自「{device}」
+- `incomingPairingHint` → 请确认下方数字与对方屏幕上显示的完全一致，不一致请拒绝
+- `incomingPairingReject` → 拒绝
+- `incomingPairingTitle` → 有设备请求与本机配对
+- `infoCompletedAt` → 结束时间
+- `infoDownloaded` → 已下载
+- `infoDuration` → 耗时
+- `infoError` → 错误
+- `infoPath` → 路径
+- `infoProtocolSource` → 协议·来源
+- `infoRemaining` → 剩余
+- `infoSize` → 大小
+- `infoSourcePage` → 来源页
+- `infoSpeed` → 速度
+- `infoStartedAt` → 开始时间
+- `infoStatus` → 状态
+- `infoThreads` → {n} 线程
+- `infoUrl` → 地址
+- `keepAwakeWhileDownloading` → 下载时保持唤醒
+- `keepAwakeWhileDownloadingDesc` → 有任务下载时阻止系统睡眠和息屏，任务完成后自动恢复
+- `laterIntoQueueTooltip` → 创建任务但不开始，加入「{name}」；点右侧箭头选择其他队列
+- `laterQueue` → 稍后下载
+- `mainQueue` → 主队列
+- `matchByExtension` → 按扩展名
+- `matchByRegex` → 按正则表达式
+- `matchMode` → 匹配方式
+- `monthNames` → 一月,二月,三月,四月,五月,六月,七月,八月,九月,十月,十一月,十二月
+- `multiDeviceDesc` → 登录后可把下载下发到其他设备执行并实时查看进度
+- `multiDeviceTitle` → 多设备协同
+- `nCustomCategories` → 个自定义分类
+- `nRecords` → {n} 条记录
+- `nRetries` → {n} 次
+- `nTasks` → {n} 个任务
+- `nThreads` → {n} 线程
+- `newDownload` → 新建下载
+- `newVersionFound` → 发现新版本 v{v}
+- `officialWebsite` → 官方网站
+- `older` → 更久以前
+- `orSeparator` → 或
+- `regexHint` → 匹配文件名，如：.*\.(epub|mobi)$
+- `regexInvalid` → 正则表达式无效
+- `regexLabel` → 正则表达式
+- `rememberLastSaveDir` → 跟随上次保存位置
+- `rememberLastSaveDirDesc` → 开启后新建下载默认使用上次下载的保存位置，而非固定的默认目录
+- `resetAllCategoriesConfirm` → 确定要恢复所有分类为默认状态吗？自定义分类将被删除，内置分类将恢复初始配置。
+- `resetBuiltinCategories` → 恢复默认
+- `resolveVariantDesc` → 检测到多个可下载规格，请选择要下载的版本
+- `resolveVariantTitle` → 选择规格
+- `restoreDefaultPath` → 恢复默认
+- `saveDir` → 保存目录
+- `selectedCount` → 已选 {n} 项
+- `shutdownArmedHint` → 所有任务完成 {m} 分钟后将自动关机
+- `shutdownArmedHintImmediate` → 所有任务完成后将立即关机
+- `shutdownCancelButton` → 取消关机
+- `shutdownCountdown` → 将在 {time} 后关机
+- `shutdownDelayLabel` → 完成后延迟
+- `shutdownDelayMinutes` → {m} 分钟
+- `shutdownImmediate` → 立即
+- `shutdownMinutesUnit` → 分钟
+- `shutdownNeedActiveTask` → 有任务运行中才能开启
+- `shutdownTitle` → 任务完成后自动关机
+- `shutdownTriggerLabel` → 完成后关机
+- `skipThisVersion` → 跳过此版本
+- `splitCount` → {total} 次（主动 {proactive} · 响应 {reactive}）
+- `splitLatest` → 最近: #{parentNum} 拆分出 #{childNum} ({childSize})
+- `thisDevice` → 本机
+- `thisMonth` → 最近一个月
+- `thisWeek` → 最近一周
+- `timeUnitDays` → 天
+- `timeUnitHours` → 小时
+- `timeUnitMinutes` → 分钟
+- `today` → 今天
+- `toggleToDark` → 切换到暗色模式
+- `toggleToLight` → 切换到亮色模式
+- `ungroupedTasks` → 未分组
+- `upToDate` → 已是最新版本
+- `useServerTime` → 使用服务器文件时间
+- `useServerTimeDesc` → 下载完成后将文件的修改时间设为服务器提供的原始时间（Last-Modified），而非下载完成时间
+- `visitWebsiteForMore` → 访问官网获取更多信息
+- `weekdaysShort` → 一,二,三,四,五,六,日
+- `yesterday` → 昨天

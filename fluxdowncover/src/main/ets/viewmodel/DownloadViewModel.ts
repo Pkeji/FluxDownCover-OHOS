@@ -13,6 +13,7 @@ import { QueueStore } from '../store/QueueStore';
 import { CategoryStore } from '../store/CategoryStore';
 import { BackgroundTaskManager } from '../util/BackgroundTaskManager';
 import { NotificationHelper } from '../util/NotificationHelper';
+import { LiveViewHelper } from '../util/LiveViewHelper';
 import { matchesBuiltinCategory } from '../utils/common';
 import { logCollector } from '../utils/LogCollector';
 import { RssStore } from '../store/RssStore';
@@ -49,6 +50,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   @Trace colorScheme: string = 'cyan'; // accent color scheme id
   @Trace clipboardMonitor: boolean = false; // auto-detect URLs from clipboard
   @Trace notifyOnComplete: boolean = true; // system notification when a task finishes
+  @Trace liveViewEnabled: boolean = true; // live window capsule for download progress
   private lastProgressNotify: Map<string, number> = new Map(); // 进度通知节流
   @Trace autoRetryCount: number = 0; // failed-download auto retry count (0 = disabled)
   @Trace autoRetryDelaySec: number = 5; // seconds between retries
@@ -103,7 +105,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     const [
       theme, themeMode, maxSegments, verifyIntegrity, mcpEnabled, mcpToken,
       globalSpeedLimit, proxyUrl, githubMirrorUrl, colorScheme, clipboardMonitor,
-      notifyOnComplete, autoRetryCount, autoRetryDelaySec, fileExistsBehavior,
+      notifyOnComplete, liveViewEnabled, autoRetryCount, autoRetryDelaySec, fileExistsBehavior,
       fileMissingAction, useServerTime,
     ] = await Promise.all([
       this.settings.getString('theme', 'light'),
@@ -118,6 +120,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
       this.settings.getString('colorScheme', 'cyan'),
       this.settings.getBoolean('clipboardMonitor', false),
       this.settings.getBoolean('notifyOnComplete', true),
+      this.settings.getBoolean('liveViewEnabled', true),
       this.settings.getNumber('autoRetryCount', 0),
       this.settings.getNumber('autoRetryDelaySec', 5),
       this.settings.getString('fileExistsBehavior', 'overwrite'),
@@ -136,12 +139,14 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     this.colorScheme = colorScheme;
     this.clipboardMonitor = clipboardMonitor;
     this.notifyOnComplete = notifyOnComplete;
+    this.liveViewEnabled = liveViewEnabled;
     this.autoRetryCount = autoRetryCount;
     this.autoRetryDelaySec = autoRetryDelaySec;
     this.fileExistsBehavior = fileExistsBehavior;
     this.fileMissingAction = fileMissingAction;
     this.useServerTime = useServerTime;
     NotificationHelper.getInstance().setEnabled(this.notifyOnComplete);
+    LiveViewHelper.getInstance().setEnabled(this.liveViewEnabled);
     this.context = context;
 
     this.engine.setListener(this);
@@ -425,6 +430,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
       if (t.status === TaskStatus.Downloading || t.status === TaskStatus.Queued || t.status === TaskStatus.Verifying || t.status === TaskStatus.Pending) {
         this.engine.pause(t);
         NotificationHelper.getInstance().cancelProgress(t.id);
+        LiveViewHelper.getInstance().stop(t.id);
       }
     }
     this.refreshTick++;
@@ -498,6 +504,9 @@ export class DownloadViewModel implements EngineListener, McpBackend {
         const progress = task.downloadedBytes / task.totalBytes;
         const speedStr = this.formatSpeed(task.speed);
         NotificationHelper.getInstance().notifyDownloadProgress(this.context, task.id, task.fileName, progress, speedStr).catch(() => {});
+        if (this.liveViewEnabled) {
+          LiveViewHelper.getInstance().updateDownload(this.context, task.id, task.fileName, progress, speedStr).catch(() => {});
+        }
       }
     }
   }
@@ -520,6 +529,10 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     if (this.notifyOnComplete && this.context) {
       const ctx = this.context;
       NotificationHelper.getInstance().notifyDownloadComplete(ctx, task.id, task.fileName).catch(() => {});
+    }
+    // 实况窗：完成时移除胶囊
+    if (this.liveViewEnabled) {
+      LiveViewHelper.getInstance().removeDownload(task.id).catch(() => {});
     }
     // Best-effort: push the finished file into the public Download directory.
     this.exportToDownload(task).catch((e: Error) => {
@@ -579,6 +592,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     if (t) {
       this.engine.pause(t);
       NotificationHelper.getInstance().cancelProgress(id);
+      LiveViewHelper.getInstance().stop(id);
     }
   }
 
@@ -595,6 +609,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     if (t) {
       this.remove(t);
       NotificationHelper.getInstance().cancelProgress(id);
+      LiveViewHelper.getInstance().stop(id);
     }
   }
 
@@ -1190,6 +1205,12 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     this.notifyOnComplete = on;
     this.settings.put('notifyOnComplete', on);
     NotificationHelper.getInstance().setEnabled(on);
+  }
+
+  setLiveViewEnabled(on: boolean): void {
+    this.liveViewEnabled = on;
+    this.settings.put('liveViewEnabled', on);
+    LiveViewHelper.getInstance().setEnabled(on);
   }
 
   setAutoRetry(count: number, delaySec: number): void {

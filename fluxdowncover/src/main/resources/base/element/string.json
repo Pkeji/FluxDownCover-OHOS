@@ -33,6 +33,10 @@
       "value": "需要在后台保持运行以继续下载任务"
     },
     {
+      "name": "perm_live_view_reason",
+      "value": "需要在实况窗显示下载进度"
+    },
+    {
       "name": "page_title",
       "value": "下载"
     },

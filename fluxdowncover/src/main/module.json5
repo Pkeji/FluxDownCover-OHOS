@@ -79,6 +79,13 @@
         ]
       }
     ],
+    "definePermissions": [
+      {
+        "name": "ohos.permission.LIVE_VIEW",
+        "grantMode": "system_grant",
+        "availableLevel": "system_basic"
+      }
+    ],
     "requestPermissions": [
       {
         "name": "ohos.permission.INTERNET",
@@ -103,6 +110,16 @@
       {
         "name": "ohos.permission.KEEP_BACKGROUND_RUNNING",
         "reason": "$string:perm_background_reason",
+        "usedScene": {
+          "abilities": [
+            "EntryAbility"
+          ],
+          "when": "always"
+        }
+      },
+      {
+        "name": "ohos.permission.LIVE_VIEW",
+        "reason": "$string:perm_live_view_reason",
         "usedScene": {
           "abilities": [
             "EntryAbility"
