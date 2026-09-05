@@ -2584,30 +2584,28 @@ struct SettingsContent {
     return palette(this.vm.theme, this.vm.colorScheme);
   }
 
-  /** 打开QQ群：先检测是否安装QQ，安装了则用QQ跳转，没安装则用浏览器打开 */
+  /** 打开QQ群：检测QQ，有QQ直接跳转，没QQ用浏览器打开 */
   private openQQGroup(): void {
     const groupNumber = '1121565536';
     const h5Url = 'https://qun.qq.com/universal-share/share?ac=1&authKey=Jcxm9Kgi22K0O%2FPwws6chnIVQSjKNpEAcfq0tADTNJ1EwMFzohA4YOlXuwOz%2B8xz&busi_data=eyJncm91cENvZGUiOiIxMTIxNTY1NTM2IiwidG9rZW4iOiJwSzBkNTFKSGFGbXRjZk5pOFE0aGtQSDZSMHN0MnExWVJGcDR6WlgzeE5VcEJ0M3JTcnIrZHNlc0kzK3RRV1lJIiwidWluIjoiMTAxMjQ0MzU1NyJ9&data=Hvy3TedB6d7PgopsRuZzjY00d9OYpE_-5ASDCIym0LPHvCNBY6s7Q6IAdChl4iYB5L1L6r7YVZ4fQz0Dio5PGQ&svctype=4&tempid=h5_group_info';
     const qqScheme = `mqqapi://card/show_pslcard?src_type=internal&version=1&uin=${groupNumber}&card_type=group&source=qrcode`;
 
-    // 先检测是否安装了QQ（避免mqqapi://找不到应用时弹出"暂无可打开方式"系统对话框）
-    const qqBundleNames = ['com.tencent.mobileqq', 'com.tencent.tim', 'com.tencent.qq'];
-    let qqInstalled = false;
-    for (const bn of qqBundleNames) {
+    // 检测是否安装了QQ
+    const qqBundles = ['com.tencent.mobileqq', 'com.tencent.tim', 'com.tencent.qq', 'com.tencent.mobileqqi', 'com.tencent.minihd.qq'];
+    let hasQQ = false;
+    for (const bn of qqBundles) {
       try {
         bundleManager.getBundleInfo(bn, bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT);
-        qqInstalled = true;
+        hasQQ = true;
         break;
-      } catch (_) {
-        // 未安装，继续检测下一个
-      }
+      } catch (_) { }
     }
 
-    if (qqInstalled) {
-      // 安装了QQ，用QQ scheme跳转
+    if (hasQQ) {
+      // 有QQ，直接跳转QQ加群
       const want: Want = { uri: qqScheme };
       (getContext(this) as common.UIAbilityContext).startAbility(want).catch(() => {
-        logCollector.warn('QQGroup', 'QQ scheme跳转失败，降级浏览器');
+        // QQ跳转失败，降级浏览器
         const h5Want: Want = { uri: h5Url };
         (getContext(this) as common.UIAbilityContext).startAbility(h5Want);
       });
@@ -2637,6 +2635,13 @@ struct SettingsContent {
         promptAction.showToast({ message: '群链接已复制，请在浏览器中粘贴打开' });
       }
     }
+  }
+
+  /** 长按QQ群：复制群号 */
+  private copyQQGroupNumber(): void {
+    const groupNumber = '1121565536';
+    pasteboard.getSystemPasteboard().setData(pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, groupNumber));
+    promptAction.showToast({ message: '群号已复制: ' + groupNumber });
   }
 
   private minToTime(min: number): string {
@@ -2716,6 +2721,12 @@ struct SettingsContent {
         .onClick(() => {
           this.openQQGroup();
         })
+        .gesture(
+          LongPressGesture({ repeat: false })
+            .onAction(() => {
+              this.copyQQGroupNumber();
+            })
+        )
 
         // ── 下载设置 ──
         Row() {
@@ -3862,24 +3873,23 @@ struct SettingsContent {
                 this.rssExclude = '';
               }
             })
+          Button('立即检查所有订阅')
+            .fontSize(14)
+            .backgroundColor(this.p.primary)
+            .fontColor('#FFFFFF')
+            .width('100%')
+            .margin({ top: 8 })
+            .onClick(() => {
+              this.vm.pollRss().then((n: number) => {
+                promptAction.showToast({ message: `新增 ${n} 个下载` });
+              });
+            })
         }
         
         .padding(16)
         .backgroundColor(this.p.surface)
         .borderRadius(12)
         .margin({ left: 16, right: 16, bottom: 12 })
-
-        Button('立即检查所有订阅')
-          .fontSize(14)
-          .backgroundColor(this.p.primary)
-          .fontColor('#FFFFFF')
-          .width('80%')
-          .margin({ bottom: 12 })
-          .onClick(() => {
-            this.vm.pollRss().then((n: number) => {
-              promptAction.showToast({ message: `新增 ${n} 个下载` });
-            });
-          })
 
         ForEach(this.vm.rssSubs, (sub: RssSubscription) => {
           Column() {

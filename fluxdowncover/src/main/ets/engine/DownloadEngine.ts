@@ -454,6 +454,8 @@ export class DownloadEngine implements EngineHooks {
         (task.seedingStatus === 'seeding' || task.seedingStatus === 'queued')) {
       BtEngine.getInstance().stopSeeding(task, 'userStopped');
     }
+    // 保存暂停状态到数据库
+    this.repo.update(task).catch(() => {});
   }
 
   resume(task: DownloadTask): Promise<void> {
@@ -1055,6 +1057,16 @@ export class DownloadEngine implements EngineHooks {
     };
 
     let lastDataTime = Date.now(); // 用于数据静默超时检测
+    let respCode = 0;
+    let rangeIgnored = false;
+    req.on('headersReceive', (header: object) => {
+      const h = header as Record<string, string>;
+      respCode = Number(h[':status'] || h['status'] || 0);
+      // 如果服务器返回200而非206，说明忽略了Range请求，标记后由dataEnd处理
+      if (respCode === 200 && seg.end >= 0) {
+        rangeIgnored = true;
+      }
+    });
     req.on('dataReceive', (chunk: ArrayBuffer) => {
       lastDataTime = Date.now();
       if (ctrl.aborted || writeErr) {
@@ -1088,6 +1100,9 @@ export class DownloadEngine implements EngineHooks {
         } else if (ctrl.aborted) {
           // 暂停时不标记分段完成，避免任务被错误标记为已完成
           segResolve();
+        } else if (rangeIgnored && seg.index > 0) {
+          // 服务器忽略Range请求且不是第一个分段，抛错让上层重新探测
+          segReject(new Error('服务器忽略Range请求，重新探测'));
         } else {
           seg.done = true;
           segResolve();
@@ -1097,35 +1112,33 @@ export class DownloadEngine implements EngineHooks {
 
     try {
       const downloadUrl = this.applyMirror(seg.url ?? task.url);
-      await req
-        .requestInStream(downloadUrl, {
-          method: http.RequestMethod.GET,
-          header: this.buildHttpHeaders(task, { Range: `bytes=${offset}-${seg.end >= 0 ? seg.end : ''}`, Accept: '*/*' }),
-          connectTimeout: 30000,
-          readTimeout: 60000
-        })
-        .catch((e: BusinessError) => {
-          if (!ctrl.aborted) {
-            throw e;
-          }
-        });
-      // 数据静默超时：60s 内无新数据到达视为断流，触发重试
-      const IDLE_TIMEOUT_MS = 60000;
-      await new Promise<void>((resolve, reject) => {
-        const timer = setInterval(() => {
-          if (Date.now() - lastDataTime > IDLE_TIMEOUT_MS) {
-            clearInterval(timer);
-            reject(new Error(`分段 ${seg.index} 下载超时：超过 ${IDLE_TIMEOUT_MS / 1000}s 无数据`));
-          }
-        }, 2000);
-        segDone.then(() => {
-          clearInterval(timer);
-          resolve();
-        }).catch((e) => {
-          clearInterval(timer);
-          reject(e);
-        });
-      });
+      // 数据静默超时：30s 内无新数据到达视为断流，触发重试
+      // 必须在请求之前启动，否则请求挂起时timer永远不会启动
+      const IDLE_TIMEOUT_MS = 30000;
+      const idleTimer = setInterval(() => {
+        if (Date.now() - lastDataTime > IDLE_TIMEOUT_MS) {
+          clearInterval(idleTimer);
+          req.destroy();
+          segReject(new Error(`分段 ${seg.index} 下载超时：超过 ${IDLE_TIMEOUT_MS / 1000}s 无数据`));
+        }
+      }, 2000);
+      try {
+        await req
+          .requestInStream(downloadUrl, {
+            method: http.RequestMethod.GET,
+            header: this.buildHttpHeaders(task, { Range: `bytes=${offset}-${seg.end >= 0 ? seg.end : ''}`, Accept: '*/*' }),
+            connectTimeout: 15000,
+            readTimeout: 30000
+          })
+          .catch((e: BusinessError) => {
+            if (!ctrl.aborted) {
+              throw e;
+            }
+          });
+        await segDone;
+      } finally {
+        clearInterval(idleTimer);
+      }
       // 数据完整性校验：分段指定了 end 时，确保写入了足够的字节
       if (seg.end >= 0 && offset < seg.end + 1) {
         throw new Error(`分段 ${seg.index} 下载不完整（预期到 ${seg.end}，实际写到 ${offset - 1}）`);

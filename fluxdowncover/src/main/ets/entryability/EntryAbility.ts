@@ -2,6 +2,7 @@ import { AbilityConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { deviceInfo } from '@kit.BasicServicesKit';
+import { notificationManager } from '@kit.NotificationKit';
 import { DatabaseManager } from '../store/DatabaseManager';
 import { DownloadEngine } from '../engine/DownloadEngine';
 import { SettingsStore } from '../store/SettingsStore';
@@ -98,6 +99,13 @@ export default class EntryAbility extends UIAbility {
       hilog.error(DOMAIN, 'FluxDownCover', 'SettingsStore init failed: %{public}s', e.message);
     });
     BackgroundTaskManager.getInstance().init(this.context);
+
+    // 请求通知权限（下载进度/完成通知需要）
+    notificationManager.requestEnableNotification().then(() => {
+      hilog.info(DOMAIN, 'FluxDownCover', '%{public}s', 'Notification permission granted');
+    }).catch((e: Error) => {
+      hilog.warn(DOMAIN, 'FluxDownCover', 'Notification permission denied: %{public}s', e.message);
+    });
 
     // Handle deep link from cold start
     const url = extractUrlFromWant(want);

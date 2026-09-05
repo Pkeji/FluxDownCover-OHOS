@@ -49,6 +49,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   @Trace colorScheme: string = 'cyan'; // accent color scheme id
   @Trace clipboardMonitor: boolean = false; // auto-detect URLs from clipboard
   @Trace notifyOnComplete: boolean = true; // system notification when a task finishes
+  private lastProgressNotify: Map<string, number> = new Map(); // 进度通知节流
   @Trace autoRetryCount: number = 0; // failed-download auto retry count (0 = disabled)
   @Trace autoRetryDelaySec: number = 5; // seconds between retries
   @Trace fileExistsBehavior: string = 'overwrite'; // overwrite | rename | skip
@@ -421,8 +422,9 @@ export class DownloadViewModel implements EngineListener, McpBackend {
 
   pauseAll(): void {
     for (const t of this.tasks) {
-      if (t.status === TaskStatus.Downloading || t.status === TaskStatus.Queued || t.status === TaskStatus.Verifying) {
+      if (t.status === TaskStatus.Downloading || t.status === TaskStatus.Queued || t.status === TaskStatus.Verifying || t.status === TaskStatus.Pending) {
         this.engine.pause(t);
+        NotificationHelper.getInstance().cancelProgress(t.id);
       }
     }
     this.refreshTick++;
@@ -487,6 +489,24 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     // ArkUI V2 中数组内 @ObservedV2 对象的属性变化可能不触发数组级 @Computed 重算
     this.refreshTick++;
       this.updateVisibleTasks();
+    // 进度通知+实况窗（节流：每1秒最多更新一次，避免通知栏闪烁）
+    if (this.notifyOnComplete && this.context && task.status === TaskStatus.Downloading && task.totalBytes > 0) {
+      const now = Date.now();
+      const last = this.lastProgressNotify.get(task.id) ?? 0;
+      if (now - last > 1000) {
+        this.lastProgressNotify.set(task.id, now);
+        const progress = task.downloadedBytes / task.totalBytes;
+        const speedStr = this.formatSpeed(task.speed);
+        NotificationHelper.getInstance().notifyDownloadProgress(this.context, task.id, task.fileName, progress, speedStr).catch(() => {});
+      }
+    }
+  }
+
+  private formatSpeed(bytesPerSec: number): string {
+    if (bytesPerSec <= 0) return '0 B/s';
+    if (bytesPerSec < 1024) return `${bytesPerSec.toFixed(0)} B/s`;
+    if (bytesPerSec < 1024 * 1024) return `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
+    return `${(bytesPerSec / (1024 * 1024)).toFixed(2)} MB/s`;
   }
 
   onTaskCompleted(task: DownloadTask): void {
@@ -499,7 +519,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     // Completion notification (toggleable in settings)
     if (this.notifyOnComplete && this.context) {
       const ctx = this.context;
-      NotificationHelper.getInstance().notifyDownloadComplete(ctx, '下载完成', `${task.fileName} 已下载完成`).catch(() => {});
+      NotificationHelper.getInstance().notifyDownloadComplete(ctx, task.id, task.fileName).catch(() => {});
     }
     // Best-effort: push the finished file into the public Download directory.
     this.exportToDownload(task).catch((e: Error) => {
@@ -558,6 +578,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     const t = this.getTask(id);
     if (t) {
       this.engine.pause(t);
+      NotificationHelper.getInstance().cancelProgress(id);
     }
   }
 
@@ -573,6 +594,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     const t = this.getTask(id);
     if (t) {
       this.remove(t);
+      NotificationHelper.getInstance().cancelProgress(id);
     }
   }
 
@@ -586,11 +608,9 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   }
 
   async resumeAllTasks(): Promise<void> {
-    for (const t of this.tasks) {
-      if (t.status === TaskStatus.Paused) {
-        await this.engine.resume(t);
-      }
-    }
+    const paused = this.tasks.filter((t: DownloadTask) => t.status === TaskStatus.Paused);
+    // 并行恢复所有任务，不用await串行
+    await Promise.all(paused.map((t: DownloadTask) => this.engine.resume(t)));
     this.refreshTick++;
     this.updateVisibleTasks();
   }
