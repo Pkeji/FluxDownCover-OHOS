@@ -2,7 +2,7 @@ import { http } from '@kit.NetworkKit';
 import { logCollector } from '../utils/LogCollector';
 
 /** Current app version, must match AppScope/app.json5 versionName. */
-export const APP_VERSION = '1.2.0';
+export const APP_VERSION = '1.2.1';
 
 const GITHUB_API = 'https://api.github.com/repos/Pkeji/FluxDownCover-OHOS/releases/latest';
 
