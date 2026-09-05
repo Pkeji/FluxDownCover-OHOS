@@ -2612,11 +2612,30 @@ struct SettingsContent {
         (getContext(this) as common.UIAbilityContext).startAbility(h5Want);
       });
     } else {
-      // 没安装QQ，直接用浏览器打开（只传uri，系统弹出浏览器选择器）
-      const h5Want: Want = { uri: h5Url };
-      (getContext(this) as common.UIAbilityContext).startAbility(h5Want).catch(() => {
-        logCollector.warn('QQGroup', '浏览器打开失败');
-      });
+      // 没安装QQ，检测浏览器包名后直接指定浏览器打开（绕过系统选择逻辑，避免弹"暂无可打开方式"）
+      const browserBundleNames = ['com.huawei.browser', 'com.huawei.browser.pad', 'com.android.chrome', 'com.microsoft.emmx'];
+      let browserBundleName = '';
+      for (const bn of browserBundleNames) {
+        try {
+          bundleManager.getBundleInfo(bn, bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT);
+          browserBundleName = bn;
+          break;
+        } catch (_) {
+          // 未安装，继续检测
+        }
+      }
+      if (browserBundleName) {
+        const h5Want: Want = { bundleName: browserBundleName, uri: h5Url };
+        (getContext(this) as common.UIAbilityContext).startAbility(h5Want).catch(() => {
+          // 指定浏览器打开失败，降级为系统方式
+          const fallbackWant: Want = { uri: h5Url };
+          (getContext(this) as common.UIAbilityContext).startAbility(fallbackWant);
+        });
+      } else {
+        // 没检测到浏览器，复制链接
+        pasteboard.getSystemPasteboard().setData(pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, h5Url));
+        promptAction.showToast({ message: '群链接已复制，请在浏览器中粘贴打开' });
+      }
     }
   }
 
