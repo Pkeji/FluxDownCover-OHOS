@@ -5,7 +5,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      width: 320px;
+      width: 340px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: #f5f6f8;
       color: #1a1a2e;
@@ -13,67 +13,91 @@
     .header {
       background: linear-gradient(135deg, #00BCD4, #006064);
       color: #fff;
-      padding: 16px;
+      padding: 14px 16px;
       display: flex;
       align-items: center;
       gap: 10px;
     }
-    .header img { width: 28px; height: 28px; }
-    .header h1 { font-size: 16px; font-weight: 600; }
-    .content { padding: 16px; }
+    .header img { width: 26px; height: 26px; }
+    .header h1 { font-size: 15px; font-weight: 600; flex: 1; }
+    .conn { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #bbb; }
+    .dot.on { background: #4CAF50; box-shadow: 0 0 6px #4CAF50; }
+    .dot.off { background: #f44336; }
+    .content { padding: 14px 16px; }
     .url-box {
       background: #fff;
       border: 1px solid #e0e0e0;
       border-radius: 8px;
-      padding: 10px;
+      padding: 9px 10px;
       font-size: 12px;
       color: #666;
       word-break: break-all;
-      max-height: 80px;
+      max-height: 70px;
       overflow-y: auto;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
     .btn {
       width: 100%;
-      padding: 10px;
+      padding: 9px;
       border: none;
       border-radius: 8px;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
       cursor: pointer;
       transition: opacity 0.2s;
     }
     .btn:active { opacity: 0.7; }
-    .btn-primary {
-      background: linear-gradient(135deg, #00BCD4, #006064);
-      color: #fff;
+    .btn-primary { background: linear-gradient(135deg, #00BCD4, #006064); color: #fff; }
+    .btn-secondary { background: #e8e8e8; color: #333; margin-top: 8px; }
+    .status { text-align: center; font-size: 12px; margin-top: 9px; color: #888; min-height: 16px; }
+    .status.success { color: #2e7d32; }
+    .status.error { color: #d32f2f; }
+    .tasks-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin: 14px 0 8px; font-size: 12px; font-weight: 600; color: #444;
     }
-    .btn-secondary {
-      background: #e8e8e8;
-      color: #333;
-      margin-top: 8px;
+    .tasks-head .count { font-weight: 400; color: #999; }
+    #taskList { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+    .empty { font-size: 12px; color: #aaa; text-align: center; padding: 14px 0; }
+    .task {
+      background: #fff; border: 1px solid #ececec; border-radius: 8px; padding: 9px 10px;
     }
-    .status {
-      text-align: center;
-      font-size: 12px;
-      margin-top: 10px;
-      color: #888;
+    .task .row1 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+    .task .name {
+      font-size: 12px; font-weight: 600; color: #222;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;
     }
-    .status.success { color: #4CAF50; }
-    .status.error { color: #f44336; }
+    .task .pct { font-size: 12px; color: #00838f; font-weight: 600; }
+    .bar { height: 6px; background: #eee; border-radius: 3px; margin: 7px 0 5px; overflow: hidden; }
+    .bar > i { display: block; height: 100%; background: linear-gradient(90deg,#26c6da,#00838f); border-radius: 3px; transition: width .4s; }
+    .task .row2 { display: flex; justify-content: space-between; font-size: 10px; color: #999; }
+    .st { padding: 1px 6px; border-radius: 8px; font-size: 10px; }
+    .st.downloading { background: #e0f7fa; color: #00838f; }
+    .st.queued, .st.pending, .st.verifying { background: #fff8e1; color: #b28704; }
+    .st.paused { background: #eceff1; color: #546e7a; }
+    .st.completed { background: #e8f5e9; color: #2e7d32; }
+    .st.error { background: #ffebee; color: #c62828; }
   </style>
 </head>
 <body>
   <div class="header">
     <img src="icons/icon48.png" alt="FluxDown Cover">
-    <h1>FluxDown Cover 下载管理器</h1>
+    <h1>FluxDown Cover</h1>
+    <div class="conn"><span class="dot" id="connDot"></span><span id="connText">检测中</span></div>
   </div>
   <div class="content">
     <div class="url-box" id="currentUrl">正在获取页面地址...</div>
     <button class="btn btn-primary" id="sendBtn">发送到 FluxDown Cover</button>
     <button class="btn btn-secondary" id="copyBtn">复制深度链接</button>
     <div class="status" id="status"></div>
+
+    <div class="tasks-head">
+      <span>下载任务</span><span class="count" id="taskCount"></span>
+    </div>
+    <div id="taskList"><div class="empty">暂无任务</div></div>
   </div>
+  <script src="local-api.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

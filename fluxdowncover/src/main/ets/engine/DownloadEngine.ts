@@ -6,12 +6,12 @@ import fs from '@ohos.file.fs';
 import { DownloadTask, Segment } from '../model/DownloadTask';
 import { TaskStatus } from '../model/TaskStatus';
 import { ProtocolType } from '../model/ProtocolType';
-import { genId, sanitizeFileName, fileNameFromUrl, detectProtocol } from '../utils/common';
+import { genId, sanitizeFileName, fileNameFromUrl, detectProtocol, safePercentDecode } from '../utils/common';
 import { logCollector } from '../utils/LogCollector';
 import { TaskRepository } from '../store/TaskRepository';
 import { EngineListener, Ctrl } from './types'
 import { SpeedLimiter } from '../utils/SpeedLimiter';;
-import { EngineHooks } from './EngineHooks';
+import { EngineHooks, ProxyConfig } from './EngineHooks';
 import { hashFile } from './HashTask';
 import { buildHlsSegments, downloadHls } from './protocols/HlsProtocol';
 import { buildDashSegments, downloadDash } from './protocols/DashProtocol';
@@ -43,6 +43,8 @@ export class DownloadEngine implements EngineHooks {
   private controls: Map<string, Ctrl> = new Map();
   private maxSegments: number = 8;
   private githubMirrorUrl: string = '';
+  private ignoreTlsErrors: boolean = false;
+  private proxyUrl: string = '';
   private ticker: number | null = null;
   private prevLive: Map<string, number> = new Map();
   private lastTick: Map<string, number> = new Map();
@@ -113,6 +115,14 @@ export class DownloadEngine implements EngineHooks {
     this.useServerTime = enabled;
   }
 
+  setIgnoreTlsErrors(enabled: boolean): void {
+    this.ignoreTlsErrors = enabled;
+  }
+
+  setProxyUrl(url: string): void {
+    this.proxyUrl = (url || '').trim();
+  }
+
   // ---- EngineHooks ----
   onChunk(task: DownloadTask, len: number): void {
     task.liveBytes += len;
@@ -120,6 +130,82 @@ export class DownloadEngine implements EngineHooks {
 
   defaultDir(): string {
     return this.defaultDirPath;
+  }
+
+  /** Whether TLS certificate validation errors should be skipped (self-signed / legacy HTTPS). */
+  shouldIgnoreTlsErrors(): boolean {
+    return this.ignoreTlsErrors;
+  }
+
+  /**
+   * Throttle a whole fetched chunk against the global + per-task speed limits.
+   * Used by HLS/DASH, which fetch one segment per request (the HTTP segmented
+   * path instead throttles inside its streaming write loop).
+   */
+  async throttle(task: DownloadTask, len: number): Promise<void> {
+    let waitMs = SpeedLimiter.global().waitTime(len);
+    if (task.speedLimit > 0) {
+      const tw = this.taskLimiter(task.id, task.speedLimit).waitTime(len);
+      if (tw > waitMs) {
+        waitMs = tw;
+      }
+    }
+    if (waitMs > 0) {
+      await new Promise<void>(resolve => setTimeout(resolve, waitMs));
+    }
+    if (SpeedLimiter.global().getLimit() > 0) {
+      SpeedLimiter.global().tryConsume(len);
+    }
+    if (task.speedLimit > 0) {
+      this.taskLimiter(task.id, task.speedLimit).tryConsume(len);
+    }
+  }
+
+  /** Parse the user's proxy URL ("http://[user:pass@]host:port") into an HttpProxy descriptor. */
+  proxyOption(): ProxyConfig | undefined {
+    let rest = (this.proxyUrl || '').trim();
+    if (!rest) {
+      return undefined;
+    }
+    const schemeIdx = rest.indexOf('://');
+    if (schemeIdx >= 0) {
+      rest = rest.substring(schemeIdx + 3);
+    }
+    const slash = rest.indexOf('/');
+    if (slash >= 0) {
+      rest = rest.substring(0, slash);
+    }
+    let username: string | undefined;
+    let password: string | undefined;
+    const at = rest.lastIndexOf('@'); // split optional userinfo
+    if (at >= 0) {
+      const userinfo = rest.substring(0, at);
+      rest = rest.substring(at + 1);
+      const ci = userinfo.indexOf(':');
+      if (ci >= 0) {
+        username = userinfo.substring(0, ci);
+        password = userinfo.substring(ci + 1);
+      } else {
+        username = userinfo;
+      }
+    }
+    const colon = rest.lastIndexOf(':');
+    if (colon < 0) {
+      return undefined;
+    }
+    const host = rest.substring(0, colon);
+    const port = parseInt(rest.substring(colon + 1), 10);
+    if (!host || !isFinite(port) || port <= 0 || port > 65535) {
+      return undefined;
+    }
+    const cfg: ProxyConfig = { host, port, exclusionList: [] };
+    if (username) {
+      cfg.username = username;
+    }
+    if (password) {
+      cfg.password = password;
+    }
+    return cfg;
   }
 
   /** Merge per-task UA / Cookie / Referer / custom headers with base headers. */
@@ -214,7 +300,9 @@ export class DownloadEngine implements EngineHooks {
     task.referer = opts?.referer || '';
     task.customHeaders = opts?.headers || '';
     // File-exists policy: skip (mark completed), rename (append suffix), overwrite (default).
-    const policy = opts?.fileExists || 'overwrite';
+    // Official default is auto-rename — overwrite would silently destroy an
+    // existing file on a duplicate download.
+    const policy = opts?.fileExists || 'rename';
     if (policy !== 'overwrite') {
       try {
         if (fs.accessSync(task.filePath)) {
@@ -314,11 +402,11 @@ export class DownloadEngine implements EngineHooks {
 
     if (task.protocol === ProtocolType.HLS) {
       if (task.segments.length === 0) {
-        await buildHlsSegments(task, task.hlsQualityIndex);
+        await buildHlsSegments(task, task.hlsQualityIndex, this);
       }
     } else if (task.protocol === ProtocolType.DASH) {
       if (task.segments.length === 0) {
-        await buildDashSegments(task);
+        await buildDashSegments(task, this);
       }
     } else if (task.protocol === ProtocolType.FTP) {
       // handled entirely by downloadFtp
@@ -381,6 +469,9 @@ export class DownloadEngine implements EngineHooks {
         await downloadBittorrent(task, ctrl, this);
       } else if (dispatchProtocol === ProtocolType.ED2K) {
         await downloadEd2k(task, ctrl, this);
+      } else if (dispatchProtocol === ProtocolType.SFTP) {
+        // SFTP 目前未实现：给出明确的兜底提示，而不是走 HTTP 通道报 URL 解析错。
+        throw new Error('SFTP 协议暂未支持，请使用 HTTP/HTTPS 链接');
       } else {
         const pending = task.segments.filter((s) => !s.done);
         if (pending.length === 0) {
@@ -425,6 +516,14 @@ export class DownloadEngine implements EngineHooks {
 
       if (ctrl.aborted) {
         task.status = TaskStatus.Paused;
+      } else if (dispatchProtocol === ProtocolType.HLS || dispatchProtocol === ProtocolType.DASH) {
+        // HLS/DASH：分片已在 downloadHls/downloadDash 内顺序拼装到目标文件。
+        // 拼装完成即进入独立的"合并中"阶段（覆盖收尾/校验窗口），
+        // 避免用户看到 100% 却仍显示"下载中"而产生卡死错觉（官方有独立中间态）。
+        task.status = TaskStatus.Merging;
+        this.listener?.onTaskUpdated(task);
+        await this.verify(task);
+        this.finalizeCompleted(task);
       } else {
         task.status = TaskStatus.Verifying;
         this.listener?.onTaskUpdated(task);
@@ -433,7 +532,11 @@ export class DownloadEngine implements EngineHooks {
       }
     } catch (e) {
       task.status = TaskStatus.Error;
-      task.errorMessage = this.translateNetworkError(e as Error | null);
+      // verify() 已写入面向用户的“完整性校验失败”消息时予以保留，其余按网络错误翻译
+      const keepMessage = task.errorMessage !== undefined && task.errorMessage.startsWith('完整性校验失败');
+      if (!keepMessage) {
+        task.errorMessage = this.translateNetworkError(e as Error | null);
+      }
       this.listener?.onTaskError(task, task.errorMessage);
     } finally {
       this.active.delete(task);
@@ -806,6 +909,8 @@ export class DownloadEngine implements EngineHooks {
           expectDataType: http.HttpDataType.ARRAY_BUFFER,
           connectTimeout: 15000,
           readTimeout: 30000,
+          remoteValidation: this.ignoreTlsErrors ? 'skip' : 'system',
+          usingProxy: this.proxyOption(),
           maxLimit: 64 * 1024 // 64KB 足够用于探测；若 CDN 忽略 Range 返回完整文件，也不会浪费太多时间
         });
         const code = resp.responseCode as number;
@@ -910,22 +1015,14 @@ export class DownloadEngine implements EngineHooks {
     // RFC 5987 扩展格式优先：filename*=UTF-8''<percent-encoded>
     const star = /filename\*\s*=\s*(?:utf-8)?''([^;]+)/i.exec(cd);
     if (star) {
-      return sanitizeFileName(this.safeDecode(star[1].trim()));
+      // 带 GBK 回退：老站点可能用 GBK 百分号编码文件名
+      return sanitizeFileName(safePercentDecode(star[1].trim()));
     }
     const m = /filename\s*=\s*["']?([^"';]+)/i.exec(cd);
     if (m) {
-      return sanitizeFileName(this.safeDecode(m[1].trim()));
+      return sanitizeFileName(safePercentDecode(m[1].trim()));
     }
     return fileNameFromUrl(url);
-  }
-
-  /** decodeURIComponent 失败时（非法百分号编码）返回原字符串，避免探测抛异常。 */
-  private safeDecode(s: string): string {
-    try {
-      return decodeURIComponent(s);
-    } catch (_) {
-      return s;
-    }
   }
 
   /**
@@ -948,7 +1045,9 @@ export class DownloadEngine implements EngineHooks {
         header: this.buildHttpHeaders(task, { Accept: '*/*' }),
         expectDataType: http.HttpDataType.ARRAY_BUFFER,
         connectTimeout: 30000,
-        readTimeout: 60000
+        readTimeout: 60000,
+        remoteValidation: this.ignoreTlsErrors ? 'skip' : 'system',
+        usingProxy: this.proxyOption()
       });
       if (location) {
         return location;
@@ -972,9 +1071,31 @@ export class DownloadEngine implements EngineHooks {
       ];
       return;
     }
-    // 用户全局设置的 maxSegments 优先级最高，任务级 segmentCount 覆盖全局
-    const userMax = task.segmentCount > 0 ? task.segmentCount : this.maxSegments;
-    const n = Math.min(userMax, Math.max(1, Math.floor(total / (256 * 1024))));
+    // 任务级显式分片数（segmentCount>0）优先：用户明确指定即按其取值。
+    if (task.segmentCount > 0) {
+      const n = Math.min(task.segmentCount, 64);
+      task.totalBytes = total;
+      task.segments = this.splitInto(task, n, total, realUrl);
+      return;
+    }
+    // 官方 segment_advisor 语义：≤2MB 一律单分片（拆分无收益）；
+    // 其余按 ~1MB/分片 由文件大小推导，上限为用户全局 maxSegments 设置。
+    const SINGLE_SEGMENT_THRESHOLD = 2 * 1024 * 1024;
+    if (total <= SINGLE_SEGMENT_THRESHOLD) {
+      task.totalBytes = total;
+      task.segments = [
+        { index: 0, start: 0, end: total - 1, downloaded: 0, done: false, url: realUrl }
+      ];
+      return;
+    }
+    const bySize = Math.max(1, Math.floor(total / (1024 * 1024)));
+    const n = Math.max(1, Math.min(bySize, this.maxSegments));
+    task.totalBytes = total;
+    task.segments = this.splitInto(task, n, total, realUrl);
+  }
+
+  /** Split `total` bytes into `n` contiguous byte-range segments. */
+  private splitInto(task: DownloadTask, n: number, total: number, realUrl?: string): Segment[] {
     const size = Math.floor(total / n);
     const segs: Segment[] = [];
     for (let i = 0; i < n; i++) {
@@ -982,8 +1103,7 @@ export class DownloadEngine implements EngineHooks {
       const end = i === n - 1 ? total - 1 : start + size - 1;
       segs.push({ index: i, start, end, downloaded: 0, done: false, url: realUrl });
     }
-    task.totalBytes = total;
-    task.segments = segs;
+    return segs;
   }
 
   private async downloadSegment(task: DownloadTask, seg: Segment, ctrl: Ctrl): Promise<void> {
@@ -1128,7 +1248,9 @@ export class DownloadEngine implements EngineHooks {
             method: http.RequestMethod.GET,
             header: this.buildHttpHeaders(task, { Range: `bytes=${offset}-${seg.end >= 0 ? seg.end : ''}`, Accept: '*/*' }),
             connectTimeout: 15000,
-            readTimeout: 30000
+            readTimeout: 30000,
+            remoteValidation: this.ignoreTlsErrors ? 'skip' : 'system',
+            usingProxy: this.proxyOption()
           })
           .catch((e: BusinessError) => {
             if (!ctrl.aborted) {
@@ -1184,7 +1306,8 @@ export class DownloadEngine implements EngineHooks {
       task.status = TaskStatus.Error;
       task.errorMessage = `完整性校验失败: ${(e as Error).message}`;
       task.sha256 = '';
-      this.listener?.onTaskError(task, task.errorMessage);
+      // 不在此处回调 onTaskError：抛出后由 start() 的外层 catch 统一回调一次，
+      // 否则先回调（把任务置为排队重试）再 throw 会被外层 catch 覆盖回错误态，自动重试被跳过。
       throw e;
     }
   }

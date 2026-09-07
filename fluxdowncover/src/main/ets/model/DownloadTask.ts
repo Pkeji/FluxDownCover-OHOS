@@ -12,6 +12,12 @@ export interface Segment {
   end: number; // inclusive end offset; -1 means "until the server ends"
   downloaded: number; // bytes already received within this segment
   done: boolean;
+  /** HLS: resolved AES-128 key URI ('' = plaintext segment). */
+  keyUri?: string;
+  /** HLS: 16-byte IV as hex ('' = derive from media sequence + segment index). */
+  keyIv?: string;
+  /** Byte sub-range "start-end" within `url` (HLS EXT-X-BYTERANGE / DASH SegmentURL range). */
+  byteRange?: string;
 }
 
 /**
@@ -71,6 +77,7 @@ export class DownloadTask {
   cookie: string = ''; // per-task Cookie header value
   referer: string = ''; // per-task Referer header value
   customHeaders: string = ''; // per-task custom headers, one "Key: Value" per line
+  manifestInitUrl: string = ''; // HLS EXT-X-MAP / DASH Initialization segment URL (persisted)
 
   get percent(): number {
     if (this.totalBytes <= 0) {

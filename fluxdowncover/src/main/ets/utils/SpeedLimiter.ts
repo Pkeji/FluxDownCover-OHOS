@@ -70,6 +70,22 @@ export class SpeedLimiter {
     return Math.ceil((deficit / this._limitBytesPerSec) * 1000);
   }
 
+  /**
+   * Asynchronously wait until `bytes` tokens are available, then consume them.
+   * Whole-chunk throttling for protocols (HLS/DASH) that fetch a segment at a
+   * time rather than streaming. No-op when the limit is 0 (unlimited).
+   */
+  async throttle(bytes: number): Promise<void> {
+    if (this._limitBytesPerSec <= 0 || bytes <= 0) {
+      return;
+    }
+    const wait = this.waitTime(bytes);
+    if (wait > 0) {
+      await new Promise<void>(resolve => setTimeout(resolve, wait));
+    }
+    this.tryConsume(bytes);
+  }
+
   private _refill(): void {
     const now = Date.now();
     const elapsed = (now - this._lastRefill) / 1000;

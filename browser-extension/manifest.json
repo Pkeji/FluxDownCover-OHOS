@@ -1,9 +1,13 @@
 {
   "manifest_version": 3,
   "name": "FluxDown Cover — Download Manager",
-  "version": "1.0.0",
-  "description": "Send current page or link URL to FluxDown Cover download manager on HarmonyOS",
+  "version": "1.1.0",
+  "description": "Send pages/links to FluxDown Cover on HarmonyOS and show live download progress over the local API",
   "permissions": ["contextMenus", "activeTab", "storage", "tabs"],
+  "host_permissions": [
+    "http://127.0.0.1:17800/*",
+    "http://localhost:17800/*"
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

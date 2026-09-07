@@ -1,8 +1,9 @@
 import { http } from '@kit.NetworkKit';
 import { logCollector } from '../utils/LogCollector';
+import { ProxyConfig } from '../engine/EngineHooks';
 
 /** Current app version, must match AppScope/app.json5 versionName. */
-export const APP_VERSION = '1.2.1';
+export const APP_VERSION = '1.2.3.66';
 
 const GITHUB_API = 'https://api.github.com/repos/Pkeji/FluxDownCover-OHOS/releases/latest';
 
@@ -80,7 +81,7 @@ function isValidVersion(v: string): boolean {
  * Check GitHub releases API for the latest version.
  * Returns ReleaseInfo if a newer version is found, or null if already up-to-date.
  */
-export async function checkForUpdate(currentVersion: string): Promise<ReleaseInfo | null> {
+export async function checkForUpdate(currentVersion: string, proxy?: ProxyConfig, ignoreTls: boolean = false): Promise<ReleaseInfo | null> {
   const req = http.createHttp();
   try {
     const resp = await req.request(GITHUB_API, {
@@ -90,7 +91,9 @@ export async function checkForUpdate(currentVersion: string): Promise<ReleaseInf
         'User-Agent': 'FluxDownCover/1.0'
       },
       connectTimeout: 15000,
-      readTimeout: 15000
+      readTimeout: 15000,
+      remoteValidation: ignoreTls ? 'skip' : 'system',
+      usingProxy: proxy
     });
 
     if (resp.responseCode !== 200) {

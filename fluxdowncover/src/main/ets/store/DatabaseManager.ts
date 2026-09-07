@@ -68,7 +68,8 @@ export class DatabaseManager {
       seedRatio REAL DEFAULT 0,
       seedingStatus TEXT DEFAULT 'none',
       seedStartedAt INTEGER DEFAULT 0,
-      seedSeconds INTEGER DEFAULT 0
+      seedSeconds INTEGER DEFAULT 0,
+      manifestInitUrl TEXT DEFAULT ''
     )`;
     this.rdbStore
       ?.executeSql(sql)
@@ -89,6 +90,8 @@ export class DatabaseManager {
           `ALTER TABLE ${TABLE_NAME} ADD COLUMN seedingStatus TEXT DEFAULT 'none'`,
           `ALTER TABLE ${TABLE_NAME} ADD COLUMN seedStartedAt INTEGER DEFAULT 0`,
           `ALTER TABLE ${TABLE_NAME} ADD COLUMN seedSeconds INTEGER DEFAULT 0`,
+          // ── HLS/DASH fMP4 初始化段（EXT-X-MAP / Initialization）─
+          `ALTER TABLE ${TABLE_NAME} ADD COLUMN manifestInitUrl TEXT DEFAULT ''`,
         ];
         for (const m of migrations) {
           this.rdbStore?.executeSql(m).catch(() => { /* column already exists */ });

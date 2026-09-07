@@ -2,8 +2,10 @@ import { socket } from '@kit.NetworkKit';
 import { logCollector } from '../utils/LogCollector';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { McpBackend } from './McpBackend';
+import { DownloadTask } from '../model/DownloadTask';
 
 const MCP_PORT = 17800;
+const LOCAL_API_VERSION = '1.2.0';
 
 const TOOLS = [
   {
@@ -229,14 +231,207 @@ export class McpServer {
     });
   }
 
+  /**
+   * Single HTTP entry on 127.0.0.1:17800. Routes by method + path so the port
+   * serves BOTH:
+   *  - the FluxDown browser-extension compatible REST/takeover surface
+   *    (GET /ping, GET /api/v1/info, GET /api/v1/tasks, POST /download[/batch]);
+   *  - the original MCP JSON-RPC 2.0 surface (POST /mcp and legacy callers).
+   */
   private processRequest(
     headerText: string,
     body: string
   ): { status: number; json: string } {
-    const authMatch = /authorization:\s*Bearer\s+(\S+)/i.exec(headerText);
-    if (this.token && (!authMatch || authMatch[1] !== this.token)) {
+    const lines = headerText.split('\r\n');
+    const requestLine = lines.length > 0 ? lines[0] : '';
+    const reqParts = requestLine.split(' ');
+    const method = reqParts.length >= 1 ? reqParts[0] : 'GET';
+    const rawPath = reqParts.length >= 2 ? reqParts[1] : '/';
+    const qIdx = rawPath.indexOf('?');
+    const path = qIdx >= 0 ? rawPath.substring(0, qIdx) : rawPath;
+    const headers = this.parseHeaders(lines);
+
+    // CORS preflight (browser extension cross-origin fetch).
+    if (method === 'OPTIONS') {
+      return { status: 204, json: '' };
+    }
+
+    // Liveness probe — no auth. Official extension uses this to detect the app.
+    if (method === 'GET' && path === '/ping') {
+      return this.jsonOk({ success: true, app: 'FluxDown Cover', service: 'fluxdown-local', version: LOCAL_API_VERSION });
+    }
+
+    // App info.
+    if (method === 'GET' && path === '/api/v1/info') {
+      const auth = this.checkToken(headers);
+      if (!auth.ok) {
+        return this.jsonErr(auth.status, auth.message);
+      }
+      return this.jsonOk({
+        success: true, name: 'FluxDown Cover', version: LOCAL_API_VERSION,
+        platform: 'HarmonyOS', port: MCP_PORT
+      });
+    }
+
+    // Task list WITH progress — our extension polls this to render progress,
+    // since Native Messaging (the official desktop progress channel) is
+    // unavailable on HarmonyOS Chrome.
+    if (method === 'GET' && path === '/api/v1/tasks') {
+      const auth = this.checkToken(headers);
+      if (!auth.ok) {
+        return this.jsonErr(auth.status, auth.message);
+      }
+      if (!this.backend) {
+        return this.jsonErr(503, 'backend not ready');
+      }
+      const tasks = this.backend.listTasks().map((t: DownloadTask): Record<string, Object> => this.taskToJson(t));
+      return this.jsonOk({ success: true, tasks });
+    }
+
+    // Browser takeover endpoints (official extension HTTP fallback channel).
+    if (method === 'POST' && (path === '/download' || path === '/download/batch')) {
+      // Anti-CSRF: an ordinary web page cannot set this custom header without a
+      // successful CORS preflight, so its presence proves a privileged caller.
+      const client = (headers['x-fluxdown-client'] ?? '').toLowerCase();
+      if (client !== 'extension') {
+        return this.jsonErr(403, 'missing X-FluxDown-Client header');
+      }
+      const auth = this.checkToken(headers);
+      if (!auth.ok) {
+        return this.jsonErr(auth.status, auth.message);
+      }
+      if (!this.backend) {
+        return this.jsonErr(503, 'backend not ready');
+      }
+      const urls = this.parseDownloadUrls(body);
+      if (urls.length === 0) {
+        return this.jsonErr(400, 'no valid urls');
+      }
+      const backend = this.backend;
+      urls.forEach((u: string) => {
+        backend.addTask(u).catch((e: Object) => {
+          logCollector.error('Error', `local API addTask failed: ${String(e)}`);
+        });
+      });
+      return this.jsonOk({ success: true, accepted: urls.length });
+    }
+
+    // Fall through to MCP JSON-RPC 2.0 for everything else.
+    return this.processMcpRequest(body, headers);
+  }
+
+  private parseHeaders(lines: string[]): Record<string, string> {
+    const map: Record<string, string> = {};
+    for (let i = 1; i < lines.length; i++) {
+      const ci = lines[i].indexOf(':');
+      if (ci > 0) {
+        const key = lines[i].substring(0, ci).trim().toLowerCase();
+        map[key] = lines[i].substring(ci + 1).trim();
+      }
+    }
+    return map;
+  }
+
+  /** Local loopback: when no token is configured we allow; otherwise require X-FluxDown-Token or Bearer. */
+  private checkToken(headers: Record<string, string>): { ok: boolean; status: number; message: string } {
+    if (!this.token) {
+      return { ok: true, status: 200, message: '' };
+    }
+    const xt = headers['x-fluxdown-token'] ?? '';
+    const bearerMatch = /Bearer\s+(\S+)/i.exec(headers['authorization'] ?? '');
+    const bearer = bearerMatch ? bearerMatch[1] : '';
+    if (xt === this.token || bearer === this.token) {
+      return { ok: true, status: 200, message: '' };
+    }
+    return { ok: false, status: 401, message: 'unauthorized' };
+  }
+
+  /** Accepts the official takeover bodies: {url}, {urls:[]} and {items:[{url}]}; urls may be newline joined. */
+  private parseDownloadUrls(body: string): string[] {
+    const collected: string[] = [];
+    let v: Record<string, Object> = {};
+    try {
+      v = JSON.parse(body) as Record<string, Object>;
+    } catch (e) {
+      return collected;
+    }
+    const single = v['url'];
+    if (typeof single === 'string') {
+      this.splitJoinedUrls(single as string, collected);
+    }
+    const urls = v['urls'];
+    if (Array.isArray(urls)) {
+      (urls as Object[]).forEach((u: Object) => {
+        if (typeof u === 'string') {
+          this.splitJoinedUrls(u as string, collected);
+        }
+      });
+    } else if (typeof urls === 'string') {
+      this.splitJoinedUrls(urls as string, collected);
+    }
+    const items = v['items'];
+    if (Array.isArray(items)) {
+      (items as Object[]).forEach((it: Object) => {
+        const rec = it as Record<string, Object>;
+        const u = rec['url'];
+        if (typeof u === 'string') {
+          this.splitJoinedUrls(u as string, collected);
+        }
+      });
+    }
+    const seen: Record<string, boolean> = {};
+    const uniq: string[] = [];
+    collected.forEach((u: string) => {
+      if (!seen[u]) {
+        seen[u] = true;
+        uniq.push(u);
+      }
+    });
+    return uniq;
+  }
+
+  private splitJoinedUrls(joined: string, out: string[]): void {
+    joined.split(/\r?\n/).forEach((raw: string) => {
+      const t = raw.trim();
+      if (t.length > 0) {
+        out.push(t);
+      }
+    });
+  }
+
+  private taskToJson(t: DownloadTask): Record<string, Object> {
+    return {
+      id: t.id,
+      name: t.fileName,
+      fileName: t.fileName,
+      url: t.url,
+      protocol: t.protocol as Object,
+      status: t.status as Object,
+      state: t.status as Object,
+      progress: t.percent,
+      percent: t.percent,
+      downloadedBytes: t.downloadedBytes,
+      totalBytes: t.totalBytes,
+      speed: t.speed,
+      errorMessage: t.errorMessage,
+      createdAt: t.createdAt,
+      finishedAt: t.finishedAt
+    };
+  }
+
+  private jsonOk(obj: Object): { status: number; json: string } {
+    return { status: 200, json: JSON.stringify(obj) };
+  }
+
+  private jsonErr(status: number, message: string): { status: number; json: string } {
+    return { status, json: JSON.stringify({ success: false, message }) };
+  }
+
+  private processMcpRequest(body: string, headers: Record<string, string>): { status: number; json: string } {
+    const auth = this.checkToken(headers);
+    if (!auth.ok) {
       return {
-        status: 401,
+        status: auth.status,
         json: JSON.stringify({ jsonrpc: '2.0', error: { code: -32001, message: 'Unauthorized' } })
       };
     }
@@ -366,17 +561,48 @@ function ok(id: number | null, result: Object | null): { status: number; json: s
   };
 }
 
+const HTTP_STATUS_TEXT: Record<string, string> = {
+  '200': 'OK',
+  '204': 'No Content',
+  '400': 'Bad Request',
+  '401': 'Unauthorized',
+  '403': 'Forbidden',
+  '404': 'Not Found',
+  '503': 'Service Unavailable'
+};
+
 function buildHttpResponse(status: number, json: string): string {
   const body = json ?? '';
-  const statusText = status === 200 ? 'OK' : status === 401 ? 'Unauthorized' : 'Bad Request';
+  const statusText = HTTP_STATUS_TEXT[String(status)] ?? 'OK';
   return (
     `HTTP/1.1 ${status} ${statusText}\r\n` +
-    `Content-Type: application/json\r\n` +
-    `Content-Length: ${body.length}\r\n` +
+    `Content-Type: application/json; charset=utf-8\r\n` +
+    `Content-Length: ${utf8ByteLength(body)}\r\n` +
     `Access-Control-Allow-Origin: *\r\n` +
+    `Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS\r\n` +
+    `Access-Control-Allow-Headers: Content-Type, Authorization, X-FluxDown-Client, X-FluxDown-Token\r\n` +
     `Connection: close\r\n\r\n` +
     body
   );
+}
+
+/** Byte length of a UTF-8 string (Content-Length must count bytes, not UTF-16 code units). */
+function utf8ByteLength(s: string): number {
+  let n = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c < 0x80) {
+      n += 1;
+    } else if (c < 0x800) {
+      n += 2;
+    } else if (c >= 0xD800 && c <= 0xDBFF) {
+      n += 4; // surrogate pair
+      i++;
+    } else {
+      n += 3;
+    }
+  }
+  return n;
 }
 
 function ab2str(buf: ArrayBuffer): string {

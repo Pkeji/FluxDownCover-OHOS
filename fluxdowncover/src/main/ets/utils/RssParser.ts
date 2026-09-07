@@ -1,6 +1,7 @@
 import { http } from '@kit.NetworkKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { RssItem } from '../model/RssSubscription';
+import { ProxyConfig } from '../engine/EngineHooks';
 
 /**
  * Lightweight RSS/Atom XML parser.
@@ -11,8 +12,9 @@ export class RssParser {
   /**
    * Fetch and parse an RSS/Atom feed from a URL.
    * Returns an array of feed items sorted by date (newest first).
+   * `proxy` / `ignoreTls` honor the user's global network settings.
    */
-  static async fetchAndParse(feedUrl: string): Promise<RssItem[]> {
+  static async fetchAndParse(feedUrl: string, proxy?: ProxyConfig, ignoreTls: boolean = false): Promise<RssItem[]> {
     const session = http.createHttp();
     try {
       const resp = await session.request(feedUrl, {
@@ -21,6 +23,8 @@ export class RssParser {
         expectDataType: http.HttpDataType.STRING,
         connectTimeout: 15000,
         readTimeout: 30000,
+        remoteValidation: ignoreTls ? 'skip' : 'system',
+        usingProxy: proxy,
       });
       if (resp.responseCode >= 200 && resp.responseCode < 300) {
         const xml = resp.result as string;

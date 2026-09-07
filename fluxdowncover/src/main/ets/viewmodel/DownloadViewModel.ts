@@ -52,11 +52,12 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   @Trace notifyOnComplete: boolean = true; // system notification when a task finishes
   @Trace liveViewEnabled: boolean = true; // live window capsule for download progress
   private lastProgressNotify: Map<string, number> = new Map(); // 进度通知节流
-  @Trace autoRetryCount: number = 0; // failed-download auto retry count (0 = disabled)
+  @Trace autoRetryCount: number = 3; // failed-download auto retry count (0 = disabled); official default 3
   @Trace autoRetryDelaySec: number = 5; // seconds between retries
-  @Trace fileExistsBehavior: string = 'overwrite'; // overwrite | rename | skip
+  @Trace fileExistsBehavior: string = 'rename'; // overwrite | rename | skip; official default auto-rename
   @Trace fileMissingAction: string = 'keep'; // keep | remove (on recheck with missing file)
   @Trace useServerTime: boolean = false; // set file mtime from HTTP Last-Modified
+  @Trace ignoreTlsErrors: boolean = false; // skip TLS certificate validation (self-signed / legacy HTTPS)
   @Trace queues: DownloadQueue[] = [];
   @Trace categories: DownloadCategory[] = [];
   @Trace rssSubs: RssSubscription[] = [];
@@ -106,12 +107,12 @@ export class DownloadViewModel implements EngineListener, McpBackend {
       theme, themeMode, maxSegments, verifyIntegrity, mcpEnabled, mcpToken,
       globalSpeedLimit, proxyUrl, githubMirrorUrl, colorScheme, clipboardMonitor,
       notifyOnComplete, liveViewEnabled, autoRetryCount, autoRetryDelaySec, fileExistsBehavior,
-      fileMissingAction, useServerTime,
+      fileMissingAction, useServerTime, ignoreTlsErrors,
     ] = await Promise.all([
       this.settings.getString('theme', 'light'),
       this.settings.getString('themeMode', 'light'),
       this.settings.getNumber('maxSegments', 8),
-      this.settings.getBoolean('verifyIntegrity', false),
+      this.settings.getBoolean('verifyIntegrity', true),
       this.settings.getBoolean('mcpEnabled', false),
       this.settings.getString('mcpToken', 'fluxdowncover-local'),
       this.settings.getNumber('globalSpeedLimit', 0),
@@ -121,11 +122,12 @@ export class DownloadViewModel implements EngineListener, McpBackend {
       this.settings.getBoolean('clipboardMonitor', false),
       this.settings.getBoolean('notifyOnComplete', true),
       this.settings.getBoolean('liveViewEnabled', true),
-      this.settings.getNumber('autoRetryCount', 0),
+      this.settings.getNumber('autoRetryCount', 3),
       this.settings.getNumber('autoRetryDelaySec', 5),
-      this.settings.getString('fileExistsBehavior', 'overwrite'),
+      this.settings.getString('fileExistsBehavior', 'rename'),
       this.settings.getString('fileMissingAction', 'keep'),
       this.settings.getBoolean('useServerTime', false),
+      this.settings.getBoolean('ignoreTlsErrors', false),
     ]);
     this.theme = theme as 'light' | 'dark';
     this.themeMode = themeMode as 'light' | 'dark' | 'system';
@@ -145,6 +147,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     this.fileExistsBehavior = fileExistsBehavior;
     this.fileMissingAction = fileMissingAction;
     this.useServerTime = useServerTime;
+    this.ignoreTlsErrors = ignoreTlsErrors;
     NotificationHelper.getInstance().setEnabled(this.notifyOnComplete);
     LiveViewHelper.getInstance().setEnabled(this.liveViewEnabled);
     this.context = context;
@@ -153,6 +156,8 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     this.engine.setMaxSegments(this.maxSegments);
     this.engine.setGithubMirrorUrl(this.githubMirrorUrl);
     this.engine.setUseServerTime(this.useServerTime);
+    this.engine.setIgnoreTlsErrors(this.ignoreTlsErrors);
+    this.engine.setProxyUrl(this.proxyUrl);
 
     // 并行：任务恢复 + 三个 store 初始化 + BT 设置加载
     const [restoredTasks, , , , btSettings] = await Promise.all([
@@ -182,6 +187,12 @@ export class DownloadViewModel implements EngineListener, McpBackend {
       // Daily queue schedule check + periodic tick
       this.startQueueScheduler();
       this.tickQueueSchedules();
+      // Restore the local API server (127.0.0.1:17800) if it was enabled before,
+      // so the browser extension can reach /ping, /download/batch and /api/v1/tasks
+      // after an app restart without toggling the setting again.
+      if (this.mcpEnabled) {
+        this.mcp.start(this.mcpToken, this).catch(() => {});
+      }
     }, 300);
   }
 
@@ -427,7 +438,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
 
   pauseAll(): void {
     for (const t of this.tasks) {
-      if (t.status === TaskStatus.Downloading || t.status === TaskStatus.Queued || t.status === TaskStatus.Verifying || t.status === TaskStatus.Pending) {
+      if (t.status === TaskStatus.Downloading || t.status === TaskStatus.Queued || t.status === TaskStatus.Merging || t.status === TaskStatus.Verifying || t.status === TaskStatus.Pending) {
         this.engine.pause(t);
         NotificationHelper.getInstance().cancelProgress(t.id);
         LiveViewHelper.getInstance().stop(t.id);
@@ -483,7 +494,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
 
   /** Count active downloads and start/stop the continuous background task accordingly. */
   private updateBackgroundTask(): void {
-    const activeCount = this.tasks.filter(t => t.status === TaskStatus.Downloading).length;
+    const activeCount = this.tasks.filter(t => t.status === TaskStatus.Downloading || t.status === TaskStatus.Merging).length;
     BackgroundTaskManager.getInstance().update(activeCount).catch(() => {});
   }
 
@@ -550,18 +561,24 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   onTaskError(task: DownloadTask, error: string): void {
     this.repo.update(task).catch(() => {});
     // Auto-retry: transparently requeue failed tasks when enabled and not exhausted.
+    // 只排除真正不可恢复的永久性错误（协议不支持 / 封装链接无法解码）；
+    // DNS、超时、断网、连接被拒等瞬时错误都应自动重试。
+    const permanent = error.includes('暂不支持') || error.includes('无法解码');
     if (this.autoRetryCount > 0 &&
         task.retryCount < this.autoRetryCount &&
         task.status === TaskStatus.Error &&
-        !error.includes('网络不可用') &&
-        !error.includes('暂不支持') &&
-        !error.includes('解析失败')) {
+        !permanent) {
       task.retryCount++;
       task.status = TaskStatus.Queued;
-      task.errorMessage = '';
+      task.errorMessage = `等待自动重试 (${task.retryCount}/${this.autoRetryCount})...`;
       this.repo.update(task).catch(() => {});
+      // 立即刷新 UI，让用户看到任务进入“等待重试”而不是停在错误态
+      this.refreshTick++;
+      this.updateVisibleTasks();
       setTimeout(() => {
-        if (task.status === TaskStatus.Queued || task.status === TaskStatus.Paused) {
+        // 仅当任务仍停留在本次排队态（未被用户暂停/移除）时才自动重启
+        if (task.status === TaskStatus.Queued) {
+          task.errorMessage = '';
           this.engine.start(task).catch(() => {});
         }
       }, Math.max(1, this.autoRetryDelaySec) * 1000);
@@ -571,7 +588,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     this.updateBackgroundTask();
     // 触发数组引用变化
     this.refreshTick++;
-      this.updateVisibleTasks();
+    this.updateVisibleTasks();
   }
 
   // ---- McpBackend ----
@@ -616,7 +633,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   // ── Extended MCP backend methods ──
   pauseAllTasks(): void {
     for (const t of this.tasks) {
-      if (t.status === TaskStatus.Downloading || t.status === TaskStatus.Pending || t.status === TaskStatus.Queued) {
+      if (t.status === TaskStatus.Downloading || t.status === TaskStatus.Merging || t.status === TaskStatus.Pending || t.status === TaskStatus.Queued) {
         this.engine.pause(t);
       }
     }
@@ -704,7 +721,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   /** Count how many tasks in the queue are currently downloading. */
   private countActiveInQueue(queueId: string): number {
     return this.tasks.filter(
-      t => t.queueId === queueId && t.status === TaskStatus.Downloading
+      t => t.queueId === queueId && (t.status === TaskStatus.Downloading || t.status === TaskStatus.Merging)
     ).length;
   }
 
@@ -875,7 +892,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
       if (!sub.enabled) continue;
       const now = Date.now();
       if (now - sub.lastChecked < sub.intervalMin * 60 * 1000) continue;
-      const items = await RssParser.fetchAndParse(sub.url);
+      const items = await RssParser.fetchAndParse(sub.url, this.engine.proxyOption(), this.ignoreTlsErrors);
       sub.lastChecked = now;
       if (sub.autoDownload) {
         for (const item of items) {
@@ -1007,9 +1024,9 @@ export class DownloadViewModel implements EngineListener, McpBackend {
           case 'queued':
             return t.status === TaskStatus.Queued;
           case 'active':
-            return t.status === TaskStatus.Queued || t.status === TaskStatus.Downloading || t.status === TaskStatus.Verifying;
+            return t.status === TaskStatus.Queued || t.status === TaskStatus.Downloading || t.status === TaskStatus.Merging || t.status === TaskStatus.Verifying;
           case 'downloading':
-            return t.status === TaskStatus.Downloading || t.status === TaskStatus.Verifying || t.status === TaskStatus.Queued;
+            return t.status === TaskStatus.Downloading || t.status === TaskStatus.Merging || t.status === TaskStatus.Verifying || t.status === TaskStatus.Queued;
           case 'paused':
             return t.status === TaskStatus.Paused;
           case 'completed':
@@ -1060,9 +1077,9 @@ export class DownloadViewModel implements EngineListener, McpBackend {
           case 'queued':
             return t.status === TaskStatus.Queued;
           case 'active':
-            return t.status === TaskStatus.Queued || t.status === TaskStatus.Downloading || t.status === TaskStatus.Verifying;
+            return t.status === TaskStatus.Queued || t.status === TaskStatus.Downloading || t.status === TaskStatus.Merging || t.status === TaskStatus.Verifying;
           case 'downloading':
-            return t.status === TaskStatus.Downloading || t.status === TaskStatus.Verifying || t.status === TaskStatus.Queued;
+            return t.status === TaskStatus.Downloading || t.status === TaskStatus.Merging || t.status === TaskStatus.Verifying || t.status === TaskStatus.Queued;
           case 'paused':
             return t.status === TaskStatus.Paused;
           case 'completed':
@@ -1178,6 +1195,12 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   setProxyUrl(url: string): void {
     this.proxyUrl = url;
     this.settings.put('proxyUrl', url);
+    this.engine.setProxyUrl(url);
+  }
+
+  /** Parsed proxy descriptor for protocol probes that run outside the engine (e.g. HLS variant list). */
+  proxyConfig(): { host: string; port: number; exclusionList: Array<string> } | undefined {
+    return this.engine.proxyOption();
   }
 
   setGithubMirrorUrl(url: string): void {
@@ -1233,6 +1256,14 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   setUseServerTime(enabled: boolean): void {
     this.useServerTime = enabled;
     this.settings.put('useServerTime', enabled);
+    // 实时下发给引擎，否则要等下次冷启动才生效
+    this.engine.setUseServerTime(enabled);
+  }
+
+  setIgnoreTlsErrors(enabled: boolean): void {
+    this.ignoreTlsErrors = enabled;
+    this.settings.put('ignoreTlsErrors', enabled);
+    this.engine.setIgnoreTlsErrors(enabled);
   }
 
   /** Persist the full BT settings object (mutated in place by the settings UI). */

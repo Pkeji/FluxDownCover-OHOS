@@ -22,7 +22,7 @@ export class TaskRepository {
       'downloadedBytes', 'status', 'segments', 'createdAt', 'finishedAt',
       'errorMessage', 'sha256', 'isHls', 'verifyIntegrity',
       'category', 'priority', 'queueId', 'speedLimit', 'scheduledAt', 'authHeader', 'proxyUrl', 'isDash',
-      'uploadedBytes', 'seedRatio', 'seedingStatus', 'seedStartedAt', 'seedSeconds'
+      'uploadedBytes', 'seedRatio', 'seedingStatus', 'seedStartedAt', 'seedSeconds', 'manifestInitUrl'
     ];
   }
 
@@ -99,7 +99,8 @@ export class TaskRepository {
       seedRatio: task.seedRatio,
       seedingStatus: task.seedingStatus,
       seedStartedAt: task.seedStartedAt,
-      seedSeconds: task.seedSeconds
+      seedSeconds: task.seedSeconds,
+      manifestInitUrl: task.manifestInitUrl
     };
   }
 
@@ -137,6 +138,7 @@ export class TaskRepository {
     try { task.seedingStatus = rs.getString(col('seedingStatus')) || 'none'; } catch (_) { }
     try { task.seedStartedAt = rs.getLong(col('seedStartedAt')); } catch (_) { }
     try { task.seedSeconds = rs.getLong(col('seedSeconds')); } catch (_) { }
+    try { task.manifestInitUrl = rs.getString(col('manifestInitUrl')) || ''; } catch (_) { }
     task.liveBytes = task.downloadedBytes;
     return task;
   }

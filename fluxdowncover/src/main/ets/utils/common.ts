@@ -78,11 +78,77 @@ function base64ToString(b64: string): string {
   return decoder.decodeToString(bytes);
 }
 
+/** Hex nibble from a byte (0-9/a-f/A-F), or -1 when not a hex digit. */
+function hexNibbleByte(b: number): number {
+  if (b >= 48 && b <= 57) return b - 48; // '0'-'9'
+  if (b >= 97 && b <= 102) return b - 87; // 'a'-'f'
+  if (b >= 65 && b <= 70) return b - 55; // 'A'-'F'
+  return -1;
+}
+
+/**
+ * Percent-decode a string to its UTF-8 byte sequence. `%XX` sequences are
+ * decoded; invalid escapes (e.g. a lone `%` in "进度100%.iso") are kept as a
+ * literal `%` byte — mirrors the official engine's `percent_decode_bytes`
+ * which never throws on malformed escapes.
+ */
+export function percentDecodeToBytes(s: string): Uint8Array {
+  const src = util.TextEncoder.create().encodeInto(s);
+  const out: number[] = [];
+  let i = 0;
+  while (i < src.length) {
+    if (src[i] === 0x25 && i + 2 < src.length) { // '%'
+      const hi = hexNibbleByte(src[i + 1]);
+      const lo = hexNibbleByte(src[i + 2]);
+      if (hi >= 0 && lo >= 0) {
+        out.push((hi << 4) | lo);
+        i += 3;
+        continue;
+      }
+    }
+    out.push(src[i]);
+    i++;
+  }
+  return new Uint8Array(out);
+}
+
+/**
+ * Decode a byte sequence as UTF-8 first, falling back to GBK. Old Chinese
+ * sites / CDNs still percent-encode filenames in GBK (e.g. `%CE%C4%BC%FE.txt`
+ * = "文件.txt"); without the fallback the user sees a mojibake name.
+ * Mirrors the official engine's `decode_bytes_utf8_or_gbk`.
+ */
+export function decodeBytesUtf8OrGbk(bytes: Uint8Array): string {
+  try {
+    return util.TextDecoder.create('utf-8', { fatal: true }).decodeToString(bytes);
+  } catch (_) {
+    try {
+      return util.TextDecoder.create('gbk', { fatal: true }).decodeToString(bytes);
+    } catch (_) {
+      // Neither valid UTF-8 nor valid GBK (extremely rare): lossy UTF-8 decode
+      // so we never throw and never lose the whole name.
+      return util.TextDecoder.create('utf-8', { fatal: false }).decodeToString(bytes);
+    }
+  }
+}
+
+/**
+ * Percent-decode + UTF-8/GBK fallback for a file name or URL path segment.
+ * Never throws on invalid `%` escapes.
+ */
+export function safePercentDecode(s: string): string {
+  return decodeBytesUtf8OrGbk(percentDecodeToBytes(s));
+}
+
 /**
  * Decode a wrapper-protocol URL (thunder://, flashget://, qqdl://) to its
  * underlying real URL. Returns null on failure.
+ *
+ * This is the single authoritative wrapper decoder (the engine's
+ * ThunderProtocol delegates here); the flashget:// tag match is
+ * case-insensitive so a lowercase `[flashget]` wrap is unwrapped correctly.
  */
-function decodeWrappedUrl(rawUrl: string): string | null {
+export function decodeWrappedUrl(rawUrl: string): string | null {
   const lower = rawUrl.toLowerCase().trim();
   try {
     if (lower.startsWith('thunder://')) {
@@ -98,9 +164,10 @@ function decodeWrappedUrl(rawUrl: string): string | null {
       const b64 = rawUrl.substring('flashget://'.length);
       const decoded = base64ToString(b64);
       // flashget:// wraps as: base64("[FLASHGET]" + realUrl + "[FLASHGET]")
-      const prefix = '[FLASHGET]';
-      if (decoded.startsWith(prefix) && decoded.endsWith(prefix)) {
-        return decoded.substring(prefix.length, decoded.length - prefix.length);
+      const upper = decoded.toUpperCase();
+      const tag = '[FLASHGET]';
+      if (upper.startsWith(tag) && upper.endsWith(tag)) {
+        return decoded.substring(tag.length, decoded.length - tag.length);
       }
       return decoded;
     }
@@ -129,11 +196,13 @@ export function fileNameFromUrl(url: string): string {
 
   // ── 2. eD2K links ───────────────────────────────────────────────────
   // Format: ed2k://|file|<filename>|<size>|<MD4-hex>|/
+  // Prefix is case-insensitive; filename is percent-decoded with a GBK
+  // fallback and tolerates invalid `%` escapes (never throws).
   if (lower.startsWith('ed2k://')) {
     const parts = trimmed.split('|');
     // parts[0]="ed2k://", parts[1]="file", parts[2]=<filename>
     if (parts.length >= 4 && parts[1].toLowerCase() === 'file' && parts[2]) {
-      return sanitizeFileName(decodeURIComponent(parts[2]));
+      return sanitizeFileName(safePercentDecode(parts[2]));
     }
     return '';
   }
@@ -142,7 +211,7 @@ export function fileNameFromUrl(url: string): string {
   if (lower.startsWith('magnet:')) {
     const match = trimmed.match(/[?&]dn=([^&]+)/);
     if (match) {
-      const dn = decodeURIComponent(match[1]);
+      const dn = safePercentDecode(match[1]);
       if (dn) {
         return sanitizeFileName(dn);
       }
@@ -153,7 +222,7 @@ export function fileNameFromUrl(url: string): string {
   // ── 4. Standard URLs (HTTP, HTTPS, FTP, HLS, DASH, SFTP …) ─────────
   try {
     const u = new Url.URL(trimmed);
-    const raw = decodeURIComponent(u.pathname.split('/').pop() ?? '');
+    const raw = safePercentDecode(u.pathname.split('/').pop() ?? '');
     if (raw && raw.includes('.')) {
       return sanitizeFileName(raw);
     }
@@ -168,16 +237,20 @@ export function detectProtocol(url: string, override?: ProtocolType): ProtocolTy
     return override;
   }
   const lower = url.toLowerCase();
+  // Extension checks ignore query strings and fragments (mirrors the official
+  // is_hls_url / is_dash_url): a plain HTTP URL whose path merely *contains*
+  // "m3u8"/"dash" must NOT be misclassified.
+  const path = lower.split('?')[0].split('#')[0];
   if (lower.startsWith('ftp://')) {
     return ProtocolType.FTP;
   }
   if (lower.startsWith('sftp://')) {
     return ProtocolType.SFTP;
   }
-  if (lower.includes('.m3u8') || lower.includes('m3u8')) {
+  if (path.endsWith('.m3u8') || path.endsWith('.m3u')) {
     return ProtocolType.HLS;
   }
-  if (lower.includes('.mpd') || lower.includes('dash')) {
+  if (path.endsWith('.mpd')) {
     return ProtocolType.DASH;
   }
   if (lower.startsWith('ed2k://')) {
@@ -192,7 +265,7 @@ export function detectProtocol(url: string, override?: ProtocolType): ProtocolTy
   if (lower.startsWith('qqdl://')) {
     return ProtocolType.QQDL;
   }
-  if (lower.startsWith('magnet:') || lower.startsWith('bt://') || lower.endsWith('.torrent')) {
+  if (lower.startsWith('magnet:') || lower.startsWith('bt://') || path.endsWith('.torrent')) {
     return ProtocolType.BITTORRENT;
   }
   return lower.startsWith('https://') ? ProtocolType.HTTPS : ProtocolType.HTTP;

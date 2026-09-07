@@ -11,6 +11,8 @@
  *   ed2k://|file|<filename>|<size>|<MD4-hex>|h|<chunk-hashes...>|/
  */
 
+import { percentDecodeToBytes, decodeBytesUtf8OrGbk } from '../../../utils/common';
+
 export interface Ed2kServerHint {
   ip: string;
   port: number;
@@ -49,13 +51,21 @@ function hexToBytes(hex: string): Uint8Array {
  */
 export function parseEd2kLink(url: string): Ed2kLinkInfo {
   const trimmed = url.trim();
+  const lower = trimmed.toLowerCase();
 
-  if (!trimmed.startsWith('ed2k://')) {
+  // Prefix is case-insensitive (ED2K:// and ed2k:// both accepted), matching
+  // the official engine's is_ed2k_url / parse_ed2k_link.
+  if (!lower.startsWith('ed2k://')) {
     throw new Error('Not an ed2k link: must start with "ed2k://"');
   }
 
   // Strip "ed2k://" prefix and trailing "/" or "|/"
+  // 标准链接 `ed2k://|file|...` 在去掉前缀后 body 以 `|` 开头（该 `|` 属于
+  // 前缀的收尾分隔符），需剥掉，否则 split 出的首个字段是空串。
   let body = trimmed.substring('ed2k://'.length);
+  if (body.startsWith('|')) {
+    body = body.substring(1);
+  }
   if (body.endsWith('/')) {
     body = body.substring(0, body.length - 1);
   }
@@ -67,15 +77,21 @@ export function parseEd2kLink(url: string): Ed2kLinkInfo {
   const parts = body.split('|');
 
   // Expect: ["file", <name>, <size>, <hash>, ...]
-  if (parts.length < 4 || parts[0] !== 'file') {
+  // 官方对整个前缀 `ed2k://|file|` 大小写不敏感。
+  if (parts.length < 4 || parts[0].toLowerCase() !== 'file') {
     throw new Error('Malformed ed2k link: expected |file|<name>|<size>|<hash>|');
   }
 
-  const fileName = decodeURIComponent(parts[1]);
+  // File name: percent-decode with a GBK fallback; invalid `%` escapes are
+  // kept literal (never throws), matching the official percent_decode_bytes.
+  const fileName = decodeBytesUtf8OrGbk(percentDecodeToBytes(parts[1]));
   const fileSize = parseInt(parts[2], 10);
   const fileHashHex = parts[3].toLowerCase();
 
-  if (!isFinite(fileSize) || fileSize <= 0) {
+  // Official accepts size 0 (empty files are legal eD2K links); only reject
+  // non-numeric / negative / overflowing sizes.
+  const sizeRaw = parts[2];
+  if (!/^\d+$/.test(sizeRaw) || sizeRaw.length > 15 || !isFinite(fileSize) || fileSize < 0) {
     throw new Error(`Invalid file size in ed2k link: ${parts[2]}`);
   }
 

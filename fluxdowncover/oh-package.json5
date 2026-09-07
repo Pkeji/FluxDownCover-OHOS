@@ -5,5 +5,9 @@
   "main": "",
   "author": "",
   "license": "",
-  "dependencies": {}
+  "dependencies": {
+    "@tangs/components": "1.5.3"
+  },
+  "devDependencies": {},
+  "dynamicDependencies": {}
 }
