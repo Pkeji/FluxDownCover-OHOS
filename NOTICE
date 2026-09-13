@@ -1,0 +1,34 @@
+FluxDown Cover for HarmonyOS NEXT
+==================================
+
+本项目是 FluxDown（https://github.com/zerx-lab/FluxDown）的 HarmonyOS NEXT
+非官方移植版本，使用 ArkTS / ArkUI 重新实现，命名为 FluxDown Cover。
+
+【原作品版权与许可】
+原项目 FluxDown 依据 GNU Affero General Public License v3.0（AGPL-3.0）授权，
+版权归原作者 zerx-lab 及 FluxDown contributors 所有。本项目作为其衍生作品，
+依据 AGPL-3.0 第 5 条要求，同样以 AGPL-3.0 开源发布；完整许可证文本见本目录
+LICENSE 文件。
+
+【修改声明】
+相对于原 Rust + Flutter 实现，本移植版本进行了如下修改与重新实现：
+- 使用 ArkTS / ArkUI（Stage 模型）在 HarmonyOS NEXT 上原生重写全部界面与交互；
+- 使用鸿蒙系统能力（requestInStream、relationalStore、notification、后台任务等）
+  重新实现多线程下载、持久化、通知与后台传输；
+- 对 HTTP/FTP/HLS/DASH、BitTorrent、eD2K 及迅雷/快车/旋风专用链接解析等逻辑
+  进行了 ArkTS 侧的重新实现与适配；
+- 新增/调整了外观主题、下载队列、RSS、MCP 本地服务等功能与多设备（手机/平板/2in1）适配。
+
+【你的权利与义务（摘要，不替代 LICENSE 全文）】
+1. 可自由使用、复制、修改与再分发，但衍生作品必须继续以 AGPL-3.0 开源；
+2. 再分发（含应用市场上架）时必须保留本声明、原版权声明与 LICENSE，并向接收者
+   提供完整对应源代码（本公开仓库即提供完整源码）；
+3. 本程序按“现状”提供，不附带任何明示或默示担保。
+
+【第三方致谢】
+- 界面与交互设计参考了 OpenAuthenticator（MIT License，
+  Copyright (c) 2026 OpenAuthenticator contributors），MIT 与 AGPL-3.0 兼容。
+
+移植开发：Pkeji（叶龙发）
+联系邮箱：10124435b@qq.com
+源码仓库：https://github.com/Pkeji/FluxDownCover-OHOS
