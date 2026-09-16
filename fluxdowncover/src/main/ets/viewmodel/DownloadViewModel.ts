@@ -54,7 +54,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   @Trace globalSpeedLimit: number = 0; // bytes/sec, 0 = unlimited
   @Trace proxyUrl: string = ''; // global proxy URL
   @Trace githubMirrorUrl: string = ''; // GitHub mirror prefix
-  @Trace colorScheme: string = 'cyan'; // accent color scheme id
+  @Trace colorScheme: string = AppStorage.get<string>('fluxdown_color_scheme') ?? 'cyan'; // accent color scheme id
   // ── 外观质感（原创选项）──
   @Trace glassStyle: 'auto' | 'glassy' | 'flat' = 'auto'; // 材质风格：自动 / 通透 / 无质感
   @Trace glassLevel: 'auto' | 'high' | 'medium' | 'low' = 'auto'; // 材质浓度：自动 / 浓 / 适中 / 清淡

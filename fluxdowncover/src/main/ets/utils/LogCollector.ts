@@ -5,6 +5,7 @@
  */
 
 import { UIContext } from '@kit.ArkUI';
+import { pasteboard } from '@kit.BasicServicesKit';
 
 export interface LogEntry {
   time: string;
@@ -80,6 +81,21 @@ class LogCollector {
 
   getCount(): number {
     return this.logs.length;
+  }
+
+  /** 复制全部日志到剪贴板（双击版本号触发） */
+  copyToClipboard(ctx: unknown): void {
+    try {
+      const text = this.getAll();
+      const data = pasteboard.createData('text/plain', text);
+      pasteboard.getSystemPasteboard().setData(data).then(() => {
+        try {
+          this.uiCtx?.getPromptAction().showToast({ message: '日志已复制到剪贴板', duration: 2000 });
+        } catch (_) {}
+      });
+    } catch (e) {
+      console.error('copyToClipboard failed', (e as Error).message);
+    }
   }
 }
 

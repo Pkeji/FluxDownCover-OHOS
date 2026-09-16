@@ -151,7 +151,7 @@ struct AboutContent {
     .height('100%')
     .backgroundColor(this.p.bg)
     .bindSheet(this.sheetVisible, this.SheetContent(), {
-      detents: [SheetSize.MEDIUM],
+      detents: [SheetSize.LARGE],
       backgroundColor: this.p.surface,
       showClose: false,
       onDisappear: () => {
@@ -383,8 +383,8 @@ struct AboutContent {
       // QQ group code image
       Column() {
         Image($rawfile('qq_group.jpg'))
-          .width(240)
-          .height(240)
+          .width(280)
+          .height(280)
           .objectFit(ImageFit.Cover)
           .borderRadius(16)
       }

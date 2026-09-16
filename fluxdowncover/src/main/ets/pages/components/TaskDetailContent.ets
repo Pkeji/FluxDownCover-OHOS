@@ -29,7 +29,6 @@ struct TaskDetailContent {
 
       Scroll() {
         Column() {
-          // ── 基础信息 ──
           Column() {
             this.Row2('状态', statusText(this.task.status))
             this.Row2('协议', protocolMeta(this.task.protocol).label + ' · ' + protocolMeta(this.task.protocol).desc)
@@ -305,11 +304,11 @@ struct TaskDetailContent {
           .clip(true)
         }
         .width('100%')
+        .padding({ bottom: 60 })
       }
       .scrollBar(BarState.Off)
       .width('100%')
       .layoutWeight(1)
-      .padding({ bottom: 24 })
     }
     .width('100%')
     .height('100%')

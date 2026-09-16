@@ -602,6 +602,11 @@ export class DownloadEngine implements EngineHooks {
         await this.verify(task);
         this.finalizeCompleted(task);
       } else {
+        // 校验所有分段是否真的下载完成（防止超时静默失败导致进度条没走完就显示完成）
+        const remaining = task.segments.filter((s) => !s.done);
+        if (remaining.length > 0) {
+          throw new Error(`下载未完成：仍有 ${remaining.length} 个分段未下载完毕（进度 ${task.percent}%）`);
+        }
         task.status = TaskStatus.Verifying;
         this.listener?.onTaskUpdated(task);
         await this.verify(task);
@@ -615,6 +620,7 @@ export class DownloadEngine implements EngineHooks {
         task.errorMessage = this.translateNetworkError(e as Error | null);
       }
       this.listener?.onTaskError(task, task.errorMessage);
+      logCollector.error('Download', `任务 ${task.fileName} 失败: ${(e as Error)?.message ?? e} | ${task.errorMessage}`);
     } finally {
       this.active.delete(task);
       this.controls.delete(task.id);

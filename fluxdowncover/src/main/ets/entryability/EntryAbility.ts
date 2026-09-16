@@ -120,6 +120,13 @@ export default class EntryAbility extends UIAbility {
           this.startAfterPrivacyConsent();
         }
       }).catch(() => {});
+      // 同步预读图标着色和主题色设置，写入 AppStorage，避免首帧闪默认色
+      try {
+        const iconTint = prefs.getSync('iconTint', 'accent') as string;
+        AppStorage.setOrCreate<string>('fluxdown_icon_tint', iconTint);
+        const colorScheme = prefs.getSync('colorScheme', 'cyan') as string;
+        AppStorage.setOrCreate<string>('fluxdown_color_scheme', colorScheme);
+      } catch (e) {}
     }).catch(() => {});
 
     // Handle deep link from cold start

@@ -1183,6 +1183,15 @@ struct IndexPage {
           this.winWidth = w;
         }
       })
+      // PC/2in1 键盘快捷键（华为规范要求）
+      .onKeyEvent((event: KeyEvent) => {
+        if (event.type === KeyType.Down && event.keyCode === 2014) {
+          // N 键（PC/2in1 模式下）：新建下载
+          if (this.is2in1) {
+            this.openAddSheet();
+          }
+        }
+      })
       // ── 自定义新建下载弹窗（所有设备统一，不受缩放影响） ──
       if (this.showAddSheet) {
         Stack({ alignContent: this.winWidth < 600 ? Alignment.Center : Alignment.Center }) {
@@ -1216,10 +1225,9 @@ struct IndexPage {
             .scrollBar(BarState.Off)
             .edgeEffect(EdgeEffect.Spring)
           }
-          .width(this.winWidth < 600 ? '92%' : Math.min(720, this.winWidth * 0.88))
-          .height(this.winWidth < 600 ? '82%' : '88%')
-          // 折叠屏展开态物理高度封顶（vp），避免大屏按比例膨胀到折叠态的 1.2 倍以上（云测 UX 标准），内容区内部滚动
-          .constraintSize({ maxHeight: 720 })
+          .width(this.winWidth < 600 ? '92%' : Math.min(640, this.winWidth * 0.7))
+          .height(this.winWidth < 600 ? '82%' : 680)
+          .constraintSize({ maxHeight: 680 })
           .backgroundColor(this.p.surface)
           .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
           .borderRadius(RADIUS_SHEET)
@@ -1722,25 +1730,8 @@ struct IndexPage {
             .fontSize(22)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.p.text)
-          if (this.is2in1) {
-            // PC/2in1：ImmersionButton 系统材质在 PC 上会回退成发白底，改用原生毛玻璃胶囊
-            // （与右下角 FAB、右上角按钮同一范式），深/浅色都呈现与手机、平板一致的可见胶囊背景，
-            // 不再全透明只剩文字（修复 PC 深色下“新建下载”按钮背景丢失、与平板手机不一致）
-            Button('新建下载')
-              .width(148)
-              .height(44)
-              .type(ButtonType.Capsule)
-              .backgroundColor(withAlpha(this.p.surface, 0.72))
-              .backgroundBlurStyle(MATERIAL_BLUR)
-              .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
-              .shadow(softShadow(this.p.dark))
-              .fontColor(this.p.text)
-              .fontSize(15)
-              .fontWeight(FontWeight.Medium)
-              .clip(false)
-              .onClick(() => { this.openAddSheet(); })
-          } else {
-            // 手机端：保持原 ImmersionButton（沉浸光感动效 + 透明材质 + 适配文字色），不改动手机观感
+          if (true) {
+            // 全端统一 ImmersionButton（与手机/平板一致的材质动效）
             ImmersionButton({
               systemMaterialEffect: this.appMaterialEffect(),
               text: '新建下载',
@@ -1751,6 +1742,19 @@ struct IndexPage {
             })
             .width(148)
             .height(44)
+          } else {
+            Button('新建下载')
+              .width(148)
+              .height(44)
+              .type(ButtonType.Capsule)
+              .backgroundColor(this.p.dark ? '#1FFFFFFF' : '#14000000')
+              .backgroundBlurStyle(MATERIAL_BLUR)
+              .shadow(softShadow(this.p.dark))
+              .fontColor(this.p.text)
+              .fontSize(15)
+              .fontWeight(FontWeight.Medium)
+              .clip(false)
+              .onClick(() => { this.openAddSheet(); })
           }
         }
         .layoutWeight(1)
@@ -2231,7 +2235,7 @@ struct IndexPage {
           .justifyContent(FlexAlign.Center)
         }
         .type(ButtonType.Capsule)
-        .backgroundColor('#B06100')
+        .backgroundColor(this.p.warningSolid)
         .width(64)
         .height(40)
         .margin({ right: 6 })
@@ -2247,7 +2251,7 @@ struct IndexPage {
           .justifyContent(FlexAlign.Center)
         }
         .type(ButtonType.Capsule)
-        .backgroundColor('#388512')
+        .backgroundColor(this.p.successSolid)
         .width(64)
         .height(40)
         .margin({ right: 6 })
@@ -2263,7 +2267,7 @@ struct IndexPage {
           .justifyContent(FlexAlign.Center)
         }
         .type(ButtonType.Capsule)
-        .backgroundColor('#0070E5')
+        .backgroundColor(this.p.primarySolid)
         .width(64)
         .height(40)
         .margin({ right: 6 })
@@ -2272,13 +2276,13 @@ struct IndexPage {
         })
         Button() {
           Row() {
-            Image(iconRes('folder')).width(14).height(14).fillColor('#FFFFFF')
-            Text('位置').fontSize(13).fontColor('#FFFFFF').margin({ left: 3 })
+            Image(iconRes('folder')).width(14).height(14).fillColor(this.p.text)
+            Text('位置').fontSize(13).fontColor(this.p.text).margin({ left: 3 })
           }
           .justifyContent(FlexAlign.Center)
         }
         .type(ButtonType.Capsule)
-        .backgroundColor('#666C78')
+        .backgroundColor(this.p.surfaceHighlight)
         .width(64)
         .height(40)
         .margin({ right: 6 })
@@ -2294,7 +2298,7 @@ struct IndexPage {
         .justifyContent(FlexAlign.Center)
       }
       .type(ButtonType.Capsule)
-      .backgroundColor('#DB371A')
+      .backgroundColor(this.p.errorSolid)
       .width(64)
       .height(40)
       .onClick(() => {
