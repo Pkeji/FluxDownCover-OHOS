@@ -10,7 +10,7 @@ export interface PrivacySection {
 
 export const PRIVACY_APP_NAME: string = 'FluxDown Cover';
 export const PRIVACY_CONTACT_EMAIL: string = '1012443557@qq.com';
-export const PRIVACY_UPDATE_DATE: string = '2026年9月13日';
+export const PRIVACY_UPDATE_DATE: string = '2026年9月17日';
 
 /** APP 备案号（工信部 ICP 备案 / 公安网备）。备案通过后替换为真实号码。 */
 export const APP_ICP_RECORD: string = '备案中';

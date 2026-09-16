@@ -12,3 +12,4 @@ oh_modules/
 .DS_Store
 .workbuddy/
 decompiled/
+.publish-token
