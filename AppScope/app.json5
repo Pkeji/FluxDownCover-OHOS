@@ -2,8 +2,8 @@
   "app": {
     "bundleName": "com.fluxdowncover.fluxdowncoverohos",
     "vendor": "yelongfa",
-    "versionCode": 102040201,
-    "versionName": "1.2.4.201",
+    "versionCode": 102040202,
+    "versionName": "1.2.4.202",
     "icon": "$media:layered_image",
     "label": "$string:app_name"
   }
