@@ -1,3 +1,7 @@
+// ArkUI V2 状态装饰器：.ts 为独立模块、SDK 全局装饰器声明不注入，故在此做模块级类型声明（不污染全局）
+declare const ObservedV2: ClassDecorator;
+declare const Trace: PropertyDecorator;
+declare const Computed: MethodDecorator;
 import { DownloadTask } from '../model/DownloadTask';
 import { TaskStatus } from '../model/TaskStatus';
 import { DownloadEngine } from '../engine/DownloadEngine';
@@ -11,9 +15,9 @@ import { DownloadCategory } from '../model/DownloadCategory';
 import { RssSubscription, RssItem } from '../model/RssSubscription';
 import { QueueStore } from '../store/QueueStore';
 import { CategoryStore } from '../store/CategoryStore';
-import { BackgroundTaskManager } from '../util/BackgroundTaskManager';
-import { NotificationHelper } from '../util/NotificationHelper';
-import { LiveViewHelper } from '../util/LiveViewHelper';
+import { BackgroundTaskManager } from '../utils/BackgroundTaskManager';
+import { NotificationHelper } from '../utils/NotificationHelper';
+import { LiveViewHelper } from '../utils/LiveViewHelper';
 import { matchesBuiltinCategory } from '../utils/common';
 import { logCollector } from '../utils/LogCollector';
 import { RssStore } from '../store/RssStore';
@@ -25,6 +29,9 @@ import { RssParser } from '../utils/RssParser';
 import { genId, fileNameFromUrl } from '../utils/common';
 import { common } from '@kit.AbilityKit';
 import { pasteboard } from '@kit.BasicServicesKit';
+import bundleManager from '@ohos.bundle.bundleManager';
+import { fileUri } from '@kit.CoreFileKit';
+import { Want, OpenLinkOptions } from '@kit.AbilityKit';
 
 /**
  * Single owner of the task list and app settings. The UI observes its @Trace
@@ -48,6 +55,10 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   @Trace proxyUrl: string = ''; // global proxy URL
   @Trace githubMirrorUrl: string = ''; // GitHub mirror prefix
   @Trace colorScheme: string = 'cyan'; // accent color scheme id
+  // ── 外观质感（原创选项）──
+  @Trace glassStyle: 'auto' | 'glassy' | 'flat' = 'auto'; // 材质风格：自动 / 通透 / 无质感
+  @Trace glassLevel: 'auto' | 'high' | 'medium' | 'low' = 'auto'; // 材质浓度：自动 / 浓 / 适中 / 清淡
+  @Trace iconTint: 'accent' | 'mono' = 'accent'; // 框架图标着色：主题色 / 中性单色
   @Trace clipboardMonitor: boolean = false; // auto-detect URLs from clipboard
   @Trace notifyOnComplete: boolean = true; // system notification when a task finishes
   @Trace liveViewEnabled: boolean = true; // live window capsule for download progress
@@ -107,7 +118,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
       theme, themeMode, maxSegments, verifyIntegrity, mcpEnabled, mcpToken,
       globalSpeedLimit, proxyUrl, githubMirrorUrl, colorScheme, clipboardMonitor,
       notifyOnComplete, liveViewEnabled, autoRetryCount, autoRetryDelaySec, fileExistsBehavior,
-      fileMissingAction, useServerTime, ignoreTlsErrors,
+      fileMissingAction, useServerTime, ignoreTlsErrors, glassStyle, glassLevel, iconTint,
     ] = await Promise.all([
       this.settings.getString('theme', 'light'),
       this.settings.getString('themeMode', 'light'),
@@ -128,6 +139,9 @@ export class DownloadViewModel implements EngineListener, McpBackend {
       this.settings.getString('fileMissingAction', 'keep'),
       this.settings.getBoolean('useServerTime', false),
       this.settings.getBoolean('ignoreTlsErrors', false),
+      this.settings.getString('glassStyle', 'auto'),
+      this.settings.getString('glassLevel', 'auto'),
+      this.settings.getString('iconTint', 'accent'),
     ]);
     this.theme = theme as 'light' | 'dark';
     this.themeMode = themeMode as 'light' | 'dark' | 'system';
@@ -139,6 +153,9 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     this.proxyUrl = proxyUrl;
     this.githubMirrorUrl = githubMirrorUrl;
     this.colorScheme = colorScheme;
+    this.glassStyle = glassStyle as 'auto' | 'glassy' | 'flat';
+    this.glassLevel = glassLevel as 'auto' | 'high' | 'medium' | 'low';
+    this.iconTint = iconTint as 'accent' | 'mono';
     this.clipboardMonitor = clipboardMonitor;
     this.notifyOnComplete = notifyOnComplete;
     this.liveViewEnabled = liveViewEnabled;
@@ -171,6 +188,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     // Sort by priority (highest first)
     this.tasks.sort((a, b) => b.priority - a.priority);
     this.updateVisibleTasks();
+
     this.btSettings = btSettings;
 
     // Apply global speed limit
@@ -192,6 +210,8 @@ export class DownloadViewModel implements EngineListener, McpBackend {
       // after an app restart without toggling the setting again.
       if (this.mcpEnabled) {
         this.mcp.start(this.mcpToken, this).catch(() => {});
+        // MCP 常开：冷启动恢复后即持有长时任务，保证后台端口可达
+        this.updateBackgroundTask();
       }
     }, 300);
   }
@@ -251,10 +271,30 @@ export class DownloadViewModel implements EngineListener, McpBackend {
       this.refreshTick++;
       this.updateVisibleTasks();
       // 不等待 engine.start 完成，让任务立即显示
-      this.engine.start(task).catch((e) => logCollector.error('Download', `engine.start error: ${JSON.stringify(e)}`));
+      this.startWithGuard(task);
       return 'added';
     } finally {
       this.pendingUrls.delete(trimmed);
+    }
+  }
+
+  /**
+   * engine.start 的统一失败兜底：启动抛异常时把任务置为错误态并持久化，
+   * 避免任务永久停留在「下载中」无进度（此前 catch 仅打日志）。
+   */
+  private startWithGuard(task: DownloadTask): void {
+    this.engine.start(task).catch((e: Error) => {
+      logCollector.error('Download', `engine.start error: ${JSON.stringify(e)}`);
+      this.markStartFailure(task, e);
+    });
+  }
+
+  /** 启动失败兜底置错误态（独立方法以避免 ArkTS 在 catch 内的类型收窄误报） */
+  private markStartFailure(task: DownloadTask, e: Error): void {
+    if (task.status === TaskStatus.Downloading || task.status === TaskStatus.Queued) {
+      task.status = TaskStatus.Error;
+      task.errorMessage = e && e.message ? e.message : '下载启动失败，请检查链接或网络后重试';
+      this.onTaskError(task, task.errorMessage);
     }
   }
 
@@ -286,7 +326,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
         this.refreshTick++;
       this.updateVisibleTasks();
         // 不等待 engine.start 完成，让任务立即显示
-        this.engine.start(task).catch((e) => logCollector.error('Download', `confirmDuplicateDownload start error: ${JSON.stringify(e)}`));
+        this.startWithGuard(task);
       } catch (e) {
         logCollector.error('Download', `confirmDuplicateDownload error: ${JSON.stringify(e)}`);
       } finally {
@@ -330,6 +370,11 @@ export class DownloadViewModel implements EngineListener, McpBackend {
 
   pause(task: DownloadTask): void {
     this.engine.pause(task);
+    // 与 pauseAll 一致：立即撤下进度通知与实况窗胶囊，避免「暂停了还在下载」的观感
+    NotificationHelper.getInstance().cancelProgress(task.id);
+    LiveViewHelper.getInstance().stop(task.id);
+    this.refreshTick++;
+    this.updateVisibleTasks();
   }
 
   resume(task: DownloadTask): void {
@@ -431,7 +476,11 @@ export class DownloadViewModel implements EngineListener, McpBackend {
           t.status = TaskStatus.Paused;
           t.errorMessage = '';
         }
-        await this.engine.start(t);
+        try {
+          await this.engine.start(t);
+        } catch (e) {
+          this.markStartFailure(t, e as Error);
+        }
       }
     }
   }
@@ -462,6 +511,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   setTheme(t: 'light' | 'dark'): void {
     this.theme = t;
     this.settings.put('theme', t);
+    AppStorage.setOrCreate<string>('fluxdown_app_theme', t);
   }
 
   setThemeMode(mode: 'light' | 'dark' | 'system'): void {
@@ -483,6 +533,8 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     } else {
       this.mcp.stop();
     }
+    // MCP 常开期间需在后台保持响应，故同步刷新长时任务保活
+    this.updateBackgroundTask();
   }
 
   setMcpToken(token: string): void {
@@ -492,10 +544,18 @@ export class DownloadViewModel implements EngineListener, McpBackend {
 
   // ---- Background task management ----
 
-  /** Count active downloads and start/stop the continuous background task accordingly. */
+  /**
+   * 持有长时任务（保活）的条件：
+   *  1) 有正在下载/合并的任务；或
+   *  2) MCP 本地服务已开启——它要在后台响应 127.0.0.1:17800 的外部调用，
+   *     若不持有长时任务，应用切后台会被系统挂起，本地端口不可达，
+   *     表现为“必须来回切换两个应用 MCP 才响应”。
+   * 任一条件满足即保持 DATA_TRANSFER 长时任务，进程在后台不被冻结。
+   */
   private updateBackgroundTask(): void {
     const activeCount = this.tasks.filter(t => t.status === TaskStatus.Downloading || t.status === TaskStatus.Merging).length;
-    BackgroundTaskManager.getInstance().update(activeCount).catch(() => {});
+    const keepAlive = activeCount > 0 || this.mcpEnabled;
+    BackgroundTaskManager.getInstance().update(keepAlive ? 1 : 0).catch(() => {});
   }
 
   // ---- EngineListener ----
@@ -579,7 +639,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
         // 仅当任务仍停留在本次排队态（未被用户暂停/移除）时才自动重启
         if (task.status === TaskStatus.Queued) {
           task.errorMessage = '';
-          this.engine.start(task).catch(() => {});
+          this.startWithGuard(task);
         }
       }, Math.max(1, this.autoRetryDelaySec) * 1000);
       return;
@@ -746,7 +806,12 @@ export class DownloadViewModel implements EngineListener, McpBackend {
       .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
 
     for (let i = 0; i < Math.min(slots, candidates.length); i++) {
-      await this.engine.start(candidates[i]);
+      const t = candidates[i];
+      try {
+        await this.engine.start(t);
+      } catch (e) {
+        this.markStartFailure(t, e as Error);
+      }
     }
   }
 
@@ -1214,6 +1279,21 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     this.settings.put('colorScheme', scheme);
   }
 
+  setGlassStyle(v: 'auto' | 'glassy' | 'flat'): void {
+    this.glassStyle = v;
+    this.settings.put('glassStyle', v);
+  }
+
+  setGlassLevel(v: 'auto' | 'high' | 'medium' | 'low'): void {
+    this.glassLevel = v;
+    this.settings.put('glassLevel', v);
+  }
+
+  setIconTint(v: 'accent' | 'mono'): void {
+    this.iconTint = v;
+    this.settings.put('iconTint', v);
+  }
+
   setClipboardMonitor(enabled: boolean): void {
     this.clipboardMonitor = enabled;
     this.settings.put('clipboardMonitor', enabled);
@@ -1326,5 +1406,70 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     } catch (_e) {
       // Clipboard read may fail silently
     }
+  }
+
+  // ── 以下方法供 AboutContent / TaskDetailContent 等组件使用 ──
+
+  get appVersion(): string {
+    const ctx = this?.['context'];
+    if (ctx) {
+      try {
+        const info = bundleManager.getBundleInfoForSelfSync(bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT);
+        return info.versionName;
+      } catch (_e) {}
+    }
+    return '1.0.0';
+  }
+
+  get isBeta(): boolean {
+    return this.appVersion.toLowerCase().includes('beta');
+  }
+
+  copyLogs(): void {
+    const ctx = this?.['context'];
+    if (!ctx) return;
+    try {
+      const logCollector = (globalThis as any)['__fluxdown_logCollector'];
+      if (logCollector) {
+        logCollector.copyToClipboard(ctx);
+      }
+    } catch (_e) {}
+  }
+
+  openUrl(url: string): void {
+    const ctx = this?.['context'];
+    if (!ctx) return;
+    try {
+      (ctx as common.UIAbilityContext).openLink(url);
+    } catch (e) {
+      console.error('openUrl failed', (e as Error).message);
+    }
+  }
+
+  copyToClipboard(text: string): void {
+    try {
+      const data = pasteboard.createData('text/plain', text);
+      const pb = pasteboard.getSystemPasteboard();
+      pb.setData(data);
+    } catch (e) {
+      console.error('copyToClipboard failed', (e as Error).message);
+    }
+  }
+
+  openFileLocation(task: DownloadTask): void {
+    const ctx = this?.['context'];
+    if (!ctx || !task.publicPath) return;
+    try {
+      const fileUriObj = fileUri.getUriFromPath(task.publicPath);
+      (ctx as common.UIAbilityContext).openLink('filemanager://openDirectory', {
+        parameters: { 'fileUri': fileUriObj }
+      } as OpenLinkOptions);
+    } catch (e) {
+      console.error('openFileLocation failed', (e as Error).message);
+    }
+  }
+
+  recheck(task: DownloadTask): void {
+    this.recheckTask(task).catch(() => {});
   }
 }

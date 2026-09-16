@@ -380,8 +380,15 @@ async function fetchDashPlan(mpdUrl: string, ignoreTls: boolean, proxy?: ProxyCo
     }
     const xml = resp.result as string;
     return parseMpd(xml, mpdUrl);
+  } catch (e) {
+    // 清单获取/解析失败向上传播
+    throw e as Error;
   } finally {
-    req.destroy();
+    try {
+      req.destroy();
+    } catch (_e) {
+      // ignore destroy error
+    }
   }
 }
 
@@ -435,8 +442,15 @@ async function fetchSegmentBytes(url: string, byteRange: string | undefined, hoo
     }
     const result = resp.result;
     return result instanceof ArrayBuffer ? result : new ArrayBuffer(0);
+  } catch (e) {
+    // 分片获取失败向上传播以触发重试/失败态
+    throw e as Error;
   } finally {
-    req.destroy();
+    try {
+      req.destroy();
+    } catch (_e) {
+      // ignore destroy error
+    }
   }
 }
 
@@ -446,8 +460,9 @@ async function fetchSegmentBytes(url: string, byteRange: string | undefined, hoo
  * written first when the output file is empty.
  */
 export async function downloadDash(task: DownloadTask, ctrl: Ctrl, hooks: EngineHooks): Promise<void> {
-  const file = fs.openSync(task.filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
+  let file: fs.File | null = null;
   try {
+    file = fs.openSync(task.filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
     let writeOffset = fs.statSync(task.filePath).size;
     // fMP4 初始化段（Initialization）：先写 init，媒体分片才能解码。
     if (task.manifestInitUrl && writeOffset === 0) {
@@ -474,7 +489,16 @@ export async function downloadDash(task: DownloadTask, ctrl: Ctrl, hooks: Engine
     if (!ctrl.aborted) {
       fs.fsyncSync(file.fd);
     }
+  } catch (e) {
+    // 下载/写入失败向上传播，由引擎进入错误/重试态
+    throw e as Error;
   } finally {
-    fs.closeSync(file);
+    if (file) {
+      try {
+        fs.closeSync(file);
+      } catch (_e) {
+        // ignore close error
+      }
+    }
   }
 }

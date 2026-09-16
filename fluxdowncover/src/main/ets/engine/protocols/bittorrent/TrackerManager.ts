@@ -110,8 +110,16 @@ export class TrackerManager {
         }
       }
       return out;
+    } catch (e) {
+      // tracker 订阅列表更新属于 best-effort，失败返回空、不影响下载主流程
+      console.warn(`[TrackerManager] fetchList failed: ${(e as Error)?.message ?? e}`);
+      return [];
     } finally {
-      req.destroy();
+      try {
+        req.destroy();
+      } catch (_e) {
+        // ignore destroy error
+      }
     }
   }
 

@@ -1,3 +1,5 @@
+// ArkUI V2 状态装饰器：.ts 为独立模块、SDK 全局装饰器声明不注入，故在此做模块级类型声明（不污染全局）
+declare const Trace: PropertyDecorator;
 import { http, connection } from '@kit.NetworkKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { common } from '@kit.AbilityKit';
@@ -10,7 +12,8 @@ import { genId, sanitizeFileName, fileNameFromUrl, detectProtocol, safePercentDe
 import { logCollector } from '../utils/LogCollector';
 import { TaskRepository } from '../store/TaskRepository';
 import { EngineListener, Ctrl } from './types'
-import { SpeedLimiter } from '../utils/SpeedLimiter';;
+import { SpeedLimiter } from '../utils/SpeedLimiter';
+import { NetworkPredictor } from '../utils/NetworkPredictor';
 import { EngineHooks, ProxyConfig } from './EngineHooks';
 import { hashFile } from './HashTask';
 import { buildHlsSegments, downloadHls } from './protocols/HlsProtocol';
@@ -20,6 +23,35 @@ import { downloadBittorrent } from './protocols/BittorrentProtocol';
 import { downloadEd2k } from './protocols/Ed2kProtocol';
 import { decodeWrapperLink } from './protocols/ThunderProtocol';
 import { BtEngine } from './BtEngine';
+
+/**
+ * 单任务动态并发池状态（智能动态分块 + 自动加速专用）。
+ * 初始 worker 数 = min(maxSegments, 初始段数)；动态拆分产生的新段 job
+ * 由 ticker 检测到后 push 进 queue，并伴随新增一个 worker（连接），
+ * 使并发连接数随分段数增长，上限为 maxConnections。
+ */
+interface DynamicPool {
+  task: DownloadTask;
+  ctrl: Ctrl;
+  queue: Array<() => Promise<void>>;
+  /** 已分派的 worker（连接）总数。 */
+  spawned: number;
+  /** 当前正在执行分段下载的 worker 数（空闲 worker 可复用新入队任务）。 */
+  busy: number;
+  finished: boolean;
+  resolve: (() => void) | null;
+  reject: ((e: Error) => void) | null;
+}
+
+/** 自动加速状态：最近 5 秒速度采样 + 加速基线（对齐 Ghost-Downloader-3 _autoSpeedUp）。 */
+interface TaskAccel {
+  history: Array<number>; // 最近速度采样（每秒 1 个，最多 5 个）
+  lastSample: number; // 上次采样时间戳
+  checkTime: number; // 加速基线记录时间（0 = 尚未建立基线）
+  initialWorkers: number; // 本次加速前的分段/连接数
+  initialSpeed: number; // 本次加速前的平均速度
+  disabled: boolean; // 增益不足判定后禁用本任务加速
+}
 
 /**
  * Core download engine. Implements FluxDown Cover's headline features:
@@ -42,6 +74,21 @@ export class DownloadEngine implements EngineHooks {
   private active: Set<DownloadTask> = new Set();
   private controls: Map<string, Ctrl> = new Map();
   private maxSegments: number = 8;
+  // ── Phase 1: 智能动态分块 + 自动加速（借鉴 Ghost-Downloader-3 P0）──
+  /** 动态分块总开关：允许在下载过程中拆分慢速分段并增开连接。 */
+  private autoReassign: boolean = true;
+  /** 单任务最大并发连接数（需求批准上限 = maxSegments * 5 = 40）。 */
+  private maxConnections: number = 40;
+  /** 剩余字节低于该值不再拆分（避免尾段碎片化），256KB。 */
+  private minReassignSize: number = 256 * 1024;
+  /** 自动加速总开关：速度稳定时逐步增加分段。 */
+  private autoSpeedUp: boolean = true;
+  /** 速度采样稳定性阈值：5 个采样最大偏差 < 15% 视为稳定。 */
+  private speedStabilityThreshold: number = 0.15;
+  /** 运行中的动态并发池（taskId -> pool）。 */
+  private pools: Map<string, DynamicPool> = new Map();
+  /** 每任务自动加速状态（taskId -> state）。 */
+  private accels: Map<string, TaskAccel> = new Map();
   private githubMirrorUrl: string = '';
   private ignoreTlsErrors: boolean = false;
   private proxyUrl: string = '';
@@ -82,6 +129,12 @@ export class DownloadEngine implements EngineHooks {
   /** Per-task limiters cache (keyed by task id, recreated on limit change). */
   private taskLimiters: Map<string, SpeedLimiter> = new Map();
 
+  /** Phase 2: Smart network predictor for adaptive bandwidth management. */
+  private predictor: NetworkPredictor = NetworkPredictor.getInstance();
+
+  /** Per-chunk timestamp map for bandwidth measurement. */
+  private chunkTimestamps: Map<string, number> = new Map();
+
   private taskLimiter(taskId: string, limit: number): SpeedLimiter {
     let lim = this.taskLimiters.get(taskId);
     if (!lim) {
@@ -91,6 +144,29 @@ export class DownloadEngine implements EngineHooks {
       lim.setLimit(limit);
     }
     return lim;
+  }
+
+  /** Per-queue limiters cache (keyed by queue id). */
+  private queueLimiters: Map<string, SpeedLimiter> = new Map();
+
+  /** Update (or clear) the speed limit for a named queue. */
+  setQueueSpeedLimit(queueId: string, bytesPerSec: number): void {
+    if (bytesPerSec <= 0) {
+      this.queueLimiters.delete(queueId);
+    } else {
+      let lim = this.queueLimiters.get(queueId);
+      if (!lim) {
+        lim = new SpeedLimiter(bytesPerSec);
+        this.queueLimiters.set(queueId, lim);
+      } else {
+        lim.setLimit(bytesPerSec);
+      }
+    }
+  }
+
+  /** Remove all queue limiters (e.g. on queue deletion). */
+  clearQueueLimiters(): void {
+    this.queueLimiters.clear();
   }
 
   /** User-initiated seeding for a completed BT task. */
@@ -126,6 +202,14 @@ export class DownloadEngine implements EngineHooks {
   // ---- EngineHooks ----
   onChunk(task: DownloadTask, len: number): void {
     task.liveBytes += len;
+    // Phase 2: Record bandwidth sample for network prediction
+    const now = Date.now();
+    const lastTs = this.chunkTimestamps.get(task.id) ?? now;
+    this.chunkTimestamps.set(task.id, now);
+    if (now - lastTs > 50) {
+      // Only record if elapsed > 50ms to avoid noise from tiny chunks
+      this.predictor.recordSample(len, now - lastTs);
+    }
   }
 
   defaultDir(): string {
@@ -150,6 +234,16 @@ export class DownloadEngine implements EngineHooks {
         waitMs = tw;
       }
     }
+    // ── Queue-level speed limit ──
+    if (task.queueId) {
+      const qLim = this.queueLimiters.get(task.queueId);
+      if (qLim) {
+        const qw = qLim.waitTime(len);
+        if (qw > waitMs) {
+          waitMs = qw;
+        }
+      }
+    }
     if (waitMs > 0) {
       await new Promise<void>(resolve => setTimeout(resolve, waitMs));
     }
@@ -158,6 +252,13 @@ export class DownloadEngine implements EngineHooks {
     }
     if (task.speedLimit > 0) {
       this.taskLimiter(task.id, task.speedLimit).tryConsume(len);
+    }
+    // ── Queue-level limit consumption ──
+    if (task.queueId) {
+      const qLim = this.queueLimiters.get(task.queueId);
+      if (qLim && qLim.getLimit() > 0) {
+        qLim.tryConsume(len);
+      }
     }
   }
 
@@ -386,6 +487,15 @@ export class DownloadEngine implements EngineHooks {
     // not from the URL. downloadBittorrent will set filePath after parsing.
     // Ensure dirPath is valid (may be empty when restored from older DB records).
     task.dirPath = task.dirPath || this.defaultDir();
+    // 链接前置校验：URL 为空或缺少 scheme 时 http 请求必报 2300003，
+    // 此前异常被上层吞掉导致任务永久停在「下载中」。这里直接置错误态并给出可操作提示。
+    if (task.protocol !== ProtocolType.BITTORRENT &&
+      (!task.url || !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(task.url))) {
+      task.status = TaskStatus.Error;
+      task.errorMessage = '任务链接为空或格式无效，请编辑任务重新粘贴完整链接（含 http://、https://、ftp:// 等前缀）。';
+      this.listener?.onTaskError(task, task.errorMessage);
+      return;
+    }
     if (task.protocol !== ProtocolType.BITTORRENT) {
       this.ensureFile(task);
     }
@@ -478,40 +588,7 @@ export class DownloadEngine implements EngineHooks {
           this.finalizeCompleted(task);
           return;
         }
-        // 每段独立重试（最多 3 次），避免单段超时导致整个任务失败
-        const downloadWithRetry = async (seg: Segment): Promise<void> => {
-          const MAX_RETRIES = 3;
-          const originalUrl = seg.url ?? task.url;
-          const isGithub = originalUrl.includes('github.com');
-          for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-            try {
-              if (isGithub) {
-                // GitHub 链接：第一次就用镜像，不浪费时间试官方直连；重试时切换其他镜像
-                const mirrors = ['https://gh-proxy.com/', 'https://mirror.ghproxy.com/', 'https://ghproxy.com/', 'https://ghfast.top/'];
-                const mirror = this.githubMirrorUrl || mirrors[attempt % mirrors.length];
-                const normalizedMirror = mirror.endsWith('/') ? mirror : mirror + '/';
-                seg.url = normalizedMirror + this.safeEncodeUrl(originalUrl);
-              } else {
-                seg.url = originalUrl;
-              }
-              await this.downloadSegment(task, seg, ctrl);
-              if (task.errorMessage?.startsWith('正在重试')) {
-                task.errorMessage = ''; // 重试成功，清除临时提示
-              }
-              return;
-            } catch (e) {
-              if (ctrl.aborted || attempt >= MAX_RETRIES) {
-                throw e;
-              }
-              // 推送重试提示到 UI，让用户知道任务还在进行而非卡死
-              task.errorMessage = `正在重试 (${attempt + 1}/${MAX_RETRIES})...`;
-              this.listener?.onTaskUpdated(task);
-              // 指数退避：1s, 2s, 4s
-              await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
-            }
-          }
-        };
-        await this.runPool(pending.map((s) => () => downloadWithRetry(s)), this.maxSegments);
+        await this.runDynamicHttp(task, ctrl, pending);
       }
 
       if (ctrl.aborted) {
@@ -599,6 +676,18 @@ export class DownloadEngine implements EngineHooks {
    * Rename a task's output file on disk and update persistence.
    * Safe only when the task is not actively downloading.
    */
+  /** fs.accessSync 的安全封装：存在返回 true，不存在或访问异常返回 false（accessSync 标注 @throws）。 */
+  private fileExists(p: string): boolean {
+    if (!p) {
+      return false;
+    }
+    try {
+      return fs.accessSync(p);
+    } catch (_e) {
+      return false;
+    }
+  }
+
   async renameTask(task: DownloadTask, newName: string): Promise<void> {
     const name = sanitizeFileName(newName);
     if (!name || name === task.fileName) {
@@ -609,11 +698,15 @@ export class DownloadEngine implements EngineHooks {
     }
     const oldPath = task.filePath;
     const newPath = `${task.dirPath}/${name}`;
-    if (oldPath && fs.accessSync(oldPath)) {
-      if (fs.accessSync(newPath)) {
+    if (oldPath && this.fileExists(oldPath)) {
+      if (this.fileExists(newPath)) {
         throw new Error('目标文件名已存在');
       }
-      fs.renameSync(oldPath, newPath);
+      try {
+        fs.renameSync(oldPath, newPath);
+      } catch (e) {
+        throw e as Error;
+      }
     }
     task.fileName = name;
     task.filePath = newPath;
@@ -641,16 +734,24 @@ export class DownloadEngine implements EngineHooks {
     if (task.status === TaskStatus.Downloading || task.status === TaskStatus.Verifying) {
       throw new Error('任务正在下载，请先暂停后再移动');
     }
-    if (!fs.accessSync(newDir)) {
-      fs.mkdirSync(newDir);
+    if (!this.fileExists(newDir)) {
+      try {
+        fs.mkdirSync(newDir);
+      } catch (e) {
+        throw e as Error;
+      }
     }
     const oldPath = task.filePath;
     const newPath = `${newDir}/${task.fileName}`;
-    if (oldPath && fs.accessSync(oldPath)) {
-      if (fs.accessSync(newPath)) {
+    if (oldPath && this.fileExists(oldPath)) {
+      if (this.fileExists(newPath)) {
         throw new Error('目标位置已存在同名文件');
       }
-      fs.renameSync(oldPath, newPath);
+      try {
+        fs.renameSync(oldPath, newPath);
+      } catch (e) {
+        throw e as Error;
+      }
     }
     task.dirPath = newDir;
     task.filePath = newPath;
@@ -726,7 +827,7 @@ export class DownloadEngine implements EngineHooks {
   async cleanupFailedTasks(tasks: DownloadTask[], keepFile: boolean = false): Promise<number> {
     let removed = 0;
     for (const t of tasks) {
-      if (t.status === TaskStatus.Error || (t.status === TaskStatus.Paused && t.totalBytes > 0 && !fs.accessSync(t.filePath))) {
+      if (t.status === TaskStatus.Error || (t.status === TaskStatus.Paused && t.totalBytes > 0 && !this.fileExists(t.filePath))) {
         this.remove(t, keepFile);
         removed++;
       }
@@ -758,13 +859,32 @@ export class DownloadEngine implements EngineHooks {
       throw new Error('未获取到公共 Download 目录');
     }
     const pubPath = new fileUri.FileUri(result[0] + '/' + task.fileName).path;
-    const src = fs.openSync(task.filePath, fs.OpenMode.READ_ONLY);
-    const dst = fs.openSync(pubPath, fs.OpenMode.CREATE | fs.OpenMode.READ_WRITE);
+    let src: fs.File | null = null;
+    let dst: fs.File | null = null;
     try {
-      fs.copyFileSync(src.fd, dst.fd);
+      const s = fs.openSync(task.filePath, fs.OpenMode.READ_ONLY);
+      src = s;
+      const d = fs.openSync(pubPath, fs.OpenMode.CREATE | fs.OpenMode.READ_WRITE);
+      dst = d;
+      fs.copyFileSync(s.fd, d.fd);
+    } catch (e) {
+      // 导出失败需向上传播以提示用户
+      throw e as Error;
     } finally {
-      fs.closeSync(src.fd);
-      fs.closeSync(dst.fd);
+      if (src) {
+        try {
+          fs.closeSync(src.fd);
+        } catch (_e) {
+          // ignore close error
+        }
+      }
+      if (dst) {
+        try {
+          fs.closeSync(dst.fd);
+        } catch (_e) {
+          // ignore close error
+        }
+      }
     }
     return pubPath;
   }
@@ -855,15 +975,19 @@ export class DownloadEngine implements EngineHooks {
 
   private ensureFile(task: DownloadTask): void {
     task.dirPath = task.dirPath || this.defaultDir();
-    // Ensure the target directory exists (may be a custom dirPath).
-    // NOTE: fs.accessSync returns boolean (false if not exist) — it does NOT throw.
-    if (!fs.accessSync(task.dirPath)) {
-      fs.mkdirSync(task.dirPath);
-    }
-    task.filePath = `${task.dirPath}/${task.fileName}`;
-    if (!fs.accessSync(task.filePath)) {
-      const f = fs.openSync(task.filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
-      fs.closeSync(f.fd);
+    // Ensure the target directory exists (may be a custom dirPath). accessSync 经 fileExists 安全封装。
+    try {
+      if (!this.fileExists(task.dirPath)) {
+        fs.mkdirSync(task.dirPath);
+      }
+      task.filePath = `${task.dirPath}/${task.fileName}`;
+      if (!this.fileExists(task.filePath)) {
+        const f = fs.openSync(task.filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
+        fs.closeSync(f.fd);
+      }
+    } catch (e) {
+      // 无法创建目录/输出文件属于致命错误，向上传播以进入失败态
+      throw e as Error;
     }
   }
 
@@ -1064,6 +1188,8 @@ export class DownloadEngine implements EngineHooks {
   }
 
   private buildSegments(task: DownloadTask, total: number, acceptRanges: boolean, realUrl?: string): void {
+    // 记录服务器 Range 能力：动态分块（splitSlowest）仅对支持 Range 的任务生效
+    task.supportsRanges = acceptRanges;
     if (!acceptRanges || total <= 0) {
       task.totalBytes = total;
       task.segments = [
@@ -1107,7 +1233,13 @@ export class DownloadEngine implements EngineHooks {
   }
 
   private async downloadSegment(task: DownloadTask, seg: Segment, ctrl: Ctrl): Promise<void> {
-    const file = fs.openSync(task.filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
+    let file: fs.File;
+    try {
+      file = fs.openSync(task.filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
+    } catch (e) {
+      // 无法打开分片输出文件属于致命错误，向上传播
+      throw e as Error;
+    }
     let offset = seg.start + seg.downloaded;
     const req = http.createHttp();
     let writeChain: Promise<void> = Promise.resolve();
@@ -1165,7 +1297,12 @@ export class DownloadEngine implements EngineHooks {
             if (task.speedLimit > 0) {
               this.taskLimiter(task.id, task.speedLimit).tryConsume(data.byteLength);
             }
-            fs.writeSync(file.fd, data, { offset });
+            try {
+              fs.writeSync(file.fd, data, { offset });
+            } catch (we) {
+              writeErr = we as Error;
+              return;
+            }
             offset += data.byteLength;
             seg.downloaded += data.byteLength;
             this.onChunk(task, data.byteLength);
@@ -1201,8 +1338,19 @@ export class DownloadEngine implements EngineHooks {
           bufView = new Uint8Array(buf);
           bufOff = 0;
         }
+        // 动态分块（splitSlowest）可能把本段的 end 收缩：
+        // 已写入位置 offset+bufOff 达到新 end+1 后，剩余数据丢弃，
+        // 由新分段从 splitPoint 无缝接管，避免两连接重复写入同一区域。
+        const writePos = offset + bufOff;
+        if (seg.end >= 0 && writePos >= seg.end + 1) {
+          return;
+        }
         const space = BUF_SIZE - bufOff;
-        const copyLen = Math.min(chunkView.length - chunkOff, space);
+        const remainToEnd = seg.end >= 0 ? seg.end + 1 - writePos : space;
+        const copyLen = Math.min(chunkView.length - chunkOff, space, remainToEnd);
+        if (copyLen <= 0) {
+          return;
+        }
         bufView!.set(chunkView.subarray(chunkOff, chunkOff + copyLen), bufOff);
         bufOff += copyLen;
         chunkOff += copyLen;
@@ -1272,19 +1420,277 @@ export class DownloadEngine implements EngineHooks {
       throw e;
     } finally {
       req.destroy();
-      fs.closeSync(file.fd);
+      try {
+        fs.closeSync(file.fd);
+      } catch (_e) {
+        // ignore close error
+      }
     }
   }
 
-  private async runPool(tasks: Array<() => Promise<void>>, limit: number): Promise<void> {
-    let idx = 0;
-    const workers = Array.from({ length: Math.min(limit, tasks.length) }, async () => {
-      while (idx < tasks.length) {
-        const cur = idx++;
-        await tasks[cur]();
-      }
+  /**
+   * 动态并发池：Phase 1 核心。固定池 runPool 的原调用点；
+   * 现在以「共享队列 + 动态 worker」实现智能分块的核心调度：
+   *  - 初始按 min(maxSegments, 段数) spawn worker；
+   *  - worker 从共享队列取任务执行，队列空时若已有分段全完成则退出，否则短暂等待；
+   *  - 自动加速（maybeAdaptiveSplit）会向队列追加新分段任务并增加 worker，
+   *    使并发连接数可增长到 maxConnections（= maxSegments * 5）。
+   */
+  private async runDynamicHttp(task: DownloadTask, ctrl: Ctrl, pending: Array<Segment>): Promise<void> {
+    const pool: DynamicPool = {
+      task: task,
+      ctrl: ctrl,
+      queue: [],
+      spawned: 0,
+      busy: 0,
+      finished: false,
+      resolve: null,
+      reject: null,
+    };
+    // 入队初始分段任务（每段独立重试，避免单段失败拖垮整个任务）
+    for (const s of pending) {
+      pool.queue.push(() => this.downloadSegmentWithRetry(task, s, ctrl));
+    }
+    this.pools.set(task.id, pool);
+    const donePromise = new Promise<void>((res, rej) => {
+      pool.resolve = res;
+      pool.reject = rej;
     });
-    await Promise.all(workers);
+    const initialWorkers = Math.min(this.maxSegments, pool.queue.length);
+    // 初始 worker 数 = min(maxSegments, 队列长度)，与旧 runPool 语义一致
+    for (let i = 0; i < Math.max(1, initialWorkers); i++) {
+      this.spawnPoolWorker(pool);
+    }
+    await donePromise;
+    if (this.pools.get(task.id) === pool) {
+      this.pools.delete(task.id);
+    }
+    this.accels.delete(task.id);
+  }
+
+  /** 分派一个 worker：从共享队列取任务，队列空则按完成状态决定退出/等待。 */
+  private spawnPoolWorker(pool: DynamicPool): void {
+    if (pool.finished) {
+      return;
+    }
+    pool.spawned++;
+    const run = async (): Promise<void> => {
+      try {
+        while (!pool.finished && !pool.ctrl.aborted) {
+          const job = pool.queue.shift();
+          if (job) {
+            pool.busy++;
+            try {
+              await job();
+            } finally {
+              pool.busy--;
+            }
+            continue;
+          }
+          // 队列空：若已有分段全部完成则退出该 worker；否则等待动态拆分补充任务
+          if (pool.task.segments.every((s) => s.done)) {
+            break;
+          }
+          await new Promise(r => setTimeout(r, 200));
+        }
+      } catch (e) {
+        if (!pool.finished) {
+          pool.finished = true;
+          pool.reject?.(e as Error);
+        }
+      } finally {
+        // 无论正常/异常退出都必须收敛计数，否则最后一个 worker 退出时池永不 resolve
+        pool.spawned--;
+        if (pool.spawned <= 0 && !pool.finished && pool.resolve) {
+          pool.finished = true;
+          pool.resolve();
+        }
+      }
+    };
+    void run();
+  }
+
+  /**
+   * 智能动态分块（Ghost _splitSlowest）：找剩余字节最多的未完成分段，
+   * 从其中点拆成两半。原段保留前半（end 收缩），新段从后半起点开始。
+   * 剩余字节 < minReassignSize 时不拆。返回新分段；无法拆分返回 null。
+   */
+  private splitSlowest(task: DownloadTask): Segment | null {
+    if (!task.supportsRanges || task.segments.length >= this.maxConnections) {
+      return null;
+    }
+    let slowest: Segment | null = null;
+    let maxRemaining = 0;
+    for (const s of task.segments) {
+      if (s.done) {
+        continue;
+      }
+      const remaining = s.end - (s.start + s.downloaded) + 1;
+      if (remaining > maxRemaining) {
+        maxRemaining = remaining;
+        slowest = s;
+      }
+    }
+    if (!slowest || maxRemaining < this.minReassignSize) {
+      return null;
+    }
+    // 从中点拆：原段 end = position + base + remainder - 1，新段 start = 原新end + 1
+    const position = slowest.start + slowest.downloaded;
+    const base = Math.floor(maxRemaining / 2);
+    const remainder = maxRemaining % 2;
+    const oldEnd = slowest.end;
+    slowest.end = position + base + remainder - 1;
+    const newSeg: Segment = {
+      index: task.segments.length,
+      start: slowest.end + 1,
+      end: oldEnd,
+      downloaded: 0,
+      done: false,
+      url: slowest.url,
+    };
+    task.segments.push(newSeg);
+    return newSeg;
+  }
+
+  /** 单段下载 + 重试封装（从 start() 闭包提取，供初始段与动态拆分段共用）。 */
+  private async downloadSegmentWithRetry(task: DownloadTask, seg: Segment, ctrl: Ctrl): Promise<void> {
+    const MAX_RETRIES = 3;
+    const originalUrl = seg.url ?? task.url;
+    const isGithub = originalUrl.includes('github.com');
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        if (isGithub) {
+          // GitHub 链接：第一次就用镜像，不浪费时间试官方直连；重试时切换其他镜像
+          const mirrors = ['https://gh-proxy.com/', 'https://mirror.ghproxy.com/', 'https://ghproxy.com/', 'https://ghfast.top/'];
+          const mirror = this.githubMirrorUrl || mirrors[attempt % mirrors.length];
+          const normalizedMirror = mirror.endsWith('/') ? mirror : mirror + '/';
+          seg.url = normalizedMirror + this.safeEncodeUrl(originalUrl);
+        } else {
+          seg.url = originalUrl;
+        }
+        await this.downloadSegment(task, seg, ctrl);
+        if (task.errorMessage?.startsWith('正在重试')) {
+          task.errorMessage = ''; // 重试成功，清除临时提示
+        }
+        return;
+      } catch (e) {
+        if (ctrl.aborted || attempt >= MAX_RETRIES) {
+          throw e;
+        }
+        // 推送重试提示到 UI，让用户知道任务还在进行而非卡死
+        task.errorMessage = `正在重试 (${attempt + 1}/${MAX_RETRIES})...`;
+        this.listener?.onTaskUpdated(task);
+        // 指数退避：1s, 2s, 4s
+        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+      }
+    }
+  }
+
+  /**
+   * 自动加速（Ghost _autoSpeedUp）：ticker 中调用。
+   * 收集最近 5 次速度采样，最大偏差 < 15% 视为稳定：
+   *  - 首次稳定：记录初始 worker/speed，立即 reassign 4 个新分段（+4 连接）；
+   *  - ≥5s 后再校验：若速度增长 < 0.8 × worker 增长 → 标记 disabled（连接已饱和），否则重置基线继续加速。
+   * 仅在 HTTP(S) 且支持 Range（多分段）的任务上生效，由调用方保证。
+   */
+  private maybeAdaptiveSplit(task: DownloadTask): void {
+    const pool = this.pools.get(task.id);
+    if (!pool || pool.finished || !this.autoSpeedUp || task.segments.length < 2) {
+      return;
+    }
+    // 已完成/暂停/出错的任务不需要加速
+    if (task.segments.every((s) => s.done) || pool.ctrl.aborted) {
+      return;
+    }
+    const now = Date.now();
+    let state = this.accels.get(task.id);
+    if (!state) {
+      state = { history: [], lastSample: 0, checkTime: 0, initialWorkers: pool.spawned, initialSpeed: 0, disabled: false };
+      this.accels.set(task.id, state);
+    }
+    if (state.disabled) {
+      return;
+    }
+    // 采样节流：每 1000ms 最多记录一次（对齐 Ghost 1s tick），5 个采样 ≈ 5s 窗口
+    if (now - state.lastSample < 1000) {
+      return;
+    }
+    state.lastSample = now;
+    state.history.push(task.speed > 0 ? task.speed : 0);
+    if (state.history.length > 5) {
+      state.history.shift();
+    }
+    if (state.history.length < 5) {
+      return;
+    }
+    // 稳定性判定：5 个采样与均值的最大相对偏差 < 阈值
+    let sum = 0;
+    for (const v of state.history) {
+      sum += v;
+    }
+    const avg = sum / state.history.length;
+    if (avg <= 0) {
+      // 下载未启动/卡住（全 0 速度）：清空采样，避免旧的 0 值污染后续稳定性判断
+      state.history = [];
+      return;
+    }
+    let maxDev = 0;
+    for (const v of state.history) {
+      const dev = Math.abs(v - avg) / avg;
+      if (dev > maxDev) {
+        maxDev = dev;
+      }
+    }
+    if (maxDev >= this.speedStabilityThreshold) {
+      // 速度起伏大（不稳定）：清空采样重新积累，等待稳定期
+      state.history = [];
+      return;
+    }
+    if (state.checkTime === 0) {
+      // 首次稳定：记录基线并立即 +4 连接
+      state.initialWorkers = pool.spawned;
+      state.initialSpeed = avg;
+      state.checkTime = now;
+      this.reassignN(task, pool, 4);
+      return;
+    }
+    // 距离上次加速 ≥5s 才做 A/B 校验，避免窗口过短误判
+    if (now - state.checkTime < 5000) {
+      return;
+    }
+    const workerRatio = (pool.spawned - state.initialWorkers) / Math.max(1, state.initialWorkers);
+    const speedRatio = (avg - state.initialSpeed) / Math.max(1, state.initialSpeed);
+    if (speedRatio < 0.8 * workerRatio) {
+      // 连接数翻倍但速度没跟上 → 服务器带宽已饱和，永久禁用本任务加速
+      state.disabled = true;
+      return;
+    }
+    // 收益达到预期：重置基线，再来一轮 +4
+    state.initialWorkers = pool.spawned;
+    state.initialSpeed = avg;
+    state.checkTime = now;
+    this.reassignN(task, pool, 4);
+  }
+
+  /** 连续拆分 n 次慢速段：每个新段入队并视情况补充 worker（上限 maxConnections）。 */
+  private reassignN(task: DownloadTask, pool: DynamicPool, n: number): void {
+    for (let i = 0; i < n; i++) {
+      if (pool.finished || pool.ctrl.aborted) {
+        return;
+      }
+      const newSeg = this.splitSlowest(task);
+      if (!newSeg) {
+        return;
+      }
+      pool.queue.push(() => this.downloadSegmentWithRetry(task, newSeg, pool.ctrl));
+      const active = pool.spawned;
+      const target = Math.min(this.maxConnections, task.segments.length);
+      // 空闲 worker 优先复用：busy < spawned 时由空闲 worker 取新任务即可；
+      // 全部忙碌且未达上限时才补充新连接
+      if (pool.busy >= active && active < target) {
+        this.spawnPoolWorker(pool);
+      }
+    }
   }
 
   private async verify(task: DownloadTask): Promise<void> {
@@ -1336,6 +1742,8 @@ export class DownloadEngine implements EngineHooks {
           this.listener?.onTaskUpdated(task);
           this.lastPersist.set(task.id, now);
         }
+        // Phase 1: 自动加速检测（仅 HTTP(S) 动态池任务；内部已做协议/池存在性校验）
+        this.maybeAdaptiveSplit(task);
       });
       if (this.active.size === 0) {
         clearInterval(this.ticker!);

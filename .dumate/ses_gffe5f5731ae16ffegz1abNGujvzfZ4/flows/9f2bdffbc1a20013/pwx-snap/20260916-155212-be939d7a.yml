@@ -1,0 +1,148 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - banner [ref=e142]:
+        - generic [ref=e145]:
+          - generic [ref=e146]:
+            - img [ref=e148] [cursor=pointer]
+            - heading "L HarmonyOS_Samples / live-view-kit_-sample-code_-clientdemo_-arkts" [level=2] [ref=e151]:
+              - link "L" [ref=e152] [cursor=pointer]:
+                - /url: /HarmonyOS_Samples
+                - generic [ref=e154]: L
+              - generic [ref=e155]:
+                - generic [ref=e157]:
+                  - link "HarmonyOS_Samples" [ref=e158] [cursor=pointer]:
+                    - /url: /HarmonyOS_Samples
+                  - generic [ref=e159]: /
+                - link "live-view-kit_-sample-code_-clientdemo_-arkts" [ref=e161] [cursor=pointer]:
+                  - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts
+          - generic [ref=e165]:
+            - img [ref=e168]
+            - generic:
+              - textbox
+          - img [ref=e172]
+      - generic [ref=e12]:
+        - generic [ref=e13]:
+          - generic [ref=e14]:
+            - generic [ref=e15]:
+              - list [ref=e174]:
+                - listitem [ref=e175]:
+                  - img [ref=e176]
+                  - generic [ref=e178]: ArkTS
+                - listitem [ref=e179]:
+                  - img [ref=e180]
+                  - generic [ref=e182]: 27 次提交
+              - generic [ref=e16]:
+                - generic [ref=e17]:
+                  - generic [ref=e18]:
+                    - generic [ref=e183] [cursor=pointer]:
+                      - img [ref=e185]
+                      - generic [ref=e188]: "2"
+                    - button "加入合集" [ref=e189] [cursor=pointer]:
+                      - img [ref=e190]
+                  - generic [ref=e19]:
+                    - button [ref=e20] [cursor=pointer]:
+                      - img [ref=e21]
+                    - link "2" [ref=e192] [cursor=pointer]:
+                      - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/forks
+                      - generic [ref=e24]: "2"
+                - generic [ref=e25]:
+                  - button "克隆到本地" [ref=e26] [cursor=pointer]:
+                    - img [ref=e27]
+                  - button "下载zip" [ref=e29] [cursor=pointer]:
+                    - img [ref=e30]
+            - generic [ref=e37]:
+              - link "介绍" [ref=e38] [cursor=pointer]:
+                - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts
+                - generic [ref=e40]:
+                  - img [ref=e42]
+                  - generic [ref=e44]: 介绍
+              - link "代码" [ref=e45] [cursor=pointer]:
+                - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/tree
+                - generic [ref=e47]:
+                  - img [ref=e49]
+                  - generic [ref=e51]: 代码
+              - link "Issues" [ref=e52] [cursor=pointer]:
+                - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/issues
+                - generic [ref=e54]:
+                  - img [ref=e56]
+                  - generic [ref=e58]: Issues
+              - link "Pull Requests" [ref=e59] [cursor=pointer]:
+                - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/pulls
+                - generic [ref=e61]:
+                  - img [ref=e63]
+                  - generic [ref=e65]: Pull Requests
+              - link "项目讨论" [ref=e66] [cursor=pointer]:
+                - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/discussions
+                - generic [ref=e68]:
+                  - img [ref=e70]
+                  - generic [ref=e72]: 项目讨论
+              - link "Wiki" [ref=e73] [cursor=pointer]:
+                - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/wiki
+                - generic [ref=e75]:
+                  - img [ref=e77]
+                  - generic [ref=e79]: Wiki
+              - link "分析" [ref=e80] [cursor=pointer]:
+                - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/analysis
+                - generic [ref=e82]:
+                  - img [ref=e84]
+                  - generic [ref=e86]: 分析
+          - generic [ref=e194]:
+            - button "免费加入" [ref=e195] [cursor=pointer]
+            - paragraph [ref=e196]: 优质开源项目快速找，一键托管更轻松
+        - main [ref=e91]:
+          - generic [ref=e92]:
+            - generic [ref=e93]:
+              - button "Open file tree" [ref=e94] [cursor=pointer]:
+                - img [ref=e95]
+              - button "master 复制" [ref=e98] [cursor=pointer]:
+                - generic [ref=e99]:
+                  - generic [ref=e100]: master
+                  - button "复制" [ref=e101]:
+                    - img [ref=e102]
+                - img [ref=e104]
+            - generic [ref=e107]:
+              - navigation "复制路径" [ref=e108]:
+                - list [ref=e109]:
+                  - listitem [ref=e110]:
+                    - link "live-view-kit_-sample-code_-clientdemo_-arkts" [ref=e111] [cursor=pointer]:
+                      - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts
+                  - listitem [ref=e112]: /
+                  - listitem [ref=e113]:
+                    - generic [ref=e114]: LiveViewDevelopmentAssistantGuide.md
+                  - listitem [ref=e115]:
+                    - button "复制路径" [ref=e116] [cursor=pointer]:
+                      - img [ref=e117]
+              - paragraph [ref=e200]: 加载失败，请刷新重试
+    - generic [ref=e202]:
+      - img [ref=e207] [cursor=pointer]
+      - generic [ref=e210]:
+        - generic [ref=e211]:
+          - generic [ref=e212]:
+            - img "gitcode-logo" [ref=e213]
+            - generic [ref=e214]: 代码有我，智能随行
+          - generic [ref=e216]:
+            - generic [ref=e217]: 易语言发布
+            - generic [ref=e218]: "\"2000 年 9 月 16 日，易语言发布。易语言（Easy Programming Language，EPL）是一门计算机程序设计语言，最大的特点是使用汉字作为程序代码进行编 程。易语言是面向对象和结构化的，语法风格跟 Visual Basic类似，版本有易语言、易语言.飞扬和易乐谷三种。\""
+        - generic [ref=e219]:
+          - generic [ref=e220]:
+            - generic [ref=e221]:
+              - generic [ref=e222] [cursor=pointer]: 小程序登录
+              - generic [ref=e224] [cursor=pointer]: 短信登录
+              - generic [ref=e226] [cursor=pointer]: 密码登录
+            - generic [ref=e228]: 没有账号？ 点击注册
+          - generic [ref=e230]:
+            - img "小程序二维码" [ref=e232]
+            - paragraph [ref=e233]: 微信扫一扫，快速登录/注册
+          - generic [ref=e236]:
+            - generic [ref=e237]: 其他登录方式
+            - generic [ref=e238]:
+              - img "sjtu" [ref=e240] [cursor=pointer]
+              - img "csdn" [ref=e243] [cursor=pointer]
+              - img "hbuilder" [ref=e246] [cursor=pointer]
+              - img "huawei" [ref=e249] [cursor=pointer]
+              - img "github" [ref=e252] [cursor=pointer]
+              - img "gitee" [ref=e255] [cursor=pointer]
+              - img "wechat_open" [ref=e258] [cursor=pointer]
+  - region "Notifications (F8)":
+    - list

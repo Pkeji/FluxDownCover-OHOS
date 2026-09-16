@@ -1,3 +1,6 @@
+// ArkUI V2 状态装饰器：.ts 为独立模块、SDK 全局装饰器声明不注入，故在此做模块级类型声明（不污染全局）
+declare const ObservedV2: ClassDecorator;
+declare const Trace: PropertyDecorator;
 import dataPreferences from '@ohos.data.preferences';
 import { common } from '@kit.AbilityKit';
 
@@ -104,7 +107,11 @@ export class BtSettingsStore {
   }
 
   async init(context: common.UIAbilityContext): Promise<void> {
-    this.prefs = await dataPreferences.getPreferences(context, this.STORE_NAME);
+    try {
+      this.prefs = await dataPreferences.getPreferences(context, this.STORE_NAME);
+    } catch (e) {
+      console.warn(`[BtSettingsStore] init failed: ${(e as Error)?.message ?? e}`);
+    }
   }
 
   /** 读取全部 BT 设置（首次读取后缓存，save() 时更新缓存）。 */
@@ -117,38 +124,44 @@ export class BtSettingsStore {
       this.cached = def;
       return def;
     }
-    const limitsRaw = await this.prefs.get(K_LIMITS, '') as string;
-    let limits = def.limits;
-    if (limitsRaw) {
-      try {
-        const parsed = JSON.parse(limitsRaw) as SeedLimits;
-        limits = new SeedLimits();
-        limits.mode = parsed.mode ?? def.limits.mode;
-        limits.ratioLimit = parsed.ratioLimit ?? def.limits.ratioLimit;
-        limits.postRatioLimit = parsed.postRatioLimit ?? def.limits.postRatioLimit;
-        limits.timeLimitSec = parsed.timeLimitSec ?? def.limits.timeLimitSec;
-        limits.inactiveTimeSec = parsed.inactiveTimeSec ?? def.limits.inactiveTimeSec;
-        limits.maxActive = parsed.maxActive ?? def.limits.maxActive;
-        limits.uploadLimit = parsed.uploadLimit ?? def.limits.uploadLimit;
-        limits.operator = parsed.operator ?? def.limits.operator;
-      } catch (_) {
-        // 损坏的 JSON → 回退默认值
+    try {
+      const limitsRaw = await this.prefs.get(K_LIMITS, '') as string;
+      let limits = def.limits;
+      if (limitsRaw) {
+        try {
+          const parsed = JSON.parse(limitsRaw) as SeedLimits;
+          limits = new SeedLimits();
+          limits.mode = parsed.mode ?? def.limits.mode;
+          limits.ratioLimit = parsed.ratioLimit ?? def.limits.ratioLimit;
+          limits.postRatioLimit = parsed.postRatioLimit ?? def.limits.postRatioLimit;
+          limits.timeLimitSec = parsed.timeLimitSec ?? def.limits.timeLimitSec;
+          limits.inactiveTimeSec = parsed.inactiveTimeSec ?? def.limits.inactiveTimeSec;
+          limits.maxActive = parsed.maxActive ?? def.limits.maxActive;
+          limits.uploadLimit = parsed.uploadLimit ?? def.limits.uploadLimit;
+          limits.operator = parsed.operator ?? def.limits.operator;
+        } catch (_) {
+          // 损坏的 JSON → 回退默认值
+        }
       }
+      const settings = new BtSettings();
+      settings.enableDht = await this.prefs.get(K_ENABLE_DHT, def.enableDht) as boolean;
+      settings.enableUpnp = await this.prefs.get(K_ENABLE_UPNP, def.enableUpnp) as boolean;
+      settings.listenPortStart = await this.prefs.get(K_PORT_START, def.listenPortStart) as number;
+      settings.listenPortEnd = await this.prefs.get(K_PORT_END, def.listenPortEnd) as number;
+      settings.seedEnabled = await this.prefs.get(K_SEED_ENABLED, def.seedEnabled) as boolean;
+      settings.autoReseed = await this.prefs.get(K_AUTO_RESEED, def.autoReseed) as boolean;
+      settings.trackers = this.parseList(await this.prefs.get(K_TRACKERS, '') as string, def.trackers);
+      settings.trackerSubscriptions = this.parseList(
+        await this.prefs.get(K_TRACKER_SUBS, '') as string, def.trackerSubscriptions
+      );
+      settings.limits = limits;
+      this.cached = settings;
+      return settings;
+    } catch (e) {
+      console.warn(`[BtSettingsStore] load failed: ${(e as Error)?.message ?? e}`);
+      this.cached = def;
+      return def;
     }
-    const settings = new BtSettings();
-    settings.enableDht = await this.prefs.get(K_ENABLE_DHT, def.enableDht) as boolean;
-    settings.enableUpnp = await this.prefs.get(K_ENABLE_UPNP, def.enableUpnp) as boolean;
-    settings.listenPortStart = await this.prefs.get(K_PORT_START, def.listenPortStart) as number;
-    settings.listenPortEnd = await this.prefs.get(K_PORT_END, def.listenPortEnd) as number;
-    settings.seedEnabled = await this.prefs.get(K_SEED_ENABLED, def.seedEnabled) as boolean;
-    settings.autoReseed = await this.prefs.get(K_AUTO_RESEED, def.autoReseed) as boolean;
-    settings.trackers = this.parseList(await this.prefs.get(K_TRACKERS, '') as string, def.trackers);
-    settings.trackerSubscriptions = this.parseList(
-      await this.prefs.get(K_TRACKER_SUBS, '') as string, def.trackerSubscriptions
-    );
-    settings.limits = limits;
-    this.cached = settings;
-    return settings;
   }
 
   /** 保存并刷新缓存。 */
@@ -157,16 +170,20 @@ export class BtSettingsStore {
     if (!this.prefs) {
       return;
     }
-    await this.prefs.put(K_ENABLE_DHT, settings.enableDht);
-    await this.prefs.put(K_ENABLE_UPNP, settings.enableUpnp);
-    await this.prefs.put(K_PORT_START, settings.listenPortStart);
-    await this.prefs.put(K_PORT_END, settings.listenPortEnd);
-    await this.prefs.put(K_SEED_ENABLED, settings.seedEnabled);
-    await this.prefs.put(K_AUTO_RESEED, settings.autoReseed);
-    await this.prefs.put(K_TRACKERS, settings.trackers.join('\n'));
-    await this.prefs.put(K_TRACKER_SUBS, settings.trackerSubscriptions.join('\n'));
-    await this.prefs.put(K_LIMITS, JSON.stringify(settings.limits));
-    await this.prefs.flush();
+    try {
+      await this.prefs.put(K_ENABLE_DHT, settings.enableDht);
+      await this.prefs.put(K_ENABLE_UPNP, settings.enableUpnp);
+      await this.prefs.put(K_PORT_START, settings.listenPortStart);
+      await this.prefs.put(K_PORT_END, settings.listenPortEnd);
+      await this.prefs.put(K_SEED_ENABLED, settings.seedEnabled);
+      await this.prefs.put(K_AUTO_RESEED, settings.autoReseed);
+      await this.prefs.put(K_TRACKERS, settings.trackers.join('\n'));
+      await this.prefs.put(K_TRACKER_SUBS, settings.trackerSubscriptions.join('\n'));
+      await this.prefs.put(K_LIMITS, JSON.stringify(settings.limits));
+      await this.prefs.flush();
+    } catch (e) {
+      console.warn(`[BtSettingsStore] save failed: ${(e as Error)?.message ?? e}`);
+    }
   }
 
   /** Tracker 订阅最近一次成功更新的时间戳（0 = 从未更新）。 */
@@ -174,15 +191,24 @@ export class BtSettingsStore {
     if (!this.prefs) {
       return 0;
     }
-    return await this.prefs.get(K_TRACKER_SUB_UPDATED_AT, 0) as number;
+    try {
+      return await this.prefs.get(K_TRACKER_SUB_UPDATED_AT, 0) as number;
+    } catch (e) {
+      console.warn(`[BtSettingsStore] getSubscriptionUpdatedAt failed: ${(e as Error)?.message ?? e}`);
+      return 0;
+    }
   }
 
   async setSubscriptionUpdatedAt(ts: number): Promise<void> {
     if (!this.prefs) {
       return;
     }
-    await this.prefs.put(K_TRACKER_SUB_UPDATED_AT, ts);
-    await this.prefs.flush();
+    try {
+      await this.prefs.put(K_TRACKER_SUB_UPDATED_AT, ts);
+      await this.prefs.flush();
+    } catch (e) {
+      console.warn(`[BtSettingsStore] setSubscriptionUpdatedAt failed: ${(e as Error)?.message ?? e}`);
+    }
   }
 
   /** 换行分隔的字符串 → 数组；空内容回退默认值。 */

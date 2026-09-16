@@ -144,7 +144,8 @@ export class UpnpPortMapper {
   private async fetchService(location: string): Promise<IgdService | null> {
     // Remember the IGD origin so we can resolve relative control URLs.
     try {
-      const u = new Url.URL(location);
+      // URL 构造器自 API 9 起弃用，改用静态 URL.parseURL（官方推荐替代）。
+      const u = Url.URL.parseURL(location);
       this.igdHost = u.hostname;
       this.igdOrigin = `${u.protocol}//${u.host}`;
     } catch (_) {
@@ -170,8 +171,16 @@ export class UpnpPortMapper {
         return { serviceType: services[0].serviceType, controlUrl: this.resolveControlUrl(services[0].controlUrl) };
       }
       return null;
+    } catch (e) {
+      // UPnP 服务发现为 best-effort，失败返回 null
+      console.warn(`[UPnP] fetchService failed: ${(e as Error)?.message ?? e}`);
+      return null;
     } finally {
-      req.destroy();
+      try {
+        req.destroy();
+      } catch (_e) {
+        // ignore destroy error
+      }
     }
   }
 
@@ -263,8 +272,16 @@ export class UpnpPortMapper {
         readTimeout: 5000
       });
       return resp.responseCode ?? 0;
+    } catch (e) {
+      // SOAP 端口映射为 best-effort，网络异常返回 0 表示失败
+      console.warn(`[UPnP] soap ${action} failed: ${(e as Error)?.message ?? e}`);
+      return 0;
     } finally {
-      req.destroy();
+      try {
+        req.destroy();
+      } catch (_e) {
+        // ignore destroy error
+      }
     }
   }
 

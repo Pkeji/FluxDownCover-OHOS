@@ -58,21 +58,30 @@ export class PieceManager {
 
   /** Open the output file for writing (pre-allocated to totalLength). */
   openFile(filePath: string): void {
-    const file = fs.openSync(filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
-    this.fileFd = file.fd;
-    // Pre-allocate by writing a single zero byte at the end offset
     try {
-      const zeroBuf = new ArrayBuffer(1);
-      fs.writeSync(this.fileFd, zeroBuf, { offset: this.meta.totalLength - 1 });
+      const file = fs.openSync(filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
+      this.fileFd = file.fd;
+      // Pre-allocate by writing a single zero byte at the end offset
+      try {
+        const zeroBuf = new ArrayBuffer(1);
+        fs.writeSync(this.fileFd, zeroBuf, { offset: this.meta.totalLength - 1 });
+      } catch (e) {
+        // pre-allocation may fail; pieces will still write at correct offsets
+      }
     } catch (e) {
-      // pre-allocation may fail; pieces will still write at correct offsets
+      // 无法打开输出文件属于致命错误，向上传播由协议层中止下载
+      throw e as Error;
     }
   }
 
   /** Close the output file. */
   closeFile(): void {
     if (this.fileFd >= 0) {
-      fs.closeSync(this.fileFd);
+      try {
+        fs.closeSync(this.fileFd);
+      } catch (_e) {
+        // ignore close error
+      }
       this.fileFd = -1;
     }
   }
@@ -105,7 +114,13 @@ export class PieceManager {
       return new Uint8Array(0);
     }
     const buf = new ArrayBuffer(clampedLen);
-    const bytesRead = fs.readSync(this.fileFd, buf, { offset });
+    let bytesRead = 0;
+    try {
+      bytesRead = fs.readSync(this.fileFd, buf, { offset });
+    } catch (e) {
+      // 读取上传块失败：返回空，对端会重新请求
+      return new Uint8Array(0);
+    }
     if (bytesRead <= 0) {
       return new Uint8Array(0);
     }
@@ -199,43 +214,48 @@ export class PieceManager {
 
   /** Verify a complete piece and write it to the file. */
   private async verifyAndWrite(piece: PieceState): Promise<void> {
-    // Assemble piece data from blocks (sorted by begin offset)
-    const sortedBegins = Array.from(piece.blocks.keys()).sort((a, b) => a - b);
-    const parts: Uint8Array[] = [];
-    for (const begin of sortedBegins) {
-      parts.push(piece.blocks.get(begin)!);
-    }
-    const pieceData = concatBytes(parts);
+    try {
+      // Assemble piece data from blocks (sorted by begin offset)
+      const sortedBegins = Array.from(piece.blocks.keys()).sort((a, b) => a - b);
+      const parts: Uint8Array[] = [];
+      for (const begin of sortedBegins) {
+        parts.push(piece.blocks.get(begin)!);
+      }
+      const pieceData = concatBytes(parts);
 
-    // Apply global speed limit before writing
-    const n = pieceData.byteLength;
-    const waitMs = SpeedLimiter.global().waitTime(n);
-    if (waitMs > 0) {
-      await new Promise(r => setTimeout(r, waitMs));
-    }
-    SpeedLimiter.global().tryConsume(n);
+      // Apply global speed limit before writing
+      const n = pieceData.byteLength;
+      const waitMs = SpeedLimiter.global().waitTime(n);
+      if (waitMs > 0) {
+        await new Promise(r => setTimeout(r, waitMs));
+      }
+      SpeedLimiter.global().tryConsume(n);
 
-    // Write piece data to file first (at correct offset)
-    const fileOffset = piece.index * this.meta.pieceLength;
-    fs.writeSync(this.fileFd, pieceData.buffer.slice(pieceData.byteOffset, pieceData.byteOffset + pieceData.byteLength), { offset: fileOffset });
+      // Write piece data to file first (at correct offset)
+      const fileOffset = piece.index * this.meta.pieceLength;
+      fs.writeSync(this.fileFd, pieceData.buffer.slice(pieceData.byteOffset, pieceData.byteOffset + pieceData.byteLength), { offset: fileOffset });
 
-    // Verify SHA-1 by reading back from file
-    const expectedHash = this.meta.pieceHashes[piece.index];
-    const actualHash = sha1FileRegion(this.fileFd, fileOffset, piece.total);
+      // Verify SHA-1 by reading back from file
+      const expectedHash = this.meta.pieceHashes[piece.index];
+      const actualHash = sha1FileRegion(this.fileFd, fileOffset, piece.total);
 
-    if (!bytesEqual(actualHash, expectedHash)) {
-      // Hash mismatch — reset piece for re-download
-      piece.received = 0;
-      piece.blocks.clear();
+      if (!bytesEqual(actualHash, expectedHash)) {
+        // Hash mismatch — reset piece for re-download
+        piece.received = 0;
+        piece.blocks.clear();
+        this.downloading.delete(piece.index);
+        return;
+      }
+
+      piece.done = true;
+      this.havePieces[piece.index] = true;
+      this.verifiedBytes += piece.total;
       this.downloading.delete(piece.index);
-      return;
+      this.onVerified(piece.index, piece.total);
+    } catch (e) {
+      // 写入/校验失败：传播给 addBlock 处的 .catch（piece 会被重置、由后续块重试）
+      throw e as Error;
     }
-
-    piece.done = true;
-    this.havePieces[piece.index] = true;
-    this.verifiedBytes += piece.total;
-    this.downloading.delete(piece.index);
-    this.onVerified(piece.index, piece.total);
   }
 
   /** Load existing progress from the file (for resume). */

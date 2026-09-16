@@ -1,3 +1,6 @@
+// ArkUI V2 状态装饰器：.ts 为独立模块、SDK 全局装饰器声明不注入，故在此做模块级类型声明（不污染全局）
+declare const ObservedV2: ClassDecorator;
+declare const Trace: PropertyDecorator;
 import { TaskStatus } from './TaskStatus';
 import { ProtocolType } from './ProtocolType';
 
@@ -65,6 +68,9 @@ export class DownloadTask {
 
   // Non-observed state
   segments: Segment[] = [];
+  /** Whether the server accepted HTTP Range requests (probe result; in-memory only).
+   *  Dynamic segment splitting (智能动态分块) is only allowed when true. */
+  supportsRanges: boolean = false;
   isHls: boolean = false;
   isDash: boolean = false; // DASH (MPD) streaming flag
   liveBytes: number = 0; // high-frequency accumulator updated per chunk

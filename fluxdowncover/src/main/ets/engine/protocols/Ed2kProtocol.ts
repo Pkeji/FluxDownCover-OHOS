@@ -67,7 +67,13 @@ export async function downloadEd2k(
   const filePath = `${dir}/${fileName}`;
 
   // Create / open the output file (writes at offset will extend it)
-  const file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.READ_WRITE);
+  let file: fs.File;
+  try {
+    file = fs.openSync(filePath, fs.OpenMode.CREATE | fs.OpenMode.READ_WRITE);
+  } catch (e) {
+    // 无法打开输出文件属于致命错误，向上传播
+    throw e as Error;
+  }
   try {
 
     // ── 3. Get sources from server(s) ─────────────────────────────
@@ -224,7 +230,14 @@ export async function downloadEd2k(
 
     // Set final file path
     task.filePath = filePath;
+  } catch (e) {
+    // 下载/写入/校验失败向上传播，由引擎进入错误/重试态
+    throw e as Error;
   } finally {
-    fs.closeSync(file);
+    try {
+      fs.closeSync(file);
+    } catch (_e) {
+      // ignore close error
+    }
   }
 }

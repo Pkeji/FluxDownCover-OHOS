@@ -1,0 +1,10 @@
+[   16680ms] [ERROR] Hydration completed but contains mismatches. @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/CwT3zlKI.js:1
+[   16828ms] [ERROR] [API CLI] get /api/v2/projects/HarmonyOS_Samples%2Flive-view-kit_-sample-code_-clientdemo_-arkts/repository/files → FAIL 429 Too Many Requests (156ms) @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/CwT3zlKI.js:19
+[   16877ms] [LOG] props.bgConfig {index_head: , detail_top: , detail_top_black: , detail_toolbar: , detail_toolbar_black: } @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/CwT3zlKI.js:207
+[   16881ms] [LOG] breadcrumb lU @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/CwT3zlKI.js:207
+[   16882ms] [LOG] repoInfo lU @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/CwT3zlKI.js:207
+[   16896ms] [LOG] indexasideSetShow false @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/CwT3zlKI.js:207
+[   16947ms] [ERROR] [API CLI] get /api/v2/projects/HarmonyOS_Samples%2Flive-view-kit_-sample-code_-clientdemo_-arkts/repository/files → FAIL 429 Too Many Requests (275ms) @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/CwT3zlKI.js:19
+[   16961ms] [LOG] 唤起Login @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/CwT3zlKI.js:207
+[   16987ms] [ERROR] [API CLI] get /api/v2/projects/HarmonyOS_Samples%2Flive-view-kit_-sample-code_-clientdemo_-arkts/repository/files → FAIL 429 Too Many Requests (147ms) @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/CwT3zlKI.js:19
+[   17063ms] [ERROR] [API CLI] get /api/v2/projects/HarmonyOS_Samples%2Flive-view-kit_-sample-code_-clientdemo_-arkts/repository/files → FAIL 429 Too Many Requests (223ms) @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/CwT3zlKI.js:19

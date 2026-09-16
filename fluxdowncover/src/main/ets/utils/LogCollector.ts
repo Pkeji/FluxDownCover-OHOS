@@ -4,7 +4,7 @@
  * 双击设置页面版本号可复制全部日志
  */
 
-import { promptAction } from '@kit.ArkUI';
+import { UIContext } from '@kit.ArkUI';
 
 export interface LogEntry {
   time: string;
@@ -18,6 +18,13 @@ class LogCollector {
   private maxLogs = 500;
   private lastToastTime = 0;
   private readonly toastIntervalMs = 10000; // 10秒节流
+  // 由 UI 侧注入（Index aboutToAppear）。全局 promptAction.showToast 已废弃，
+  // 新 API 必须通过 UIContext 调用；未注入前出错只记日志、不弹 toast。
+  private uiCtx: UIContext | null = null;
+
+  attachUIContext(ctx: UIContext): void {
+    this.uiCtx = ctx;
+  }
 
   private now(): string {
     const d = new Date();
@@ -33,7 +40,7 @@ class LogCollector {
     if (now - this.lastToastTime > this.toastIntervalMs) {
       this.lastToastTime = now;
       try {
-        promptAction.showToast({
+        this.uiCtx?.getPromptAction().showToast({
           message: '已记录错误日志，双击设置→版本号可复制',
           duration: 2500
         });

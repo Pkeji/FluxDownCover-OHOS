@@ -221,7 +221,8 @@ export function fileNameFromUrl(url: string): string {
 
   // ── 4. Standard URLs (HTTP, HTTPS, FTP, HLS, DASH, SFTP …) ─────────
   try {
-    const u = new Url.URL(trimmed);
+    // URL 构造器自 API 9 起弃用，改用静态 URL.parseURL（官方推荐替代）。
+    const u = Url.URL.parseURL(trimmed);
     const raw = safePercentDecode(u.pathname.split('/').pop() ?? '');
     if (raw && raw.includes('.')) {
       return sanitizeFileName(raw);

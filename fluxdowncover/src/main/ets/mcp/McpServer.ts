@@ -140,7 +140,14 @@ const TOOLS = [
  */
 export class McpServer {
   private static instance: McpServer | null = null;
-  private server: socket.TCPSocket | null = null;
+  // 本地服务端必须用 TCPSocketServer + listen()。
+  // 教训（2026-09-15 二次实测）：此前用 constructTCPSocketInstance() 得到的 TCPSocket 调 bind()，
+  // bind() 会 **resolve 成功**（所以日志里会打出 "listening"），但内核里 **根本没有产生监听套接字** ——
+  // /proc/net/tcp 里查不到 0x4588(17800)，外部连接一律 Connection refused。
+  // 即"进程看起来启动了、日志也正常，但谁都连不上"，极难排查。
+  // TCPSocket 是客户端对象（有 bind() 但无 listen()）；服务端必须用
+  // socket.constructTCPSocketServerInstance()，其 'connect' 回调参数是 TCPSocketConnection。
+  private server: socket.TCPSocketServer | null = null;
   private backend: McpBackend | null = null;
   private token: string = '';
 
@@ -157,62 +164,90 @@ export class McpServer {
     }
     this.token = token;
     this.backend = backend;
-    const server = socket.constructTCPSocketInstance();
+    const server = socket.constructTCPSocketServerInstance();
     this.server = server;
-    server.on('connect', (client: socket.TCPSocket) => {
+    server.on('connect', (client: socket.TCPSocketConnection) => {
       this.handleClient(client);
     });
+    server.on('error', (err: BusinessError) => {
+      logCollector.error('Error', `MCP server error: ${err.code} ${err.message}`);
+    });
     try {
-      await server.bind({ address: '127.0.0.1', port: MCP_PORT });
+      // NetAddress: { address, port, family? }，family 省略默认为 1(IPv4)
+      await server.listen({ address: '127.0.0.1', port: MCP_PORT });
       console.info(`FluxDown Cover MCP server listening on 127.0.0.1:${MCP_PORT}`);
+      // 自检：bind()/listen() resolve 成功 ≠ 端口真的可达（历史上 TCPSocket.bind() 就是
+      // resolve 成功但内核无监听套接字）。这里主动自连一次，结果写日志，便于一眼判定。
+      this.selfProbe();
     } catch (e) {
-      logCollector.error('Error', `FluxDown Cover MCP bind failed: ${JSON.stringify(e)}`);
+      logCollector.error('Error', `FluxDown Cover MCP listen failed: ${JSON.stringify(e)}`);
       this.server = null;
     }
+  }
+
+  /**
+   * 主动连一次 127.0.0.1:17800，只用于确认端口真的可达，连上即断开。
+   */
+  private selfProbe(): void {
+    const probe: socket.TCPSocket = socket.constructTCPSocketInstance();
+    probe
+      .connect({ address: { address: '127.0.0.1', port: MCP_PORT }, timeout: 3000 })
+      .then(() => {
+        console.info('FluxDown Cover MCP self-probe OK (port reachable)');
+        probe.close().catch(() => {
+          // ignore
+        });
+      })
+      .catch((e: BusinessError) => {
+        logCollector.error('Error', `FluxDown Cover MCP self-probe FAILED: ${JSON.stringify(e)}`);
+      });
   }
 
   stop(): void {
     if (this.server) {
-      try {
-        this.server.close();
-      } catch (e) {
-        // ignore
-      }
+      const s: socket.TCPSocketServer = this.server;
       this.server = null;
+      s.close().catch(() => {
+        // ignore
+      });
     }
   }
 
-  private handleClient(client: socket.TCPSocket): void {
-    let buf = '';
+  private handleClient(client: socket.TCPSocketConnection): void {
+    // 必须按 **字节** 累积再解码：Content-Length 是字节数，而解码后的字符串长度
+    // 是字符数。若用字符串长度去比 Content-Length，含中文（多字节）的请求体
+    // 永远"收不满"，服务端就永远不回包（表现为客户端一直等到超时）。
+    const raw: number[] = [];
     let closed = false;
-    const onMessage = (msg: Object) => {
+    const CR_LF_CR_LF: number[] = [13, 10, 13, 10];
+    const onMessage = async (msg: Object) => {
       if (closed) {
         return;
       }
-      buf += ab2str((msg as { message: ArrayBuffer }).message);
-      const headerEnd = buf.indexOf('\r\n\r\n');
+      const u = new Uint8Array((msg as { message: ArrayBuffer }).message);
+      for (let i = 0; i < u.length; i++) {
+        raw.push(u[i]);
+      }
+      const headerEnd = indexOfBytes(raw, CR_LF_CR_LF, 0);
       if (headerEnd < 0) {
         return;
       }
-      const headerText = buf.substring(0, headerEnd);
+      const headerText = bytesToStr(raw.slice(0, headerEnd));
       const clMatch = /content-length:\s*(\d+)/i.exec(headerText);
       const cl = clMatch ? Number(clMatch[1]) : 0;
       const bodyStart = headerEnd + 4;
-      if (buf.length - bodyStart < cl) {
+      if (raw.length - bodyStart < cl) {
         return; // wait for more body bytes
       }
-      const body = buf.substring(bodyStart, bodyStart + cl);
-      const result = this.processRequest(headerText, body);
+      const body = bytesToStr(raw.slice(bodyStart, bodyStart + cl));
+      const result = await this.processRequest(headerText, body);
       const resp = buildHttpResponse(result.status, result.json);
       client
         .send({ data: resp })
         .then(() => client.close())
+        .catch(() => client.close())
         .catch(() => {
-          try {
-            client.close();
-          } catch (e) {
-            // ignore
-          }
+          // ignore
         });
       closed = true;
     };
@@ -223,11 +258,9 @@ export class McpServer {
     client.on('error', (err: BusinessError) => {
       logCollector.error('Error', `MCP client error: ${err.code} ${err.message}`);
       closed = true;
-      try {
-        client.close();
-      } catch (e) {
+      client.close().catch(() => {
         // ignore
-      }
+      });
     });
   }
 
@@ -238,10 +271,10 @@ export class McpServer {
    *    (GET /ping, GET /api/v1/info, GET /api/v1/tasks, POST /download[/batch]);
    *  - the original MCP JSON-RPC 2.0 surface (POST /mcp and legacy callers).
    */
-  private processRequest(
+  private async processRequest(
     headerText: string,
     body: string
-  ): { status: number; json: string } {
+  ): Promise<{ status: number; json: string }> {
     const lines = headerText.split('\r\n');
     const requestLine = lines.length > 0 ? lines[0] : '';
     const reqParts = requestLine.split(' ');
@@ -286,6 +319,101 @@ export class McpServer {
       }
       const tasks = this.backend.listTasks().map((t: DownloadTask): Record<string, Object> => this.taskToJson(t));
       return this.jsonOk({ success: true, tasks });
+    }
+
+    // ── Single task detail ──
+    if (method === 'GET' && path.startsWith('/api/v1/tasks/')) {
+      const auth = this.checkToken(headers);
+      if (!auth.ok) {
+        return this.jsonErr(auth.status, auth.message);
+      }
+      if (!this.backend) {
+        return this.jsonErr(503, 'backend not ready');
+      }
+      const taskId = path.substring('/api/v1/tasks/'.length);
+      if (!taskId) {
+        return this.jsonErr(400, 'missing task id');
+      }
+      const task = this.backend.getTask(taskId);
+      if (!task) {
+        return this.jsonErr(404, `task ${taskId} not found`);
+      }
+      return this.jsonOk({ success: true, task: this.taskToJson(task) });
+    }
+
+    // ── Pause single task ──
+    if (method === 'POST' && path.startsWith('/api/v1/tasks/') && path.endsWith('/pause')) {
+      const auth = this.checkToken(headers);
+      if (!auth.ok) {
+        return this.jsonErr(auth.status, auth.message);
+      }
+      if (!this.backend) {
+        return this.jsonErr(503, 'backend not ready');
+      }
+      const taskId = path.substring('/api/v1/tasks/'.length, path.length - '/pause'.length);
+      if (!taskId) {
+        return this.jsonErr(400, 'missing task id');
+      }
+      this.backend.pauseTask(taskId);
+      return this.jsonOk({ success: true, message: `task ${taskId} paused` });
+    }
+
+    // ── Resume single task ──
+    if (method === 'POST' && path.startsWith('/api/v1/tasks/') && path.endsWith('/resume')) {
+      const auth = this.checkToken(headers);
+      if (!auth.ok) {
+        return this.jsonErr(auth.status, auth.message);
+      }
+      if (!this.backend) {
+        return this.jsonErr(503, 'backend not ready');
+      }
+      const taskId = path.substring('/api/v1/tasks/'.length, path.length - '/resume'.length);
+      if (!taskId) {
+        return this.jsonErr(400, 'missing task id');
+      }
+      try {
+        await this.backend.resumeTask(taskId);
+        return this.jsonOk({ success: true, message: `task ${taskId} resumed` });
+      } catch (e) {
+        return this.jsonErr(500, String((e as Error).message));
+      }
+    }
+
+    // ── Remove single task ──
+    if (method === 'DELETE' && path.startsWith('/api/v1/tasks/')) {
+      const auth = this.checkToken(headers);
+      if (!auth.ok) {
+        return this.jsonErr(auth.status, auth.message);
+      }
+      if (!this.backend) {
+        return this.jsonErr(503, 'backend not ready');
+      }
+      const taskId = path.substring('/api/v1/tasks/'.length);
+      if (!taskId) {
+        return this.jsonErr(400, 'missing task id');
+      }
+      this.backend.removeTask(taskId);
+      return this.jsonOk({ success: true, message: `task ${taskId} removed` });
+    }
+
+    // ── Download statistics ──
+    if (method === 'GET' && path === '/api/v1/stats') {
+      const auth = this.checkToken(headers);
+      if (!auth.ok) {
+        return this.jsonErr(auth.status, auth.message);
+      }
+      if (!this.backend) {
+        return this.jsonErr(503, 'backend not ready');
+      }
+      const tasks = this.backend.listTasks();
+      const stats = {
+        total: tasks.length,
+        downloading: tasks.filter((t) => t.status === 'downloading' || t.status === 'queued').length,
+        completed: tasks.filter((t) => t.status === 'completed').length,
+        paused: tasks.filter((t) => t.status === 'paused').length,
+        error: tasks.filter((t) => t.status === 'error').length
+      };
+      return this.jsonOk({ success: true, stats });
     }
 
     // Browser takeover endpoints (official extension HTTP fallback channel).
@@ -605,11 +733,62 @@ function utf8ByteLength(s: string): number {
   return n;
 }
 
+/**
+ * UTF-8 解码 ArrayBuffer。
+ * 不能逐字节 String.fromCharCode（那样是非 UTF-8 的 latin1 行为，会把中文等
+ * 多字节字符拆坏，导致 JSON.parse 失败 / URL 丢失）。
+ */
+function bytesToStr(bytes: number[]): string {
+  const u = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) {
+    u[i] = bytes[i];
+  }
+  return ab2str(u.buffer);
+}
+
+/** 在字节数组中查找子序列，返回起始下标，找不到返回 -1。 */
+function indexOfBytes(hay: number[], needle: number[], from: number): number {
+  if (needle.length === 0) {
+    return from;
+  }
+  const last: number = hay.length - needle.length;
+  for (let i = from; i <= last; i++) {
+    let hit = true;
+    for (let j = 0; j < needle.length; j++) {
+      if (hay[i + j] !== needle[j]) {
+        hit = false;
+        break;
+      }
+    }
+    if (hit) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 function ab2str(buf: ArrayBuffer): string {
   const u = new Uint8Array(buf);
   let s = '';
-  for (let i = 0; i < u.length; i++) {
-    s += String.fromCharCode(u[i]);
+  let i = 0;
+  while (i < u.length) {
+    const b0: number = u[i];
+    if (b0 < 0x80) {
+      s += String.fromCharCode(b0);
+      i += 1;
+    } else if (b0 >= 0xC0 && b0 < 0xE0) {
+      s += String.fromCharCode(((b0 & 0x1F) << 6) | (u[i + 1] & 0x3F));
+      i += 2;
+    } else if (b0 >= 0xE0 && b0 < 0xF0) {
+      s += String.fromCharCode(((b0 & 0x0F) << 12) | ((u[i + 1] & 0x3F) << 6) | (u[i + 2] & 0x3F));
+      i += 3;
+    } else {
+      const cp: number = ((b0 & 0x07) << 18) | ((u[i + 1] & 0x3F) << 12) |
+        ((u[i + 2] & 0x3F) << 6) | (u[i + 3] & 0x3F);
+      const v: number = cp - 0x10000;
+      s += String.fromCharCode(0xD800 + (v >> 10), 0xDC00 + (v & 0x3FF));
+      i += 4;
+    }
   }
   return s;
 }

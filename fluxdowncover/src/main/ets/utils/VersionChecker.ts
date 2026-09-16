@@ -3,7 +3,7 @@ import { logCollector } from '../utils/LogCollector';
 import { ProxyConfig } from '../engine/EngineHooks';
 
 /** Current app version, must match AppScope/app.json5 versionName. */
-export const APP_VERSION = '1.2.3.66';
+export const APP_VERSION = '1.2.4.201';
 
 const GITHUB_API = 'https://api.github.com/repos/Pkeji/FluxDownCover-OHOS/releases/latest';
 
@@ -80,69 +80,99 @@ function isValidVersion(v: string): boolean {
 /**
  * Check GitHub releases API for the latest version.
  * Returns ReleaseInfo if a newer version is found, or null if already up-to-date.
+ * Implements mirror acceleration: tries primary URL first, falls back to mirror on failure.
+ *
+ * @param onStatus - Optional callback for instant feedback during check
  */
-export async function checkForUpdate(currentVersion: string, proxy?: ProxyConfig, ignoreTls: boolean = false): Promise<ReleaseInfo | null> {
-  const req = http.createHttp();
-  try {
-    const resp = await req.request(GITHUB_API, {
-      method: http.RequestMethod.GET,
-      header: {
-        Accept: 'application/vnd.github.v3+json',
-        'User-Agent': 'FluxDownCover/1.0'
-      },
-      connectTimeout: 15000,
-      readTimeout: 15000,
-      remoteValidation: ignoreTls ? 'skip' : 'system',
-      usingProxy: proxy
-    });
+export async function checkForUpdate(
+  currentVersion: string,
+  proxy?: ProxyConfig,
+  ignoreTls: boolean = false,
+  mirror: string = '',
+  onStatus?: (status: string) => void
+): Promise<ReleaseInfo | null> {
+  // 默认使用镜像加速（GitHub API 在国内直连大概率不可用）
+  const mirrorUrl = (mirror && mirror.startsWith('http')) ? mirror : 'https://gh-proxy.com/';
+  const normalizedMirror = mirrorUrl.endsWith('/') ? mirrorUrl : mirrorUrl + '/';
+  const candidates: string[] = [normalizedMirror + GITHUB_API, GITHUB_API];
 
-    if (resp.responseCode !== 200) {
-      logCollector.warn('Update', `VersionCheck: GitHub API returned ${resp.responseCode}`);
-      return null;
-    }
+  onStatus?.('正在连接更新服务器…');
 
-    const data = JSON.parse(resp.result as string);
-    const tagName: string = data.tag_name || '';
-    const releaseName: string = data.name || '';
-    // 优先用 release name（如 "1.2.0"），其次用 tag_name（如 "v1.2.0"）
-    let version = tagToVersion(releaseName);
-    if (!isValidVersion(version)) {
-      version = tagToVersion(tagName);
-    }
-    const body: string = data.body || '';
+  for (let i = 0; i < candidates.length; i++) {
+    const url = candidates[i];
+    const isMirror = i === 0;
 
-    // Find first downloadable asset (.hap or .apk)
-    let downloadUrl = '';
-    if (data.assets && Array.isArray(data.assets)) {
-      const asset = data.assets.find((a: Record<string, Object>) => {
-        const name = (a.name as string) || '';
-        return name.endsWith('.hap') || name.endsWith('.apk');
+    const req = http.createHttp();
+    try {
+      const resp = await req.request(url, {
+        method: http.RequestMethod.GET,
+        header: {
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'FluxDownCover/1.0'
+        },
+        connectTimeout: 8000,
+        readTimeout: 10000,
+        remoteValidation: ignoreTls ? 'skip' : 'system',
+        usingProxy: proxy
       });
-      if (asset) {
-        downloadUrl = asset.browser_download_url as string || '';
+
+      if (resp.responseCode !== 200) {
+        logCollector.warn('Update', `VersionCheck: ${isMirror ? 'mirror' : 'primary'} returned ${resp.responseCode}`);
+        continue; // try next candidate
       }
+
+      onStatus?.('解析版本信息…');
+      const data = JSON.parse(resp.result as string);
+      const tagName: string = data.tag_name || '';
+      const releaseName: string = data.name || '';
+      // 优先用 release name（如 "1.2.0"），其次用 tag_name（如 "v1.2.0"）
+      let version = tagToVersion(releaseName);
+      if (!isValidVersion(version)) {
+        version = tagToVersion(tagName);
+      }
+      const body: string = data.body || '';
+
+      // Find first downloadable asset (.hap or .apk)
+      let downloadUrl = '';
+      if (data.assets && Array.isArray(data.assets)) {
+        const asset = data.assets.find((a: Record<string, Object>) => {
+          const name = (a.name as string) || '';
+          return name.endsWith('.hap') || name.endsWith('.apk');
+        });
+        if (asset) {
+          downloadUrl = asset.browser_download_url as string || '';
+        }
+      }
+
+      if (!version) {
+        onStatus?.('版本号解析失败');
+        continue;
+      }
+
+      // Compare with current version
+      if (compareVersions(version, currentVersion) <= 0) {
+        onStatus?.('已是最新版本');
+        return null; // already up-to-date
+      }
+
+      onStatus?.(`发现新版本 v${version}`);
+      return {
+        tagName,
+        version,
+        body,
+        summary: summarizeBody(body),
+        downloadUrl
+      };
+    } catch (e) {
+      logCollector.warn('Update', `VersionCheck: ${isMirror ? 'mirror' : 'primary'} failed: ${JSON.stringify(e)}`);
+      onStatus?.(`${isMirror ? '镜像' : '直连'}: ${(e as Error)?.message || '连接失败'}`);
+    } finally {
+      req.destroy();
     }
-
-    if (!version) return null;
-
-    // Compare with current version
-    if (compareVersions(version, currentVersion) <= 0) {
-      return null; // already up-to-date
-    }
-
-    return {
-      tagName,
-      version,
-      body,
-      summary: summarizeBody(body),
-      downloadUrl
-    };
-  } catch (e) {
-    logCollector.warn('Update', `VersionCheck: request failed: ${JSON.stringify(e)}`);
-    return null;
-  } finally {
-    req.destroy();
   }
+
+  onStatus?.('所有节点均不可达');
+  return null;
 }
 
 export { compareVersions };

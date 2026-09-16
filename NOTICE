@@ -1,0 +1,84 @@
+FluxDown Cover for HarmonyOS NEXT
+==================================
+
+本项目是 FluxDown（https://github.com/zerx-lab/FluxDown）的 HarmonyOS NEXT
+非官方移植版本，使用 ArkTS / ArkUI 重新实现，命名为 FluxDown Cover。
+
+【原作品版权与许可】
+原项目 FluxDown 依据 GNU Affero General Public License v3.0（AGPL-3.0）授权，
+版权归原作者 zerx-lab 及 FluxDown contributors 所有。本项目作为其衍生作品，
+依据 AGPL-3.0 第 5 条要求，同样以 AGPL-3.0 开源发布；完整许可证文本见本目录
+LICENSE 文件。
+
+【修改声明】
+相对于原 Rust + Flutter 实现，本移植版本进行了如下修改与重新实现：
+- 使用 ArkTS / ArkUI（Stage 模型）在 HarmonyOS NEXT 上原生重写全部界面与交互；
+- 使用鸿蒙系统能力（requestInStream、relationalStore、notification、后台任务等）
+  重新实现多线程下载、持久化、通知与后台传输；
+- 对 HTTP/FTP/HLS/DASH、BitTorrent、eD2K 及迅雷/快车/旋风专用链接解析等逻辑
+  进行了 ArkTS 侧的重新实现与适配；
+- 新增/调整了外观主题、下载队列、RSS、MCP 本地服务等功能与多设备（手机/平板/2in1）适配。
+
+【你的权利与义务（摘要，不替代 LICENSE 全文）】
+1. 可自由使用、复制、修改与再分发，但衍生作品必须继续以 AGPL-3.0 开源；
+2. 再分发（含应用市场上架）时必须保留本声明、原版权声明与 LICENSE，并向接收者
+   提供完整对应源代码（本公开仓库即提供完整源码）；
+3. 本程序按“现状”提供，不附带任何明示或默示担保。
+
+【第三方开源软件许可声明】
+本应用在「设置 → 关于 → 开源致谢」中，按应用市场对第三方开源组件的披露要求，
+以「组件名称 / 版本 / 使用方式 / 版权所有 / 许可证 / 源代码获取地址」逐项列示
+所使用的第三方开源软件，本文件内容与之一致。
+
+1. FluxDown
+   - 版本：0.4.7
+   - 使用方式：上游原作品（Rust + Flutter），本项目为其衍生作品
+   - 版权所有：zerx-lab 及 FluxDown contributors
+   - 许可证：AGPL-3.0（GNU Affero General Public License v3.0，SPDX: AGPL-3.0-only）
+   - 源代码：https://github.com/zerx-lab/FluxDown
+
+2. OpenAuthenticator
+   - 版本：main 分支
+   - 使用方式：界面与交互设计参考，**未使用其任何源代码**
+   - 版权所有：OpenAuthenticator contributors
+   - 许可证：GPL-3.0（GNU General Public License v3.0，SPDX: GPL-3.0-only）
+   - 源代码：https://github.com/openauthenticator-app/openauthenticator
+   - 更正说明：本文件早期版本误将其标注为 MIT License。经核对上游仓库
+     LICENSE 与 README 声明，其实际采用 GPL-3.0，现予以更正。
+   - 复用范围：本项目仅参考其设计系统与交互规范（配色体系、材质/毛玻璃档位、
+     底部导航胶囊形态、搜索框修饰器等），对应痕迹在源码中均为注释说明，
+     见 utils/ColorSchemes.ts 与 pages/Index.ets。
+   - 不构成衍生作品：上游为 Dart / Flutter 实现，无法直接复用于 ArkTS，
+     本项目未复制、未修改、未分发其任何源代码，项目内亦不存在其业务逻辑
+     （无任何 TOTP / otpauth 相关实现）。因此本项目**不是** GPL-3.0 意义上的
+     衍生作品，不涉及 GPL-3.0 的代码级义务；本项目整体仍仅按 AGPL-3.0
+     履行义务。此处列示仅为来源标注与致谢。
+
+3. @tangs/components
+   - 版本：1.5.3
+   - 使用方式：界面组件库（药丸式滚动标签栏、沉浸按钮 / 搜索栏等）
+   - 版权所有：汤于艺（Copyright 2026）
+   - 许可证：Apache License 2.0（SPDX: Apache-2.0）
+   - 源代码：https://gitcode.com/tangs_2003/components
+   - 说明：Apache-2.0 与 AGPL-3.0 兼容，已按其第 4 条保留版权声明、许可声明与
+     NOTICE 内容；其许可证全文见 oh_modules 内该依赖的 LICENSE 文件。
+
+4. @ohos/hypium、@ohos/hamock 为华为官方单元测试框架，仅作为开发期 devDependency，
+   不随发布包分发。
+
+【本项目自身的开源义务】
+本项目整体以 AGPL-3.0 开源（承继上游 FluxDown 的许可）。依据 AGPL-3.0 第 13 条，
+完整对应源代码已在下列公开仓库提供，任何人均可自由获取、修改与再分发：
+https://github.com/Pkeji/FluxDownCover-OHOS
+许可证全文见本目录 LICENSE 文件。
+
+【第三方 SDK 集成情况】
+本项目未集成任何华为可选商业 SDK（HMS Core、AppGallery Connect、华为账号、
+应用内支付、推送、分析等均未使用），亦未集成任何闭源第三方 SDK。
+运行时依赖仅为 HarmonyOS 系统 Kit（@kit.ArkUI、@kit.AbilityKit、@kit.NetworkKit、
+@kit.ArkData、@kit.CoreFileKit、@kit.UIDesignKit、@kit.LiveViewKit 等）与
+上表所列 Apache-2.0 开源组件。
+
+移植开发：Pkeji（叶龙发）
+联系邮箱：1012443557@qq.com
+源码仓库：https://github.com/Pkeji/FluxDownCover-OHOS
