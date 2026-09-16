@@ -75,7 +75,13 @@ export async function downloadFtp(task: DownloadTask, ctrl: Ctrl, hooks: EngineH
   const dataHost = `${m[1]}.${m[2]}.${m[3]}.${m[4]}`;
   const dataPort = Number(m[5]) * 256 + Number(m[6]);
 
-  const file = fs.openSync(task.filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
+  let file: fs.File;
+  try {
+    file = fs.openSync(task.filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
+  } catch (e) {
+    // 无法打开输出文件属于致命错误，向上传播
+    throw e as Error;
+  }
   const dataSock = socket.constructTCPSocketInstance();
   let offset = 0;
   let writeChain: Promise<void> = Promise.resolve();
@@ -141,7 +147,11 @@ export async function downloadFtp(task: DownloadTask, ctrl: Ctrl, hooks: EngineH
       // ignore trailing control reply errors
     }
   } finally {
-    fs.closeSync(file);
+    try {
+      fs.closeSync(file);
+    } catch (_e) {
+      // ignore close error
+    }
     try {
       ctrlSock.close();
     } catch (e) {

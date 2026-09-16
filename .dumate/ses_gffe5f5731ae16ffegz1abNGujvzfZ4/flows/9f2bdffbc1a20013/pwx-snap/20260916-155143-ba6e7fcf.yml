@@ -1,0 +1,341 @@
+- generic [ref=e5]:
+  - banner [ref=e10]:
+    - link [ref=e11] [cursor=pointer]:
+      - /url: /consumer/cn/
+      - img [ref=e13]
+    - generic:
+      - generic [ref=e16]:
+        - list [ref=e18]:
+          - listitem [ref=e19]:
+            - link "探索" [ref=e23] [cursor=pointer]:
+              - /url: /consumer/cn/discover/
+              - generic [ref=e24]: 探索
+          - listitem [ref=e25]:
+            - link "设计" [ref=e29] [cursor=pointer]:
+              - /url: /consumer/cn/design/
+              - generic [ref=e30]: 设计
+          - listitem [ref=e31]:
+            - link "开发" [ref=e35] [cursor=pointer]:
+              - /url: /consumer/cn/develop/
+              - generic [ref=e36]: 开发
+          - listitem [ref=e37]:
+            - link "分发" [ref=e41] [cursor=pointer]:
+              - /url: /consumer/cn/distribute/
+              - generic [ref=e42]: 分发
+          - listitem [ref=e43]:
+            - link "推广与变现" [ref=e47] [cursor=pointer]:
+              - /url: /consumer/cn/promote/
+              - generic [ref=e48]: 推广与变现
+          - listitem [ref=e49]:
+            - link "生态合作" [ref=e53] [cursor=pointer]:
+              - /url: /consumer/cn/cooperate/
+              - generic [ref=e54]: 生态合作
+          - listitem [ref=e55]:
+            - link "支持" [ref=e59] [cursor=pointer]:
+              - /url: /consumer/cn/support/
+              - generic [ref=e60]: 支持
+        - generic:
+          - generic [ref=e61]:
+            - img [ref=e63]
+            - text: 返回
+          - list [ref=e65]
+        - generic:
+          - generic [ref=e66]:
+            - img [ref=e68]
+            - text: 返回
+          - list [ref=e70]
+      - generic [ref=e71]:
+        - generic [ref=e75]:
+          - link "文档" [ref=e76] [cursor=pointer]:
+            - /url: /consumer/cn/doc/
+            - img [ref=e78]
+            - generic [ref=e80]: 文档
+          - link "下载 App" [ref=e81] [cursor=pointer]:
+            - /url: /consumer/cn/huawei-app/
+            - img [ref=e83]
+            - generic [ref=e85]: 下载 App
+        - generic [ref=e87]:
+          - generic [ref=e88]:
+            - generic [ref=e89]: 我的
+            - img [ref=e91] [cursor=pointer]
+          - generic [ref=e94]:
+            - img [ref=e97]
+            - generic [ref=e100] [cursor=pointer]:
+              - generic [ref=e101]:
+                - generic [ref=e102]: Hello，
+                - generic [ref=e103]: 欢迎来到开发者联盟
+              - img [ref=e105]
+          - list [ref=e107]:
+            - link "个人中心" [ref=e108] [cursor=pointer]:
+              - /url: https://developer.huawei.com/consumer/cn/personalcenter/overview
+              - listitem [ref=e109]:
+                - generic [ref=e110]:
+                  - img [ref=e112]
+                  - text: 个人中心
+                - img [ref=e117]
+          - list [ref=e119]:
+            - link "我的学堂" [ref=e120] [cursor=pointer]:
+              - /url: https://developer.huawei.com/consumer/cn/training/mine/
+              - listitem [ref=e121]:
+                - generic [ref=e122]:
+                  - img [ref=e124]
+                  - text: 我的学堂
+                - img [ref=e134]
+            - link "我的收藏" [ref=e136] [cursor=pointer]:
+              - /url: https://developer.huawei.com/consumer/cn/personalcenter/myInfo/myCollection
+              - listitem [ref=e137]:
+                - generic [ref=e138]:
+                  - img [ref=e140]
+                  - text: 我的收藏
+                - img [ref=e145]
+            - link "我的活动" [ref=e147] [cursor=pointer]:
+              - /url: https://developer.huawei.com/consumer/cn/personalcenter/myActivity/activityList
+              - listitem [ref=e148]:
+                - generic [ref=e149]:
+                  - img [ref=e151]
+                  - text: 我的活动
+                - img [ref=e154]
+            - link "我的工单" [ref=e156] [cursor=pointer]:
+              - /url: https://developer.huawei.com/consumer/cn/personalcenter/myCustom/ticketlist
+              - listitem [ref=e157]:
+                - generic [ref=e158]:
+                  - img [ref=e160]
+                  - text: 我的工单
+                - img [ref=e165]
+          - generic [ref=e168] [cursor=pointer]: 立即登录
+    - img [ref=e175]
+    - generic [ref=e184]:
+      - textbox "输入关键字搜索" [ref=e185]
+      - img [ref=e187] [cursor=pointer]
+  - generic [ref=e191]:
+    - generic [ref=e196]:
+      - paragraph [ref=e198]: HarmonyOS
+      - generic [ref=e203]:
+        - generic [ref=e204]:
+          - text: 指南
+          - img [ref=e206]
+        - img [ref=e211]
+    - generic [ref=e216]:
+      - generic [ref=e220]:
+        - generic [ref=e222]:
+          - generic [ref=e223]:
+            - text: 指南
+            - img [ref=e226]
+          - generic [ref=e228]:
+            - text: 应用服务
+            - img [ref=e231]
+          - generic [ref=e233]:
+            - link "Live View Kit（实况窗服务）" [ref=e235] [cursor=pointer]:
+              - /url: https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/live-view-kit-guide
+            - img [ref=e238]
+          - generic [ref=e240]:
+            - link "开发准备" [ref=e242] [cursor=pointer]:
+              - /url: https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/liveview-preparations
+            - img [ref=e245]
+          - generic [ref=e247]: 开通实况窗服务权益
+        - heading "开通实况窗服务权益" [level=1] [ref=e248]
+        - generic [ref=e249]:
+          - generic [ref=e250]: "更新时间: 2026-08-04 14:06"
+          - generic [ref=e251]:
+            - img [ref=e258]
+            - img [ref=e266] [cursor=pointer]
+      - generic [ref=e274]:
+        - generic [ref=e275]:
+          - generic [ref=e276]: 本文导读
+          - generic [ref=e484] [cursor=pointer]:
+            - generic [ref=e485]: 展开章节
+            - img [ref=e487]
+        - generic [ref=e288]:
+          - paragraph [ref=e289]: 若需完成应用的实况窗接入与调测，开发者需预先开通实况窗服务权益，可依据以下操作步骤提交申请，完成服务权益开通。
+          - generic [ref=e290]:
+            - heading "操作步骤" [level=2] [ref=e291]
+            - list [ref=e292]:
+              - listitem [ref=e293]:
+                - paragraph [ref=e294]:
+                  - text: 登录
+                  - link "AppGallery Connect" [ref=e295] [cursor=pointer]:
+                    - /url: https://developer.huawei.com/consumer/cn/service/josp/agc/index.html
+                  - text: ，选择“开发与服务”。
+                - paragraph [ref=e296]:
+                  - img [ref=e298] [cursor=pointer]
+              - listitem [ref=e299]:
+                - paragraph [ref=e300]: 在项目列表中找到您的项目，在项目下的应用列表中选择需要申请实况窗服务的应用。
+                - paragraph [ref=e301]:
+                  - img [ref=e303] [cursor=pointer]
+              - listitem [ref=e304]:
+                - paragraph [ref=e305]: 进入“项目设置 > 开放能力管理”页面，点击“实况窗服务”的“申请”。
+                - paragraph [ref=e306]:
+                  - img [ref=e308] [cursor=pointer]
+              - listitem [ref=e309]:
+                - paragraph [ref=e310]: 开发者可参考“申请原因”中的模板，提供申请必须的相关信息，包括场景类型、场景描述、附件，然后点击“提交”按钮。
+                - paragraph [ref=e311]:
+                  - img [ref=e313] [cursor=pointer]
+                - generic [ref=e315]:
+                  - generic [ref=e316]: 说明
+                  - list [ref=e318]:
+                    - listitem [ref=e319]:
+                      - text: 开发者可依据
+                      - link "实况窗设计规范" [ref=e320] [cursor=pointer]:
+                        - /url: https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/liveview-design-formula
+                      - text: ，通过
+                      - link "实况窗可视化工具" [ref=e321] [cursor=pointer]:
+                        - /url: https://gitcode.com/HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/blob/master/LiveViewDevelopmentAssistantGuide.md
+                      - text: ，完成实况窗场景节点与方案视图设计。完成设计后，请将方案归档整理并作为附件提交，以此申请实况窗使用权益。
+              - listitem [ref=e322]:
+                - paragraph [ref=e323]: 开发者将在5个工作日内收到实况窗服务权益申请结果，请留意互动中心的“服务开通申请”信息。
+                - paragraph [ref=e324]:
+                  - img [ref=e326] [cursor=pointer]
+                - paragraph [ref=e327]:
+                  - img [ref=e329] [cursor=pointer]
+              - listitem [ref=e330]:
+                - paragraph [ref=e331]:
+                  - text: 实况窗服务权限通过后，开发者需在
+                  - link "AppGallery Connect" [ref=e332] [cursor=pointer]:
+                    - /url: https://developer.huawei.com/consumer/cn/service/josp/agc/index.html
+                  - text: 选择“证书、APP ID和Profile”，点击左侧树形菜单的“Profile”页签，在页面右上角点击“添加”按钮，重新生成Profile文件，并将其下载至本地。在“
+                  - link "发布应用" [ref=e333] [cursor=pointer]:
+                    - /url: https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/ide-publish-app
+                  - text: ”时，将该Profile打包到应用包中。
+                - generic [ref=e335]:
+                  - generic [ref=e336]: 说明
+                  - paragraph [ref=e338]:
+                    - text: Profile文件生成请参考“
+                    - link "管理Profile" [ref=e339] [cursor=pointer]:
+                      - /url: https://developer.huawei.com/consumer/cn/doc/app/agc-help-profile-0000002270709473
+                    - text: ”章节，Profile文件打包到应用包中请参考“
+                    - link "配置签名信息" [ref=e340] [cursor=pointer]:
+                      - /url: https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/ide-publish-app#section945904791115
+                    - text: ”。
+                - paragraph [ref=e341]:
+                  - img [ref=e343] [cursor=pointer]
+                - paragraph [ref=e344]:
+                  - img [ref=e346] [cursor=pointer]
+                - paragraph [ref=e347]:
+                  - img [ref=e349] [cursor=pointer]
+        - generic [ref=e350]:
+          - link "设置数据处理位置" [ref=e353] [cursor=pointer]:
+            - /url: https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/liveview-data-process
+            - img [ref=e355]
+            - generic [ref=e357]: 设置数据处理位置
+          - link "接入联调测试" [ref=e360] [cursor=pointer]:
+            - /url: https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/liveview-joint-commission-test
+            - generic [ref=e361]: 接入联调测试
+            - img [ref=e363]
+        - generic [ref=e365]:
+          - generic [ref=e366]: 相关推荐
+          - generic [ref=e367]:
+            - generic [ref=e368]:
+              - emphasis [ref=e369]:
+                - generic [ref=e370]: 文档
+              - link "申请实况窗正式权限" [ref=e372] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/liveview-formal-authority
+            - generic [ref=e373]:
+              - emphasis [ref=e374]:
+                - generic [ref=e375]: 文档
+              - link "开通推送服务权益" [ref=e377] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/liveview-push-service
+            - generic [ref=e378]:
+              - emphasis [ref=e379]:
+                - generic [ref=e380]: 文档
+              - link "实况窗有哪些支持对接的场景以及消息推送机制" [ref=e382] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/doc/harmonyos-faqs/faqs-liveview-2
+            - generic [ref=e383]:
+              - emphasis [ref=e384]:
+                - generic [ref=e385]: 文档
+              - link "开发实况窗须知" [ref=e387] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/liveview-scenes-intro
+            - generic [ref=e388]:
+              - emphasis [ref=e389]:
+                - generic [ref=e390]: 文档
+              - link "开通服务" [ref=e392] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/doc/app/agc-help-auth-enable-service-0000002271422405
+            - generic [ref=e393]:
+              - emphasis [ref=e394]:
+                - generic [ref=e395]: 文档
+              - link "接入联调测试" [ref=e397] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/liveview-joint-commission-test
+            - generic [ref=e398]:
+              - emphasis [ref=e399]:
+                - generic [ref=e400]: 文档
+              - link "开通推送服务" [ref=e402] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/push-config-setting
+            - generic [ref=e403]:
+              - emphasis [ref=e404]:
+                - generic [ref=e405]: 文档
+              - link "获取服务端授权" [ref=e407] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/doc/app/agc-help-connect-api-obtain-server-auth-0000002271134661
+            - generic [ref=e408]:
+              - emphasis [ref=e409]:
+                - generic [ref=e410]: 文档
+              - link "开发准备" [ref=e412] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/doc/atomic-guides/push-as-prepare
+            - generic [ref=e413]:
+              - emphasis [ref=e414]:
+                - generic [ref=e415]: 文档
+              - link "试用调试Profile如何申请及注意事项" [ref=e417] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/doc/harmonyos-faqs/faqs-appgallery-94
+        - generic [ref=e421]:
+          - generic [ref=e422]: 意见反馈
+          - generic [ref=e423]:
+            - generic [ref=e424]:
+              - generic [ref=e425]: 以上内容对您是否有帮助？
+              - generic [ref=e426]:
+                - generic [ref=e427] [cursor=pointer]:
+                  - generic:
+                    - img
+                - generic [ref=e429] [cursor=pointer]:
+                  - generic:
+                    - img
+            - generic [ref=e430]: 意见反馈
+          - generic [ref=e431]:
+            - generic [ref=e432]: 如果您有其他疑问，您也可以通过开发者社区问答频道来和我们联系探讨。
+            - generic [ref=e433]:
+              - link "社区提问" [ref=e434] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/forum/
+              - link "智能客服提问" [ref=e435] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/customerService/#/bot-dev-top/faq-top/faq-talk-top
+      - generic [ref=e437]:
+        - generic [ref=e438]:
+          - generic [ref=e440] [cursor=pointer]:
+            - generic [ref=e441]:
+              - textbox [ref=e443]
+              - generic "简体中文" [ref=e444]
+            - img [ref=e446]
+          - list [ref=e449]:
+            - listitem [ref=e450]:
+              - img [ref=e452] [cursor=pointer]
+            - listitem [ref=e453]:
+              - img [ref=e455] [cursor=pointer]
+            - listitem [ref=e456]:
+              - img [ref=e458] [cursor=pointer]
+            - listitem [ref=e459]:
+              - img [ref=e461] [cursor=pointer]
+            - listitem [ref=e462]:
+              - img [ref=e464] [cursor=pointer]
+            - listitem [ref=e465]:
+              - img [ref=e467] [cursor=pointer]
+        - generic [ref=e468]:
+          - generic [ref=e470]: 华为开发者联盟 版权所有 ©2026
+          - generic [ref=e471]:
+            - link "问题反馈" [ref=e473] [cursor=pointer]:
+              - /url: https://developer.huawei.com/consumer/cn/support/feedback/#/
+            - generic [ref=e474]:
+              - text: "|"
+              - link "使用条款" [ref=e475] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/devservice/use
+            - generic [ref=e476]:
+              - text: "|"
+              - link "华为开发者联盟用户协议" [ref=e477] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/doc/start/useragreement-0000001494912825
+            - generic [ref=e478]:
+              - text: "|"
+              - link "关于华为开发者联盟与隐私的声明" [ref=e479] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/devservice/term
+            - generic [ref=e480]:
+              - text: "|"
+              - link "Cookies" [ref=e481] [cursor=pointer]:
+                - /url: https://consumer.huawei.com/cn/legal/cookie-policy/
+            - generic [ref=e482]:
+              - text: "|"
+              - link "开源软件声明" [ref=e483] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/opensource/

@@ -58,15 +58,25 @@ export class TorrentMeta {
 
 /** Parse a .torrent file from the local filesystem. */
 export async function parseTorrentFile(filePath: string): Promise<TorrentMeta> {
-  const file = fs.openSync(filePath, fs.OpenMode.READ_ONLY);
+  let file: fs.File | null = null;
   try {
+    file = fs.openSync(filePath, fs.OpenMode.READ_ONLY);
     const stat = fs.statSync(file.fd);
     const buf = new ArrayBuffer(stat.size);
     fs.readSync(file.fd, buf);
     const data = new Uint8Array(buf);
     return parseTorrentBytes(data);
+  } catch (e) {
+    // 解析/读取失败需向上传播，由调用方提示用户；此处仅保证文件句柄释放
+    throw e as Error;
   } finally {
-    fs.closeSync(file.fd);
+    if (file) {
+      try {
+        fs.closeSync(file);
+      } catch (_e) {
+        // ignore close error
+      }
+    }
   }
 }
 
@@ -172,31 +182,41 @@ export function generatePeerId(): Uint8Array {
 // ── SHA-1 helpers ──
 
 export function sha1Sync(data: Uint8Array): Uint8Array {
-  const md: cryptoFramework.Md = cryptoFramework.createMd('SHA1');
-  md.updateSync({ data: data });
-  const digest: cryptoFramework.DataBlob = md.digestSync();
-  return new Uint8Array(digest.data);
+  try {
+    const md: cryptoFramework.Md = cryptoFramework.createMd('SHA1');
+    md.updateSync({ data: data });
+    const digest: cryptoFramework.DataBlob = md.digestSync();
+    return new Uint8Array(digest.data);
+  } catch (e) {
+    // 哈希失败向上传播（piece 校验依赖该错误）
+    throw e as Error;
+  }
 }
 
 export function sha1FileRegion(fd: number, offset: number, length: number): Uint8Array {
-  const md: cryptoFramework.Md = cryptoFramework.createMd('SHA1');
-  const chunkSize = 256 * 1024;
-  let remaining = length;
-  let pos = offset;
-  while (remaining > 0) {
-    const readLen = Math.min(chunkSize, remaining);
-    const buf = new ArrayBuffer(readLen);
-    const bytesRead = fs.readSync(fd, buf, { offset: pos });
-    if (bytesRead <= 0) {
-      break;
+  try {
+    const md: cryptoFramework.Md = cryptoFramework.createMd('SHA1');
+    const chunkSize = 256 * 1024;
+    let remaining = length;
+    let pos = offset;
+    while (remaining > 0) {
+      const readLen = Math.min(chunkSize, remaining);
+      const buf = new ArrayBuffer(readLen);
+      const bytesRead = fs.readSync(fd, buf, { offset: pos });
+      if (bytesRead <= 0) {
+        break;
+      }
+      const view = new Uint8Array(buf, 0, bytesRead);
+      md.updateSync({ data: view });
+      pos += bytesRead;
+      remaining -= bytesRead;
     }
-    const view = new Uint8Array(buf, 0, bytesRead);
-    md.updateSync({ data: view });
-    pos += bytesRead;
-    remaining -= bytesRead;
+    const digest: cryptoFramework.DataBlob = md.digestSync();
+    return new Uint8Array(digest.data);
+  } catch (e) {
+    // 读取/哈希失败向上传播
+    throw e as Error;
   }
-  const digest: cryptoFramework.DataBlob = md.digestSync();
-  return new Uint8Array(digest.data);
 }
 
 export function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {

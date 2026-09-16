@@ -2,11 +2,12 @@ import { AbilityConstant, UIAbility, Want, Configuration, ConfigurationConstant 
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { notificationManager } from '@kit.NotificationKit';
+import dataPreferences from '@ohos.data.preferences';
 import { DatabaseManager } from '../store/DatabaseManager';
 import { DownloadEngine } from '../engine/DownloadEngine';
 import { SettingsStore } from '../store/SettingsStore';
 import { McpServer } from '../mcp/McpServer';
-import { BackgroundTaskManager } from '../util/BackgroundTaskManager';
+import { BackgroundTaskManager } from '../utils/BackgroundTaskManager';
 
 const DOMAIN: number = 0x0001;
 const STATUS_BAR_HEIGHT_KEY = 'fluxdown_statusBarHeight';
@@ -95,22 +96,31 @@ function extractUrlFromWant(want: Want): string {
 export default class EntryAbility extends UIAbility {
   private mainWindow: window.Window | null = null;
   private hasSafeAreaListener: boolean = false;
+  private hasAppThemeListener: boolean = false;
+  private lastAppTheme: string = '';
+  private servicesStarted: boolean = false;
 
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
-    // Initialise all stores and engine with the ability context.
+    // 仅做纯本地初始化（本地数据库/设置/后台任务管理），不联网、不申请权限
     DatabaseManager.getInstance().init(this.context);
-    DownloadEngine.getInstance().init(this.context);
     SettingsStore.getInstance().init(this.context).catch((e: Error) => {
       hilog.error(DOMAIN, 'FluxDownCover', 'SettingsStore init failed: %{public}s', e.message);
     });
     BackgroundTaskManager.getInstance().init(this.context);
 
-    // 请求通知权限（下载进度/完成通知需要）
-    notificationManager.requestEnableNotification().then(() => {
-      hilog.info(DOMAIN, 'FluxDownCover', '%{public}s', 'Notification permission granted');
-    }).catch((e: Error) => {
-      hilog.warn(DOMAIN, 'FluxDownCover', 'Notification permission denied: %{public}s', e.message);
+    // 合规：用户在首启隐私弹窗点“同意”后，通过 eventHub 触发联网服务与权限申请
+    this.context.eventHub.on('privacyAgreed', () => {
+      this.startAfterPrivacyConsent();
     });
+
+    // 冷启动时若此前已同意隐私政策，则直接启动联网服务与权限申请
+    dataPreferences.getPreferences(this.context, 'fluxdown_settings').then((prefs) => {
+      prefs.get('privacyAgreed', false).then((v) => {
+        if (v === true) {
+          this.startAfterPrivacyConsent();
+        }
+      }).catch(() => {});
+    }).catch(() => {});
 
     // Handle deep link from cold start
     const url = extractUrlFromWant(want);
@@ -120,6 +130,23 @@ export default class EntryAbility extends UIAbility {
     }
 
     hilog.info(DOMAIN, 'FluxDownCover', '%{public}s', 'FluxDownCover onCreate');
+  }
+
+  /** 隐私政策同意后才执行：启动下载/BT 联网引擎、请求通知权限、初始化账号服务（幂等） */
+  private startAfterPrivacyConsent(): void {
+    if (this.servicesStarted) {
+      return;
+    }
+    this.servicesStarted = true;
+    // 下载引擎（含 BitTorrent DHT/PeerServer/UPnP 联网）
+    DownloadEngine.getInstance().init(this.context);
+
+    // 请求通知权限（下载进度/完成通知需要）
+    notificationManager.requestEnableNotification(this.context).then(() => {
+      hilog.info(DOMAIN, 'FluxDownCover', '%{public}s', 'Notification permission granted');
+    }).catch((e: Error) => {
+      hilog.warn(DOMAIN, 'FluxDownCover', 'Notification permission denied: %{public}s', e.message);
+    });
   }
 
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
@@ -140,13 +167,13 @@ export default class EntryAbility extends UIAbility {
   onWindowStageCreate(windowStage: window.WindowStage): void {
     // 完全按照原项目方式：先异步配置窗口，加载内容后再次配置
     this.configureWindow(windowStage).finally(() => {
-      windowStage.loadContent('pages/Index', (err) => {
+      windowStage.loadContent('pages/SplashPage', (err) => {
         if (err.code) {
-          hilog.error(DOMAIN, 'FluxDownCover', 'Failed to load pages/Index: %{public}s', JSON.stringify(err));
+          hilog.error(DOMAIN, 'FluxDownCover', 'Failed to load pages/SplashPage: %{public}s', JSON.stringify(err));
           return;
         }
         this.configureWindow(windowStage);
-        hilog.info(DOMAIN, 'FluxDownCover', '%{public}s', 'pages/Index loaded');
+        hilog.info(DOMAIN, 'FluxDownCover', '%{public}s', 'pages/SplashPage loaded');
       });
     });
   }
@@ -162,6 +189,17 @@ export default class EntryAbility extends UIAbility {
       await this.configureWindowAppearance(mainWindow, isDark);
       this.publishColorMode(this.context.config.colorMode);
       this.syncSafeArea(mainWindow);
+      // 监听 App 内手动切换主题（深色/浅色），同步窗口背景色，避免底部安全区透出旧窗口背景
+      if (!this.hasAppThemeListener) {
+        this.hasAppThemeListener = true;
+        setInterval(() => {
+          const theme = AppStorage.get<string>('fluxdown_app_theme');
+          if (theme && theme !== this.lastAppTheme && this.mainWindow) {
+            this.lastAppTheme = theme;
+            this.configureWindowAppearance(this.mainWindow, theme === 'dark');
+          }
+        }, 300);
+      }
       if (!this.hasSafeAreaListener) {
         mainWindow.on('avoidAreaChange', (avoidAreaOption) => {
           if (avoidAreaOption.type === window.AvoidAreaType.TYPE_SYSTEM ||
@@ -200,7 +238,7 @@ export default class EntryAbility extends UIAbility {
       mainWindow.setWindowBackgroundColor(isDark ? '#FF000000' : '#FFE8EBF0');
       await mainWindow.setWindowSystemBarProperties({
         statusBarColor: TRANSPARENT_SYSTEM_BAR,
-        navigationBarColor: TRANSPARENT_SYSTEM_BAR,
+        navigationBarColor: isDark ? '#FF000000' : '#FFE8EBF0',
         isStatusBarLightIcon: isDark,
         isNavigationBarLightIcon: isDark,
         navigationBarContentColor: isDark ? '#FFEEEEEE' : '#FF1A1A1A',

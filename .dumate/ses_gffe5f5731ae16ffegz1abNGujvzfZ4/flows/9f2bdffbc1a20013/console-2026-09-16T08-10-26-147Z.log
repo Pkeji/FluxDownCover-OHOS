@@ -1,0 +1,9 @@
+[  -82657ms] [ERROR] Hydration completed but contains mismatches. @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/CwT3zlKI.js:1
+[  -82366ms] [LOG] props.bgConfig Object @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/CwT3zlKI.js:207
+[  -82364ms] [LOG] breadcrumb lU @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/CwT3zlKI.js:207
+[  -82364ms] [LOG] repoInfo lU @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/CwT3zlKI.js:207
+[  -82350ms] [LOG] indexasideSetShow false @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/CwT3zlKI.js:207
+[  -82173ms] [ERROR] [API CLI] get /api/v2/projects/HarmonyOS_Samples%2Flive-view-kit_-sample-code_-clientdemo_-arkts/repository/files → FAIL 404 Not Found (218ms) @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/CwT3zlKI.js:19
+[  -82114ms] [LOG] counts 0 @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/CwT3zlKI.js:207
+[  -69094ms] [LOG] [RepoHomepage fork-empty resync] shouldResync = false @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/Bh8T9rFo.js:10
+[  -69056ms] [LOG] [RepoHomepage mount] Object @ https://cdn-static.gitcode.com/_nuxt-gitcode-ssr/Bh8T9rFo.js:10

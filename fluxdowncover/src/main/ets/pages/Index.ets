@@ -1,16 +1,16 @@
-import { promptAction, LengthMetrics, curves } from '@kit.ArkUI';
+import { LengthMetrics, curves, UIContext } from '@kit.ArkUI';
 import { HdsTabs, HdsTabsController, HdsTabsFloatingStyle, HdsBarStyle, HdsTabsBarChangeMode, hdsMaterial, SystemMaterialParams, HdsNavigation, HdsNavigationTitleMode, HdsNavigationMenuContentOptions, ScrollEffectType, BlurStrategy } from '@kit.UIDesignKit';
 import { ImmersionButton, ImmersionSearch } from '@tangs/components';
 import { ButtonModifier } from '@kit.ArkUI';
 import { window } from '@kit.ArkUI';
-import { common, Want, OpenLinkOptions, ConfigurationConstant } from '@kit.AbilityKit';
+import { common, Want, OpenLinkOptions, ConfigurationConstant, abilityAccessCtrl, Permissions } from '@kit.AbilityKit';
 import bundleManager from '@ohos.bundle.bundleManager';
 import { picker, fileUri } from '@kit.CoreFileKit';
 import { wantConstant } from '@kit.AbilityKit';
 import { util } from '@kit.ArkTS';
 import { pasteboard } from '@kit.BasicServicesKit';
-import pasteboardSys from '@ohos.pasteboard';
 import fs from '@ohos.file.fs';
+import { photoAccessHelper } from '@kit.MediaLibraryKit';
 
 import { DownloadViewModel } from '../viewmodel/DownloadViewModel';
 import { DownloadTask, Segment } from '../model/DownloadTask';
@@ -25,6 +25,23 @@ import { DownloadQueue } from '../model/DownloadQueue';
 import { DownloadCategory } from '../model/DownloadCategory';
 import { RssSubscription } from '../model/RssSubscription';
 import { SeedConditionOperator } from '../store/BtSettingsStore';
+import dataPreferences from '@ohos.data.preferences';
+import { deviceInfo } from '@kit.BasicServicesKit';
+import { PRIVACY_SUMMARY, PRIVACY_SECTIONS, PRIVACY_APP_NAME, PRIVACY_UPDATE_DATE, PRIVACY_CONTACT_EMAIL, PrivacySection, APP_ICP_RECORD } from '../utils/PrivacyPolicy';
+
+// 提取到 components/ 的共享 UI 层
+import { Palette, palette, iconRes, safeToast, ActionButtonModifier, ImmersionButtonModifier,
+  materialBorder, buildMaterialEffect, statusText, protocolIcon, protocolLabelIcon, statusIcon,
+  withAlpha, softShadow, PRESS_SCALE, PRESS_SCALE_STRONG, PRESS_DURATION,
+  RADIUS_CARD, RADIUS_SHEET, MATERIAL_BORDER_WIDTH, MATERIAL_BLUR,
+  SHEET_OPEN_DURATION, SHEET_CLOSE_DURATION } from './components/SharedUI';
+
+// 提取到 components/ 的独立组件
+import FilterChipComponent from './components/FilterChipComponent';
+import AuthorAvatar from './components/AuthorAvatar';
+import AboutContent from './components/AboutContent';
+import TaskDetailContent from './components/TaskDetailContent';
+import StatsContent from './components/StatsContent';
 
 interface TaskGroup {
   label: string;
@@ -53,385 +70,28 @@ class HomeSearchModifier implements AttributeModifier<SearchAttribute> {
   }
 }
 
-// ───────────────────────── 统一质感设计 token（P0） ─────────────────────────
-// 卡片/控件按压缩放比例与时长：全局统一的物理按压反馈（阻尼曲线）
-const PRESS_SCALE: number = 0.97;
-const PRESS_SCALE_STRONG: number = 0.92;
-const PRESS_DURATION: number = 160;
-// 统一圆角层级：卡片 14、弹层/子页面 18
-const RADIUS_CARD: number = 14;
-const RADIUS_SHEET: number = 18;
-// 弹层进场/退场时长（由 450ms 收敛，克制不拖沓）
-const SHEET_OPEN_DURATION: number = 300;
-const SHEET_CLOSE_DURATION: number = 200;
-// P1 材质：毛玻璃模糊档位与 0.5px 描边（参考 OpenAuthenticator 材质系统）
-const MATERIAL_BLUR: BlurStyle = BlurStyle.COMPONENT_THIN;
-const MATERIAL_BORDER_WIDTH: number = 0.5;
-
-/** 毛玻璃描边色：暗色模式半透明白、浅色模式半透明黑（极淡，只勾勒边缘） */
-function materialBorder(dark: boolean): string {
-  return dark ? '#26FFFFFF' : '#14000000';
-}
-
-/** 全局系统材质效果（用于 ImmersionButton/ImmersionSearch，参考 OpenAuthenticator 默认 ADAPTIVE） */
-function globalMaterialEffect(): SystemMaterialParams {
-  return {
-    materialType: hdsMaterial.MaterialType.ADAPTIVE,
-    materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE
-  };
-}
-
-/** 按钮修饰器（参考对比项目 ActionButtonModifier，通过 buttonModify 设置内部宽度） */
-class ActionButtonModifier implements AttributeModifier<ButtonModifier> {
-  private buttonWidth: Length;
-  private buttonHeight: number;
-
-  constructor(buttonWidth: Length, buttonHeight: number) {
-    this.buttonWidth = buttonWidth;
-    this.buttonHeight = buttonHeight;
-  }
-
-  applyNormalAttribute(instance: ButtonModifier): void {
-    instance.width(this.buttonWidth)
-      .height(this.buttonHeight);
-  }
-}
-
-/** 沉浸式按钮修饰器（带文字颜色，用于 ImmersionButton 深色/浅色适配） */
-class ImmersionButtonModifier implements AttributeModifier<ButtonModifier> {
-  private buttonWidth: Length;
-  private buttonHeight: number;
-  private fontColor: string;
-
-  constructor(buttonWidth: Length, buttonHeight: number, fontColor: string) {
-    this.buttonWidth = buttonWidth;
-    this.buttonHeight = buttonHeight;
-    this.fontColor = fontColor;
-  }
-
-  applyNormalAttribute(instance: ButtonModifier): void {
-    instance.width(this.buttonWidth)
-      .height(this.buttonHeight)
-      .fontColor(this.fontColor)
-      .fontSize(15)
-      .fontWeight(FontWeight.Medium);
-  }
-}
-
-/** 给 #RRGGBB 颜色追加透明度，返回 #AARRGGBB；alpha 取 0~1 */
-function withAlpha(hex: string, alpha: number): string {
-  if (!hex || hex.length < 7) {
-    return hex;
-  }
-  const a = Math.max(0, Math.min(255, Math.round(alpha * 255)))
-    .toString(16).padStart(2, '0');
-  return `#${a}${hex.substring(1)}`;
-}
-
-/** 统一柔和阴影：大半径、向下轻偏移、极低不透明度，深色模式略加深 */
-function softShadow(dark: boolean, elevated: boolean = false): ShadowOptions {
-  return {
-    radius: elevated ? 24 : 20,
-    color: dark ? (elevated ? '#40000000' : '#33000000') : (elevated ? '#1A000000' : '#14000000'),
-    offsetX: 0,
-    offsetY: elevated ? 10 : 8
-  };
-}
-
-interface Palette {
-  dark: boolean;
-  bg: string;
-  surface: string;
-  surfaceSolid: string;
-  surfaceHighlight: string;
-  materialBg: string;    // 毛玻璃底色（半透明，配 backgroundBlurStyle 使用）
-  text: string;
-  textSecondary: string;
-  primary: string;
-  primaryDark: string;
-  onPrimary: string;      // primary 背景上的前景色（莫兰迪浅色用深字保证对比度）
-  primaryFill: string;   // 主题色 10%：浅底强调/轻填充
-  primaryTint: string;   // 主题色 20%：选中浅底/高亮
-  border: string;
-  success: string;
-  warning: string;
-  error: string;
+/**
+ * 同步应用级颜色模式（ApplicationContext.setColorMode，API18，主线程）。
+ * App 内手动切深色/浅色时必须调用：HDS 组件（HdsTabs/HdsNavigation）与系统毛玻璃材质
+ * 只认系统/UIContext 的 colorMode，不看应用内自定义调色板；若不同步，底部导航/安全区
+ * 仍按系统模式渲染而留白。mode='system' 时还原 NOT_SET，交回系统控制。
+ */
+function applyAppColorMode(ctx: common.UIAbilityContext, mode: 'light' | 'dark' | 'system'): void {
+  try {
+    const appCtx = ctx.getApplicationContext();
+    if (mode === 'dark') {
+      appCtx.setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_DARK);
+    } else if (mode === 'light') {
+      appCtx.setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT);
+    } else {
+      appCtx.setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
+    }
+  } catch (_e) {}
 }
 
 interface HlsVariantResult {
   urls: string[];
   labels: string[];
-}
-
-function palette(theme: 'light' | 'dark', colorSchemeId: string = 'cyan'): Palette {
-  const scheme = getScheme(colorSchemeId);
-  // 莫兰迪色明暗各一档；经典色缺省复用 primary
-  const primary = theme === 'dark' ? (scheme.darkPrimary ?? scheme.primary) : scheme.primary;
-  const onPrimary = scheme.onPrimary ?? '#FFFFFF';
-  if (theme === 'dark') {
-    // 对齐 OpenAuthenticator 深色体系：纯黑底 + 深灰卡片（实色，杜绝偏色）
-    return {
-      dark: true,
-      bg: '#000000',
-      surface: '#191919',
-      surfaceSolid: '#232323',
-      surfaceHighlight: '#2C2C2C',
-      materialBg: '#E6303030',   // 深色毛玻璃底：90% 深灰，透出模糊内容
-      text: '#EEEEEE',
-      textSecondary: '#D0D0D0',
-      primary: primary,
-      primaryDark: scheme.primaryDark,
-      onPrimary: onPrimary,
-      primaryFill: withAlpha(primary, 0.12),
-      primaryTint: withAlpha(primary, 0.22),
-      border: '#444444',
-      success: '#22C55E',
-      warning: '#F59E0B',
-      error: '#EF4444'
-    };
-  }
-  return {
-    dark: false,
-    bg: '#F2F3F5',
-    surface: '#FFFFFF',
-    surfaceSolid: '#FFFFFF',
-    surfaceHighlight: '#E9EBEF',
-    materialBg: '#F7FFFFFF',   // 浅色毛玻璃底：97% 白，透出模糊内容
-    text: '#1A1A1A',
-    textSecondary: '#4A4A4A',
-    primary: primary,
-    primaryDark: scheme.primaryDark,
-    onPrimary: onPrimary,
-    primaryFill: withAlpha(primary, 0.10),
-    primaryTint: withAlpha(primary, 0.18),
-    border: '#14000000',
-    success: scheme.success,
-    warning: scheme.warning,
-    error: scheme.error
-  };
-}
-
-function statusText(s: TaskStatus): string {
-  switch (s) {
-    case TaskStatus.Queued:
-      return '排队中';
-    case TaskStatus.Downloading:
-      return '下载中';
-    case TaskStatus.Merging:
-      return '合并中';
-    case TaskStatus.Paused:
-      return '已暂停';
-    case TaskStatus.Verifying:
-      return '校验中';
-    case TaskStatus.Completed:
-      return '已完成';
-    case TaskStatus.Error:
-      return '错误';
-    default:
-      return '未知';
-  }
-}
-
-/** 图标查找表：Lucide 图标集（已从原应用字体提取为 SVG 资源，fill=currentColor 由 fillColor 着色）。 */
-const ICON: Map<string, Resource> = new Map([
-  ['download', $r('app.media.ic_download')],
-  ['settings', $r('app.media.ic_settings')],
-  ['rss', $r('app.media.ic_rss')],
-  ['chart', $r('app.media.ic_chart_column')],
-  ['grid', $r('app.media.ic_layout_grid')],
-  ['file', $r('app.media.ic_file_text')],
-  ['check', $r('app.media.ic_circle_check')],
-  ['alert', $r('app.media.ic_alert_triangle')],
-  ['clock', $r('app.media.ic_clock')],
-  ['pause', $r('app.media.ic_pause')],
-  ['play', $r('app.media.ic_play')],
-  ['plus', $r('app.media.ic_plus')],
-  ['trash', $r('app.media.ic_trash_2')],
-  ['folder', $r('app.media.ic_folder')],
-  ['folder_open', $r('app.media.ic_folder_open')],
-  ['rename', $r('app.media.ic_square_pen')],
-  ['recheck', $r('app.media.ic_refresh_cw')],
-  ['retry', $r('app.media.ic_rotate_ccw')],
-  ['file_check', $r('app.media.ic_file_check')],
-  ['open', $r('app.media.ic_external_link')],
-  ['copy', $r('app.media.ic_copy')],
-  ['share', $r('app.media.ic_share_2')],
-  ['x', $r('app.media.ic_x')],
-  ['more', $r('app.media.ic_more_horizontal')],
-  ['more_v', $r('app.media.ic_more_vertical')],
-  ['search', $r('app.media.ic_search')],
-  ['filter', $r('app.media.ic_filter')],
-  ['chevron_down', $r('app.media.ic_chevron_down')],
-  ['chevron_up', $r('app.media.ic_chevron_up')],
-  ['chevron_right', $r('app.media.ic_chevron_right')],
-  ['link', $r('app.media.ic_link')],
-  ['magnet', $r('app.media.ic_magnet')],
-  ['arrow_down', $r('app.media.ic_arrow_down_to_line')],
-  ['arrow_up', $r('app.media.ic_arrow_up_from_line')],
-  ['server', $r('app.media.ic_server')],
-  ['cpu', $r('app.media.ic_cpu')],
-  ['zap', $r('app.media.ic_zap')],
-  ['wifi', $r('app.media.ic_wifi')],
-  ['globe', $r('app.media.ic_globe')],
-  ['shield', $r('app.media.ic_shield')],
-  ['lock', $r('app.media.ic_lock')],
-  ['bell', $r('app.media.ic_bell')],
-  ['gauge', $r('app.media.ic_gauge')],
-  ['timer', $r('app.media.ic_timer')],
-  ['list', $r('app.media.ic_list')],
-  ['disk', $r('app.media.ic_hard_drive')],
-  ['db', $r('app.media.ic_database')],
-  ['palette', $r('app.media.ic_palette')],
-  ['moon', $r('app.media.ic_moon')],
-  ['sun', $r('app.media.ic_sun')],
-  ['info', $r('app.media.ic_info')],
-  ['terminal', $r('app.media.ic_terminal_square')],
-  ['sliders', $r('app.media.ic_sliders_horizontal')],
-  ['save', $r('app.media.ic_save')],
-  ['calendar', $r('app.media.ic_calendar')],
-  ['eye', $r('app.media.ic_eye')],
-  ['tag', $r('app.media.ic_tag')],
-  ['folder_plus', $r('app.media.ic_folder_plus')],
-  ['folder_tree', $r('app.media.ic_folder_tree')],
-  ['loader', $r('app.media.ic_loader_2')],
-  ['hash', $r('app.media.ic_hash')],
-  ['video', $r('app.media.ic_file_video')],
-  ['audio', $r('app.media.ic_file_audio')],
-  ['image', $r('app.media.ic_file_image')],
-  ['code', $r('app.media.ic_file_code')],
-  ['archive', $r('app.media.ic_file_archive')],
-  ['clipboard', $r('app.media.ic_clipboard')],
-  ['pen', $r('app.media.ic_pen_line')],
-  ['music', $r('app.media.ic_music')],
-  ['package', $r('app.media.ic_package')],
-  ['menu', $r('app.media.ic_menu')],
-  ['upload', $r('app.media.ic_upload_cloud')],
-  ['cloud_down', $r('app.media.ic_download_cloud')],
-  ['thumbs_up', $r('app.media.ic_thumbs_up')],
-  ['star', $r('app.media.ic_star')],
-  ['heart', $r('app.media.ic_heart')],
-  ['send', $r('app.media.ic_send')],
-  ['message', $r('app.media.ic_message_square')],
-  ['qq', $r('app.media.ic_qq')],
-  ['shield_check', $r('app.media.ic_shield')],
-  ['ban', $r('app.media.ic_shield_ban')],
-  ['external', $r('app.media.ic_arrow_up_right_from_square')],
-  ['drag', $r('app.media.ic_grip_vertical')],
-  ['help', $r('app.media.ic_circle_help')],
-  ['alert_circle', $r('app.media.ic_circle_alert')],
-  ['scan', $r('app.media.ic_scan')],
-  ['waypoints', $r('app.media.ic_waypoints')],
-  ['network', $r('app.media.ic_network')],
-  ['list_filter', $r('app.media.ic_list_filter')],
-  ['list_ordered', $r('app.media.ic_list_ordered')],
-  ['inbox', $r('app.media.ic_archive')],
-  ['user', $r('app.media.ic_user')],
-]);
-
-function iconRes(name: string): Resource {
-  const r = ICON.get(name);
-  return r ?? $r('app.media.ic_download');
-}
-
-/** 协议 → Lucide 图标名 */
-function protocolIcon(proto: ProtocolType): string {
-  switch (proto) {
-    case ProtocolType.BITTORRENT:
-      return 'magnet';
-    case ProtocolType.ED2K:
-      return 'hash';
-    case ProtocolType.HLS:
-    case ProtocolType.DASH:
-      return 'video';
-    case ProtocolType.FTP:
-    case ProtocolType.SFTP:
-      return 'server';
-    case ProtocolType.THUNDER:
-      return 'zap';
-    case ProtocolType.HTTPS:
-      return 'lock';
-    case ProtocolType.HTTP:
-      return 'globe';
-    default:
-      return 'link';
-  }
-}
-
-/** 任务状态 → Lucide 图标名 */
-/** 协议 label → Lucide 图标名 */
-function protocolLabelIcon(label: string): string {
-  const l = label.toLowerCase();
-  if (l.includes('torrent') || l.includes('磁力')) {
-    return 'magnet';
-  }
-  if (l.includes('ed2k') || l.includes('电驴')) {
-    return 'hash';
-  }
-  if (l.includes('hls') || l.includes('dash')) {
-    return 'video';
-  }
-  if (l.includes('ftp') || l.includes('sftp')) {
-    return 'server';
-  }
-  if (l.includes('thunder') || l.includes('迅雷')) {
-    return 'zap';
-  }
-  if (l.includes('https')) {
-    return 'lock';
-  }
-  if (l.includes('http')) {
-    return 'globe';
-  }
-  return 'link';
-}
-
-function statusIcon(s: TaskStatus): string {
-  switch (s) {
-    case TaskStatus.Queued:
-      return 'clock';
-    case TaskStatus.Downloading:
-      return 'loader';
-    case TaskStatus.Merging:
-      return 'loader';
-    case TaskStatus.Paused:
-      return 'pause';
-    case TaskStatus.Verifying:
-      return 'shield_check';
-    case TaskStatus.Completed:
-      return 'check';
-    case TaskStatus.Error:
-      return 'alert';
-    default:
-      return 'file';
-  }
-}
-
-/** Convert hex color (#RRGGBB) to rgba with given alpha. */
-function hexToRgba(hex: string, alpha: number): string {
-  const h = hex.replace('#', '');
-  const r = parseInt(h.substring(0, 2), 16);
-  const g = parseInt(h.substring(2, 4), 16);
-  const b = parseInt(h.substring(4, 6), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
-@ComponentV2
-struct FilterChipComponent {
-  @Param label: string = '';
-  @Param selected: boolean = false;
-  @Param p: Palette = palette('light');
-  @Param onTap: () => void = () => {};
-
-  build() {
-    Text(this.label)
-      .fontSize(14)
-      .fontColor(this.selected ? this.p.onPrimary : this.p.text)
-      .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-      .borderRadius(14)
-      .backgroundColor(this.selected ? this.p.primary : this.p.surface)
-      .margin({ right: 8, bottom: 8 })
-      .onClick(this.onTap)
-  }
 }
 
 @Entry
@@ -445,6 +105,8 @@ struct IndexPage {
   @Local winWidth: number = 0; // current window width (vp) for responsive layout
   /** 底部导航指示器（安全区域）高度，由 EntryAbility 发布到 AppStorage */
   @Local naviIndicatorHeight: number = 0;
+  /** 顶部状态栏高度，由 EntryAbility 发布到 AppStorage（用于内容避让悬浮标题栏） */
+  @Local statusBarHeight: number = 0;
   @Local centerToast: string = '';
   @Local centerToastTimer: number = -1;
   @Local showAddSheet: boolean = false;
@@ -473,13 +135,23 @@ struct IndexPage {
   @Local glowX: number = 0;
   @Local glowY: number = 0;
   @Local qqGroupSheetVisible: boolean = false;
+  // 隐私政策：首启同意弹窗、隐私政策全文页
+  @Local showPrivacyDialog: boolean = false;
+  @Local showPrivacyPage: boolean = false;
+  @Local privacyChecked: boolean = false;
+  private privacyPrefs: dataPreferences.Preferences | null = null;
   @Local selectMode: boolean = false;
   @Local selectedTaskIds: Set<string> = new Set();
   @Local updateInfo: ReleaseInfo | null = null;
+  /** 检查更新加载态（即时反馈） */
+  @Local isCheckingUpdate: boolean = false;
+  @Local checkUpdateStatus: string = '';
   private deepLinkTimer: number = -1;
   // 下载中图标旋转动画
   @Local rotateAngle: number = 0;
   private rotateTimer: number = -1;
+  /** 最近一次同步到窗口外观的主题（light/dark），用于检测手动切换后需更新窗口背景 */
+  private lastWindowTheme: 'light' | 'dark' | null = null;
   private contextMenuTask: DownloadTask | null = null;
   // Rename / move dialog state
   @Local renameDialogVisible: boolean = false;
@@ -492,6 +164,29 @@ struct IndexPage {
   @Computed
   get p(): Palette {
     return palette(this.vm.theme, this.vm.colorScheme);
+  }
+
+  /** 框架图标颜色：跟随外观设置「图标着色」——主题色 / 中性单色 */
+  @Computed
+  get tintColor(): string {
+    return this.vm.iconTint === 'mono' ? this.p.text : this.p.primary;
+  }
+
+  /**
+   * 是否为 PC/2in1（键鼠、非触控大屏）。
+   * 适配原则：手机（含折叠屏）与平板同为触控，共用同一套移动布局；仅 2in1 启用大屏框架
+   * （宽悬浮导航、关闭系统材质、更大的标题栏等），避免平板横屏被误判成 PC。
+   */
+  get is2in1(): boolean {
+    return deviceInfo.deviceType === '2in1';
+  }
+
+  /** 界面材质：跟随外观设置；仅 PC/2in1 无触摸拖拽，系统材质会停在发白初始态而强制关闭；手机与平板保留材质动效 */
+  private appMaterialEffect(): SystemMaterialParams {
+    if (this.is2in1) {
+      return { materialType: hdsMaterial.MaterialType.NONE, materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE };
+    }
+    return buildMaterialEffect(this.vm.glassStyle, this.vm.glassLevel);
   }
 
   /**
@@ -542,7 +237,7 @@ struct IndexPage {
   /** 弹窗打开时系统栏透明（蒙层透出），关闭时恢复 */
   private async setSystemBarForSheet(show: boolean): Promise<void> {
     try {
-      const ctx = getContext(this) as common.UIAbilityContext;
+      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
       const win = await window.getLastWindow(ctx);
       if (show) {
         await win.setWindowSystemBarProperties({
@@ -565,7 +260,7 @@ struct IndexPage {
     this.showAddSheet = true;
     setTimeout(() => {
       this.setSystemBarForSheet(true);
-      animateTo({
+      this.getUIContext().animateTo({
         duration: SHEET_OPEN_DURATION,
         curve: curves.cubicBezierCurve(0.3, 1.12, 0.4, 1),
       }, () => {
@@ -576,7 +271,7 @@ struct IndexPage {
   }
 
   closeAddSheet(): void {
-    animateTo({
+    this.getUIContext().animateTo({
       duration: SHEET_CLOSE_DURATION,
       curve: Curve.EaseIn,
       onFinish: () => {
@@ -596,7 +291,7 @@ struct IndexPage {
     this.filterSheetOpacity = 0;
     this.showFilterSheet = true;
     setTimeout(() => {
-      animateTo({
+      this.getUIContext().animateTo({
         duration: SHEET_OPEN_DURATION,
         curve: curves.cubicBezierCurve(0.3, 1.12, 0.4, 1),
       }, () => {
@@ -607,7 +302,7 @@ struct IndexPage {
   }
 
   closeFilterSheet(): void {
-    animateTo({
+    this.getUIContext().animateTo({
       duration: SHEET_CLOSE_DURATION,
       curve: Curve.EaseIn,
       onFinish: () => {
@@ -622,11 +317,74 @@ struct IndexPage {
   }
 
   aboutToAppear(): void {
+    // 首启隐私协议弹窗已移至 SplashPage.ets，此处不再重复弹窗。
+    // SplashPage 在用户点击"同意"后设置 privacyAgreed 并 emit 'privacyAgreed' 事件，
+    // 然后 navigate 到本页。若用户点击"不同意"则 terminateSelf，不会进入本页。
+    const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    // LogCollector 是普通类、没有 UIContext；全局 promptAction.showToast 已废弃，
+    // 这里把 UIContext 注入给它，报错提示改走 UIContext.getPromptAction()
+    logCollector.attachUIContext(this.getUIContext());
+    this.syncSafeAreaFromStorage();
+    dataPreferences.getPreferences(context, 'fluxdown_settings').then((prefs: dataPreferences.Preferences) => {
+      this.privacyPrefs = prefs;
+      prefs.get('privacyAgreed', false).then((v) => {
+        const agreed = v === true;
+        this.privacyChecked = true;
+        if (agreed) {
+          this.startApp(context);
+        } else {
+          // 兜底：非正常流程进入（如热启动/深链接）且未同意时，仍显示弹窗
+          this.showPrivacyDialog = true;
+        }
+      }).catch(() => {
+        this.privacyChecked = true;
+        this.showPrivacyDialog = true;
+      });
+    }).catch(() => {
+      this.privacyChecked = true;
+      this.showPrivacyDialog = true;
+    });
+  }
+
+  /** 用户同意隐私政策：记录同意状态并启动业务 */
+  private agreePrivacy(): void {
+    if (this.privacyPrefs) {
+      try {
+        this.privacyPrefs.put('privacyAgreed', true);
+        this.privacyPrefs.flush();
+      } catch (e) {
+        console.warn(`[Index] persist privacyAgreed failed: ${(e as Error)?.message ?? e}`);
+      }
+    }
+    AppStorage.setOrCreate<boolean>('fluxdown_privacyAgreed', true);
+    // 通知 EntryAbility 启动下载/BT 联网引擎、申请通知权限
+    const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    ctx.eventHub.emit('privacyAgreed');
+    this.showPrivacyDialog = false;
+    this.startApp(ctx);
+  }
+
+  /** 用户拒绝隐私政策：退出应用 */
+  private refusePrivacy(): void {
+    const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    try {
+      context.terminateSelf();
+    } catch (e) {
+      console.warn(`[Index] terminateSelf failed: ${(e as Error)?.message ?? e}`);
+    }
+  }
+
+  /** 隐私同意后真正启动业务（原 aboutToAppear 逻辑） */
+  private startApp(context: common.UIAbilityContext): void {
     // 底部安全区域高度由 EntryAbility 发布到 AppStorage，在 tabsFloatingStyle 中实时读取
-    const context = getContext(this) as common.UIAbilityContext;
     this.vm.init(context).then(() => {
       // vm 初始化完成（主题、配置、数据已加载）后再渲染主界面，避免首次启动白屏
+      // 先按用户上次选择同步应用级颜色模式，保证 HDS/系统材质首帧即正确、底部不留白
+      applyAppColorMode(context, this.vm.themeMode);
       this.pageReady = true;
+      // 双保险：直接同步窗口背景色 + 通知 EntryAbility 轮询同步
+      this.applyWindowAppearance(this.vm.theme === 'dark');
+      AppStorage.setOrCreate<string>('fluxdown_app_theme', this.vm.theme);
     }).catch((e: Error) => {
       logCollector.error('Init', `VM init failed: ${e?.message || String(e)}`);
       // 即使初始化失败也渲染主界面，避免一直白屏
@@ -638,7 +396,9 @@ struct IndexPage {
     this.deepLinkTimer = setInterval(() => {
       this.handlePendingDeepLink();
       this.updateSystemTheme();
-    }, 1500);
+      this.syncWindowAppearance();
+      this.syncSafeAreaFromStorage();
+    }, 500);
     // Auto-update check removed to avoid triggering system "downloading" notification.
     // Manual check only via About page "检查更新" button.
     // 启动下载中图标旋转动画
@@ -670,13 +430,31 @@ struct IndexPage {
           // 重复链接：显示询问对话框
           this.showDuplicateDialog();
         } else if (result === 'added') {
-          promptAction.showToast({ message: '已从浏览器扩展接收链接，开始下载' });
+          safeToast(this.getUIContext(), '已从浏览器扩展接收链接，开始下载' );
         }
         // pending：正在添加中，不显示 toast
       }).catch((e: Error) => {
-        promptAction.showToast({ message: '链接接收失败: ' + (e?.message || String(e)) });
+        safeToast(this.getUIContext(), '链接接收失败: ' + (e?.message || String(e)) );
       });
     }
+  }
+
+  /** 同步窗口背景色和系统栏属性（App内手动切换主题时调用，避免底部安全区透出旧窗口背景色） */
+  private applyWindowAppearance(isDark: boolean): void {
+    try {
+      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      window.getLastWindow(ctx).then((win: window.Window) => {
+        win.setWindowBackgroundColor(isDark ? '#FF000000' : '#FFE8EBF0');
+        win.setWindowSystemBarProperties({
+          statusBarColor: '#00000000',
+          navigationBarColor: isDark ? '#FF000000' : '#FFE8EBF0',
+          isStatusBarLightIcon: isDark,
+          isNavigationBarLightIcon: isDark,
+          navigationBarContentColor: isDark ? '#FFEEEEEE' : '#FF1A1A1A',
+          statusBarContentColor: isDark ? '#FFEEEEEE' : '#FF1A1A1A'
+        });
+      }).catch((_e: Error) => {});
+    } catch (_e) {}
   }
 
   /** Apply system brightness to the active theme when "跟随系统" is selected. */
@@ -685,33 +463,75 @@ struct IndexPage {
       return;
     }
     try {
-      const ctx = getContext(this) as common.UIAbilityContext;
+      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
       const isDark = ctx.config.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK;
       const target: 'light' | 'dark' = isDark ? 'dark' : 'light';
       if (this.vm.theme !== target) {
         this.vm.setTheme(target);
+        this.applyWindowAppearance(isDark);
       }
     } catch (e) {
       // config unavailable — keep current theme
     }
   }
 
-  private async checkForUpdate(silent: boolean = false): Promise<void> {
+  /** 检测当前主题变化并同步到窗口外观（覆盖手动切换深色/浅色场景） */
+  private syncWindowAppearance(): void {
     try {
-      const info = await checkForUpdate(APP_VERSION, this.vm.proxyConfig(), this.vm.ignoreTlsErrors);
+      const theme = this.vm.theme;
+      if (theme !== this.lastWindowTheme) {
+        this.applyWindowAppearance(theme === 'dark');
+        this.lastWindowTheme = theme;
+      }
+    } catch (_e) {}
+  }
+
+  /** 从 AppStorage 读取顶部状态栏/底部导航安全区高度（EntryAbility 发布），驱动内容避让重绘 */
+  private syncSafeAreaFromStorage(): void {
+    const sb = AppStorage.get<number>('fluxdown_statusBarHeight') ?? 0;
+    const nb = AppStorage.get<number>('fluxdown_naviIndicatorHeight') ?? 0;
+    if (sb !== this.statusBarHeight) {
+      this.statusBarHeight = sb;
+    }
+    if (nb !== this.naviIndicatorHeight) {
+      this.naviIndicatorHeight = nb;
+    }
+  }
+
+  private async checkForUpdate(silent: boolean = false): Promise<void> {
+    this.isCheckingUpdate = true;
+    this.checkUpdateStatus = '';
+    if (!silent) {
+      this.showCenterToast('正在检查更新…');
+    }
+    try {
+      const info = await checkForUpdate(
+        APP_VERSION, this.vm.proxyConfig(), this.vm.ignoreTlsErrors, this.vm.githubMirrorUrl,
+        (status) => {
+          this.checkUpdateStatus = status;
+          logCollector.info('Update', status);
+        }
+      );
       if (info) {
         logCollector.info('Update', `发现新版本: ${info.version}`);
         this.updateInfo = info;
         this.showUpdateDialog();
-      } else if (!silent) {
-        logCollector.info('Update', '已是最新版本');
-        this.showCenterToast('已是最新版本');
+      } else if (!silent && !this.updateInfo) {
+        // checkForUpdate 已通过 onStatus 反馈「已是最新版本」或「所有节点均不可达」
+        // 当 silent=false 且没有发现新版本时，显示最终状态
+        if (this.checkUpdateStatus && this.checkUpdateStatus !== '') {
+          this.showCenterToast(this.checkUpdateStatus);
+        } else {
+          this.showCenterToast('已是最新版本');
+        }
       }
     } catch (e) {
       logCollector.error('Update', `检查更新失败: ${JSON.stringify(e)}`);
       if (!silent) {
-        this.showCenterToast('检查更新失败，请检查网络');
+        this.showCenterToast(this.checkUpdateStatus || '检查更新失败，请检查网络');
       }
+    } finally {
+      this.isCheckingUpdate = false;
     }
   }
 
@@ -732,7 +552,7 @@ struct IndexPage {
     if (!info) {
       return;
     }
-    AlertDialog.show({
+    this.getUIContext().showAlertDialog({
       title: '重复下载',
       message: `链接「${info.url.length > 60 ? info.url.slice(0, 57) + '...' : info.url}」\n已存在下载任务，是否重新下载？原文件将保留。`,
       autoCancel: false,
@@ -745,10 +565,10 @@ struct IndexPage {
       },
       secondaryButton: {
         value: '重新下载',
-        fontColor: '#007AFF',
+        fontColor: this.p.primary,
         action: () => {
           this.vm.confirmDuplicateDownload('redownload').then(() => {
-            promptAction.showToast({ message: '已重新添加下载任务' });
+            safeToast(this.getUIContext(), '已重新添加下载任务' );
           });
         }
       }
@@ -758,7 +578,7 @@ struct IndexPage {
   private showUpdateDialog(): void {
     const info = this.updateInfo;
     if (!info) return;
-    AlertDialog.show({
+    this.getUIContext().showAlertDialog({
       title: `发现新版本 ${info.tagName}`,
       message: `更新内容：\n${info.summary}`,
       autoCancel: true,
@@ -769,7 +589,7 @@ struct IndexPage {
       },
       secondaryButton: {
         value: '下载更新',
-        fontColor: '#007AFF',
+        fontColor: this.p.primary,
         action: () => {
           if (info.downloadUrl) {
             this.vm.addDownload(info.downloadUrl).then((result: 'added' | 'duplicate' | 'pending' | 'skipped') => {
@@ -778,14 +598,14 @@ struct IndexPage {
                 return;
               }
               if (result === 'added') {
-                promptAction.showToast({ message: '已添加更新下载任务' });
+                safeToast(this.getUIContext(), '已添加更新下载任务' );
                 this.currentTab = 0;
               }
             }).catch((e: Error) => {
-              promptAction.showToast({ message: '添加下载失败' });
+              safeToast(this.getUIContext(), '添加下载失败' );
             });
           } else {
-            promptAction.showToast({ message: '未找到安装包下载地址' });
+            safeToast(this.getUIContext(), '未找到安装包下载地址' );
           }
         }
       }
@@ -804,9 +624,9 @@ struct IndexPage {
         uri: fileUriObj,
         flags: wantConstant.Flags.FLAG_AUTH_READ_URI_PERMISSION | wantConstant.Flags.FLAG_AUTH_WRITE_URI_PERMISSION,
       };
-      (getContext(this) as common.UIAbilityContext).startAbility(want);
+      (this.getUIContext().getHostContext() as common.UIAbilityContext).startAbility(want);
     } catch (e) {
-      promptAction.showToast({ message: '打开文件失败: ' + ((e as Error)?.message || String(e)) });
+      safeToast(this.getUIContext(), '打开文件失败: ' + ((e as Error)?.message || String(e)) );
     }
   }
 
@@ -817,12 +637,12 @@ struct IndexPage {
       }
       // Use openLink to open the system file manager at the file's directory
       const fileUriObj = fileUri.getUriFromPath(task.publicPath);
-      const ctx = getContext(this) as common.UIAbilityContext;
+      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
       ctx.openLink('filemanager://openDirectory', {
         parameters: { 'fileUri': fileUriObj }
       } as OpenLinkOptions);
     } catch (e) {
-      promptAction.showToast({ message: '打开文件目录失败: ' + ((e as Error)?.message || String(e)) });
+      safeToast(this.getUIContext(), '打开文件目录失败: ' + ((e as Error)?.message || String(e)) );
     }
   }
 
@@ -852,25 +672,21 @@ struct IndexPage {
   /** HdsNavigation 当前页面标题（完全按照原项目 currentHomeTitle 方式） */
   private currentHomeTitle(): string {
     if (this.currentMainTab === 1) {
-      return '更多';
+      return '设置';
+    }
+    if (this.currentMainTab === 2) {
+      return '关于';
     }
     return 'FluxDown Cover';
   }
 
   /** HdsNavigation 右上角菜单（完全按照原项目 homeSearchMenu 方式，HdsNavigationMenuContentOptions 格式） */
   private homeSearchMenu(): HdsNavigationMenuContentOptions {
-    if (this.currentMainTab === 1) {
+    if (this.currentMainTab !== 0) {
       return { value: [], maxCount: 0 };
     }
     return {
       value: [
-        {
-          content: {
-            icon: iconRes('search'),
-            label: '搜索',
-            action: () => { this.searchMode = !this.searchMode; }
-          }
-        },
         {
           content: {
             icon: iconRes('sliders'),
@@ -892,7 +708,7 @@ struct IndexPage {
           }
         }
       ],
-      maxCount: 3
+      maxCount: 2
     };
   }
 
@@ -902,16 +718,16 @@ struct IndexPage {
       if (this.currentMainTab === 1) {
         // ── 我的：与下载页同款标题栏（图标 + 标题），配色一致 ──
         Image(iconRes('user'))
-          .width(28).height(28).fillColor(this.p.primary)
+          .width(28).height(28).fillColor(this.tintColor)
           .margin({ left: 16, right: 10 })
 
-        Text('更多')
+        Text('设置')
           .fontSize(17)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.p.text)
       } else if (this.searchMode) {
         ImmersionSearch({
-          systemMaterialEffect: globalMaterialEffect(),
+          systemMaterialEffect: this.appMaterialEffect(),
           _height: 40,
           options: { placeholder: '搜索下载任务' },
           modifier: new HomeSearchModifier(
@@ -933,9 +749,19 @@ struct IndexPage {
             this.searchMode = false;
             this.vm.setSearchQuery('');
           })
+      } else if (this.currentMainTab === 2) {
+        // ── 关于：与设置同款标题栏（图标 + 标题） ──
+        Image(iconRes('info'))
+          .width(28).height(28).fillColor(this.tintColor)
+          .margin({ left: 16, right: 10 })
+
+        Text('关于')
+          .fontSize(17)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.p.text)
       } else {
         Image(iconRes('download'))
-          .width(28).height(28).fillColor(this.p.primary)
+          .width(28).height(28).fillColor(this.tintColor)
           .margin({ left: 16, right: 10 })
 
         Column() {
@@ -954,7 +780,7 @@ struct IndexPage {
       }
     }
     .width('100%')
-    .height(this.winWidth > 600 ? 44 : 56)
+    .height(this.is2in1 ? 44 : 56)
   }
 
   @Computed
@@ -1001,7 +827,9 @@ struct IndexPage {
         .layoutWeight(1)
     }
     .width('100%')
-    .height(56)
+    // 子页隐藏了系统标题栏且 Navigation 忽略顶部安全区，需手动让出状态栏高度，返回按钮才不会顶到导航栏/状态栏
+    .padding({ top: this.statusBarHeight })
+    .height(56 + this.statusBarHeight)
   }
 
   @Builder
@@ -1088,12 +916,12 @@ struct IndexPage {
     Column() {
       Image(iconRes(icon))
         .width(21).height(21)
-        .fillColor(this.currentMainTab === index ? this.p.primary : this.p.textSecondary)
+        .fillColor(this.currentMainTab === index ? this.tintColor : this.p.textSecondary)
         .animation({ duration: 250, curve: Curve.Smooth })
       Text(label)
         .fontSize(11)
         .fontWeight(this.currentMainTab === index ? FontWeight.Medium : FontWeight.Normal)
-        .fontColor(this.currentMainTab === index ? this.p.primary : this.p.textSecondary)
+        .fontColor(this.currentMainTab === index ? this.tintColor : this.p.textSecondary)
         .margin({ top: 2 })
         .animation({ duration: 250, curve: Curve.Smooth })
     }
@@ -1123,28 +951,45 @@ struct IndexPage {
     Column() {
       Image(iconRes('download'))
         .width(22).height(22)
-        .fillColor(this.currentMainTab === 0 ? this.p.primary : this.p.textSecondary)
+        .fillColor(this.currentMainTab === 0 ? this.tintColor : this.p.textSecondary)
       Text('下载')
         .fontSize(11)
         .margin({ top: 2 })
-        .fontColor(this.currentMainTab === 0 ? this.p.primary : this.p.textSecondary)
+        .fontColor(this.currentMainTab === 0 ? this.tintColor : this.p.textSecondary)
     }
     .width('100%')
     .height('100%')
     .justifyContent(FlexAlign.Center)
   }
 
-  /** HdsTabs 我的 Tab（自定义，去掉系统矩形点击高亮） */
+  /** HdsTabs 设置 Tab（自定义，去掉系统矩形点击高亮） */
   @Builder
   meTabBuilder() {
     Column() {
-      Image(iconRes('user'))
+      Image(iconRes('grid_dots'))
         .width(22).height(22)
-        .fillColor(this.currentMainTab === 1 ? this.p.primary : this.p.textSecondary)
-      Text('更多')
+        .fillColor(this.currentMainTab === 1 ? this.tintColor : this.p.textSecondary)
+      Text('设置')
         .fontSize(11)
         .margin({ top: 2 })
-        .fontColor(this.currentMainTab === 1 ? this.p.primary : this.p.textSecondary)
+        .fontColor(this.currentMainTab === 1 ? this.tintColor : this.p.textSecondary)
+    }
+    .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
+  }
+
+  /** HdsTabs 关于 Tab（第三个，排在更多之后） */
+  @Builder
+  aboutTabBuilder() {
+    Column() {
+      Image(iconRes('info'))
+        .width(22).height(22)
+        .fillColor(this.currentMainTab === 2 ? this.tintColor : this.p.textSecondary)
+      Text('关于')
+        .fontSize(11)
+        .margin({ top: 2 })
+        .fontColor(this.currentMainTab === 2 ? this.tintColor : this.p.textSecondary)
     }
     .width('100%')
     .height('100%')
@@ -1153,21 +998,22 @@ struct IndexPage {
 
   /** HdsTabs 悬浮样式（参考项目 homeTabsFloatingStyle，毛玻璃悬浮导航条） */
   private tabsFloatingStyle(): HdsTabsFloatingStyle {
-    // 参考对比项目：默认用 ADAPTIVE 自适应材质，深色模式自动变暗，避免偏白
-    const materialEffect: SystemMaterialParams = {
-      materialType: hdsMaterial.MaterialType.ADAPTIVE,
-      materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE
-    };
-    // 导航条宽度随屏幕放大：手机196，PC/平板取屏幕宽度的38%（上限420，下限196）
-    const barW = this.winWidth > 600 ? Math.min(420, Math.max(196, this.winWidth * 0.38)) : 196;
+    // 材质跟随外观设置（appMaterialEffect 内部对 PC/大屏强制关闭，避免无拖拽时发白）
+    const materialEffect: SystemMaterialParams = this.appMaterialEffect();
+    // 导航条宽度：三个 Tab（下载/更多/关于），手机与平板固定 252，PC/2in1 取窗口宽度的 42%（上限 460，下限 252）
+    const barW = this.is2in1 ? Math.min(460, Math.max(252, this.winWidth * 0.42)) : 252;
     // 居中显示（加3px修正HdsTabs系统偏移）
     const sideMargin = Math.max(16, (this.winWidth - barW) / 2 + 3);
+    // 底部边距：手机/平板用系统导航指示条动态安全区高度；PC/2in1 自由窗口无导航指示条（高度为0），
+    // 补 16vp 固定最小底边距，避免悬浮胶囊直接贴住窗口底边
+    const naviH = AppStorage.get<number>('fluxdown_naviIndicatorHeight') ?? 0;
+    const barBottom = this.is2in1 ? Math.max(naviH, 16) : naviH;
     const style: HdsTabsFloatingStyle = {
-      // 完全按照原项目：实时从AppStorage读取动态底部安全区域高度
-      barBottomMargin: AppStorage.get<number>('fluxdown_naviIndicatorHeight') ?? 0,
+      // 实时从AppStorage读取动态底部安全区域高度（PC 兜底 16vp）
+      barBottomMargin: barBottom,
       barSideMargin: sideMargin,
       barWidth: { smallWidth: barW, mediumWidth: barW, largeWidth: barW },
-      lightColor: this.p.primary,
+      lightColor: this.tintColor,
       systemMaterialEffect: materialEffect
     };
     return style;
@@ -1230,12 +1076,28 @@ struct IndexPage {
                 .backgroundColor(this.p.bg)
               }
               .tabBar(this.meTabBuilder())
+
+              TabContent() {
+                Column() {
+                  AboutContent({
+                    vm: this.vm,
+                    onCheckUpdate: () => { this.checkForUpdate(false); },
+                    onViewPrivacy: () => { this.showPrivacyPage = true; },
+                    isCheckingUpdate: this.isCheckingUpdate,
+                    checkUpdateStatus: this.checkUpdateStatus
+                  })
+                }
+                .width('100%')
+                .height('100%')
+                .backgroundColor(this.p.bg)
+              }
+              .tabBar(this.aboutTabBuilder())
             }
             .barOverlap(true)
             .vertical(false)
             .scrollable(false)
             .barPosition(BarPosition.End)
-            .barWidth(this.winWidth > 600 ? Math.min(420, Math.max(196, this.winWidth * 0.38)) : 196)
+            .barWidth(this.is2in1 ? Math.min(460, Math.max(252, this.winWidth * 0.42)) : 252)
             .barHeight(52)
             .barFloatingStyle(this.tabsFloatingStyle())
             .onChange((index: number) => {
@@ -1247,34 +1109,32 @@ struct IndexPage {
             })
             .width('100%')
             .height('100%')
-            .backgroundColor(this.p.bg)
           }
           .width('100%')
           .height('100%')
-          .backgroundColor(this.p.bg)
         } else {
           // 启动占位页（等 vm.init 完成后再渲染主界面，避免首次启动白屏）
           Column() {
             Image(iconRes('download'))
               .width(48).height(48)
-              .fillColor('#007AFF')
+              .fillColor(this.tintColor)
             Text('FluxDown Cover')
               .fontSize(16)
-              .fontColor('#8E8E93')
+              .fontColor(this.p.textSecondary)
               .margin({ top: 12 })
           }
           .width('100%')
           .height('100%')
-          .backgroundColor('#000000')
+          .backgroundColor(this.p.bg)
           .justifyContent(FlexAlign.Center)
         }
       }
-      .backgroundColor(this.p.bg)
       .mode(NavigationMode.Stack)
       .titleBar({
         content: {
           title: {
-            mainTitle: this.currentHomeTitle()
+            mainTitle: this.currentHomeTitle(),
+            subTitle: this.currentMainTab === 0 ? this.titleSubtitle : ''
           },
           menu: this.homeSearchMenu()
         },
@@ -1284,12 +1144,31 @@ struct IndexPage {
             scrollEffectType: ScrollEffectType.GRADIENT_BLUR
           },
           blurStrategy: BlurStrategy.ADAPTIVE,
-          originalStyle: { backgroundStyle: { backgroundColor: '#00ffffff' } },
-          scrollEffectStyle: { backgroundStyle: { backgroundColor: '#00ffffff' } },
-          systemMaterialEffect: {
-            materialType: hdsMaterial.MaterialType.ADAPTIVE,
-            materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE
-          }
+          // 手机端保持原全透明材质；仅 PC/大屏（宽>600）用轻半透明底色（材质在 appMaterialEffect 内对 PC 关闭）
+          originalStyle: {
+            backgroundStyle: {
+              // 关于页用不透明底色，避免 logo 被透明毛玻璃糊住
+              backgroundColor: this.currentMainTab === 2 ? this.p.bg : (this.is2in1 ? (this.p.dark ? '#1FFFFFFF' : '#14000000') : '#00ffffff')
+            },
+            // 标题/副标题跟随 App 主题；右上角菜单图标跟随「图标着色」（默认主题色，修复深色下跟系统发黑）
+            contentStyle: {
+              titleStyle: { mainTitleColor: this.p.text, subTitleColor: this.p.textSecondary },
+              menuStyle: { iconColor: this.tintColor, textColor: this.tintColor }
+            }
+          },
+          scrollEffectStyle: {
+            backgroundStyle: {
+              backgroundColor: this.currentMainTab === 2 ? this.p.bg : (this.is2in1 ? (this.p.dark ? '#1FFFFFFF' : '#14000000') : '#00ffffff')
+            },
+            contentStyle: {
+              titleStyle: { mainTitleColor: this.p.text, subTitleColor: this.p.textSecondary },
+              menuStyle: { iconColor: this.tintColor, textColor: this.tintColor }
+            }
+          },
+          // 关于 tab 关闭毛玻璃材质 + 不透明底色，避免 logo 被模糊
+          systemMaterialEffect: this.currentMainTab === 2
+            ? { materialType: hdsMaterial.MaterialType.NONE, materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE }
+            : this.appMaterialEffect()
         },
         avoidLayoutSafeArea: true,
         enableComponentSafeArea: false
@@ -1297,7 +1176,7 @@ struct IndexPage {
       .navDestination(this.NavDest)
       .hideBackButton(true)
       .titleMode(HdsNavigationTitleMode.MINI)
-      .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP])
+      .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP, LayoutSafeAreaEdge.BOTTOM])
       .onAreaChange((_oldArea: Area, newArea: Area) => {
         const w = Math.round(newArea.width as number);
         if (Math.abs(w - this.winWidth) > 2) {
@@ -1339,8 +1218,9 @@ struct IndexPage {
           }
           .width(this.winWidth < 600 ? '92%' : Math.min(720, this.winWidth * 0.88))
           .height(this.winWidth < 600 ? '82%' : '88%')
-          .backgroundColor(this.p.materialBg)
-          .backgroundBlurStyle(MATERIAL_BLUR)
+          // 折叠屏展开态物理高度封顶（vp），避免大屏按比例膨胀到折叠态的 1.2 倍以上（云测 UX 标准），内容区内部滚动
+          .constraintSize({ maxHeight: 720 })
+          .backgroundColor(this.p.surface)
           .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
           .borderRadius(RADIUS_SHEET)
           .shadow(softShadow(this.p.dark, true))
@@ -1441,6 +1321,8 @@ struct IndexPage {
           }
           .width(this.winWidth < 600 ? '88%' : Math.min(480, this.winWidth * 0.7))
           .height(this.winWidth < 600 ? '72%' : '70%')
+          // 与新建下载弹窗一致：折叠屏展开态物理高度封顶，避免大屏膨胀（云测 UX 标准）
+          .constraintSize({ maxHeight: 620 })
           .backgroundColor(this.p.materialBg)
           .backgroundBlurStyle(MATERIAL_BLUR)
           .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
@@ -1452,9 +1334,116 @@ struct IndexPage {
         .width('100%')
         .height('100%')
       }
+
+      // 首启隐私政策同意弹窗（未同意前覆盖主界面）
+      if (this.showPrivacyDialog) {
+        this.PrivacyDialog()
+      }
+      // 隐私政策全文页
+      if (this.showPrivacyPage) {
+        this.PrivacyFullPage()
+      }
     }
     .width('100%')
     .height('100%')
+  }
+
+  /** 首启隐私政策弹窗 */
+  @Builder
+  PrivacyDialog() {
+    Column() {
+      Column() {
+        Text(PRIVACY_APP_NAME + ' 隐私政策')
+          .fontSize(18).fontWeight(FontWeight.Medium).fontColor(this.p.text)
+          .margin({ bottom: 14, top: 4 })
+        Scroll() {
+          Text(PRIVACY_SUMMARY + '\n\n点击“同意并继续”表示您已阅读并同意《' + PRIVACY_APP_NAME + '隐私政策》，您可点击下方文字查看完整内容。')
+            .fontSize(14).fontColor(this.p.textSecondary).lineHeight(22).width('100%')
+        }
+        .layoutWeight(1).width('100%').scrollBar(BarState.Auto)
+
+        Text('查看完整《隐私政策》')
+          .fontSize(13).fontColor(this.p.primary).margin({ top: 10, bottom: 12 })
+          .onClick(() => { this.showPrivacyPage = true; })
+
+        Row() {
+          Button('不同意')
+            .layoutWeight(1).height(42)
+            .backgroundColor(this.p.surface).fontColor(this.p.textSecondary)
+            .borderRadius(10).margin({ right: 8 })
+            .onClick(() => { this.refusePrivacy(); })
+          Button('同意并继续')
+            .layoutWeight(1).height(42)
+            .backgroundColor(this.p.primarySolid).fontColor(Color.White)
+            .borderRadius(10).margin({ left: 8 })
+            .onClick(() => { this.agreePrivacy(); })
+        }.width('100%')
+      }
+      .width('86%').constraintSize({ maxHeight: '70%' })
+      .padding(20)
+      .backgroundColor(this.p.bg)
+      .borderRadius(18)
+    }
+    .width('100%').height('100%')
+    .backgroundColor('rgba(0,0,0,0.55)')
+    .justifyContent(FlexAlign.Center)
+  }
+
+  /** 隐私政策全文页 */
+  @Builder
+  PrivacyFullPage() {
+    Column() {
+      // 顶部导航（返回按钮与系统子页统一：左箭头图标，而非文字）
+      Row() {
+        Row() {
+          Image(iconRes('chevron_right'))
+            .width(26).height(26)
+            .fillColor(this.p.text)
+            .rotate({ angle: 180 })
+        }
+        .width(42).height(42)
+        .justifyContent(FlexAlign.Center)
+        .onClick(() => { this.showPrivacyPage = false; })
+
+        Text('隐私政策').fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.p.text)
+          .layoutWeight(1).textAlign(TextAlign.Center)
+
+        // 右侧等宽占位，保证标题真正居中
+        Row().width(42).height(42)
+      }
+      .width('100%')
+      .padding({
+        left: 8,
+        right: 8,
+        top: (AppStorage.get<number>('fluxdown_statusBarHeight') ?? 0) + 8,
+        bottom: 8
+      })
+
+      Scroll() {
+        Column() {
+          Text(PRIVACY_APP_NAME + ' 隐私政策')
+            .fontSize(19).fontWeight(FontWeight.Bold).fontColor(this.p.text).width('100%').margin({ bottom: 6 })
+          Text('更新日期：' + PRIVACY_UPDATE_DATE + '    联系邮箱：' + PRIVACY_CONTACT_EMAIL)
+            .fontSize(12).fontColor(this.p.textSecondary).width('100%').margin({ bottom: 14 })
+          Text(PRIVACY_SUMMARY).fontSize(14).fontColor(this.p.text).lineHeight(23).width('100%').margin({ bottom: 12 })
+          ForEach(PRIVACY_SECTIONS, (sec: PrivacySection) => {
+            Text(sec.title).fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.p.text)
+              .width('100%').margin({ top: 10, bottom: 6 })
+            Text(sec.body).fontSize(14).fontColor(this.p.textSecondary).lineHeight(23).width('100%')
+          }, (sec: PrivacySection) => sec.title)
+          Text('').height(24)
+        }.width('100%').padding({ left: 18, right: 18 })
+      }
+      .layoutWeight(1).width('100%').scrollBar(BarState.Auto).align(Alignment.Top)
+
+      if (this.showPrivacyDialog) {
+        Button('已阅读并同意').width('90%').height(44)
+          .backgroundColor(this.p.primarySolid).fontColor(Color.White).borderRadius(10)
+          .margin({ bottom: 18 })
+          .onClick(() => { this.showPrivacyPage = false; })
+      }
+    }
+    .width('100%').height('100%').backgroundColor(this.p.bg)
   }
 
   /** Responsive content width for nav destinations: full width on narrow windows,
@@ -1538,7 +1527,11 @@ struct IndexPage {
           Column() {
             Column() {
               this.SubPageHeader('关于', 'chevron_left')
-              AboutContent({ vm: this.vm, onCheckUpdate: () => { this.checkForUpdate(false); } })
+              AboutContent({
+                vm: this.vm,
+                onCheckUpdate: () => { this.checkForUpdate(false); },
+                onViewPrivacy: () => { this.showPrivacyPage = true; }
+              })
             }
             .width('100%')
             .animation({ duration: 200, curve: Curve.EaseOut })
@@ -1615,7 +1608,7 @@ struct IndexPage {
     const map: Record<string, string> = {
       'appearance': '外观', 'download': '下载设置', 'bt': 'BT 下载',
       'mcp': 'MCP 服务', 'ext': '浏览器扩展', 'queue': '下载队列',
-      'cat': '自定义分类', 'rss': 'RSS 订阅'
+      'cat': '自定义分类', 'rss': 'RSS 订阅', 'huawei_account': '华为账号'
     };
     return map[mode] ?? '设置';
   }
@@ -1642,7 +1635,7 @@ struct IndexPage {
     Row() {
       Text(label).fontSize(14).fontColor(this.p.text).layoutWeight(1)
       if (this.vm.sortBy === key) {
-        Image(iconRes('check')).width(18).height(18).fillColor(this.p.primary)
+        Image(iconRes('check')).width(18).height(18).fillColor(this.tintColor)
       }
     }
     .width('100%').padding({ left: 14, right: 14, top: 12, bottom: 12 })
@@ -1656,8 +1649,28 @@ struct IndexPage {
   MasterView() {
     Stack({ alignContent: Alignment.BottomEnd }) {
       Column() {
-      // ── 选择按钮（状态Tab上方靠右）+ 状态 Tabs（固定居中显示，不滚动） ──
+      // ── 顶部头部：避让悬浮标题栏（状态栏+标题栏高），常驻搜索栏 + 选择/状态Tab ──
       Column() {
+        // 常驻搜索栏（对齐参考项目 HomeSearchBar：ImmersionSearch 一直显示在顶部）
+        ImmersionSearch({
+          systemMaterialEffect: this.appMaterialEffect(),
+          _height: 40,
+          options: { placeholder: '搜索下载任务' },
+          modifier: new HomeSearchModifier(
+            this.p.text,
+            this.p.textSecondary,
+            (value: string): void => {
+              this.vm.setSearchQuery(value);
+            }
+          )
+        })
+          .height(40)
+          .width('100%')
+          .margin({ bottom: 8 })
+          .clip(false)
+
+        // ── 选择按钮（状态Tab上方靠右）+ 状态 Tabs（固定居中显示，不滚动） ──
+        Column() {
         if (this.vm.visibleTasks.length > 0) {
           Row() {
             Blank()
@@ -1689,29 +1702,56 @@ struct IndexPage {
           .layoutWeight(1)
         }
         .width('100%')
+        }
+        .width('100%')
       }
       .width('100%')
-      .padding({ left: this.winWidth > 600 ? 16 : 12, right: this.winWidth > 600 ? 16 : 12, top: 8, bottom: 8 })
+      .padding({
+        left: this.is2in1 ? 16 : 12,
+        right: this.is2in1 ? 16 : 12,
+        top: this.statusBarHeight + 56 + 10,
+        bottom: 4
+      })
 
       if (this.vm.visibleTasks.length === 0) {
         Column({ space: 18 }) {
           Image(iconRes('download'))
-            .width(88).height(88).fillColor(this.p.primary)
-            .opacity(0.6)
+            .width(88).height(88).fillColor(this.tintColor)
+            .opacity(0.9)
           Text('还没有下载任务')
             .fontSize(22)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.p.text)
-          ImmersionButton({
-            systemMaterialEffect: globalMaterialEffect(),
-            text: '新建下载',
-            buttonModify: new ImmersionButtonModifier(148, 44, this.p.dark ? '#FFFFFF' : '#000000'),
-            click: (): void => {
-              this.openAddSheet();
-            }
-          })
-          .width(148)
-          .height(44)
+          if (this.is2in1) {
+            // PC/2in1：ImmersionButton 系统材质在 PC 上会回退成发白底，改用原生毛玻璃胶囊
+            // （与右下角 FAB、右上角按钮同一范式），深/浅色都呈现与手机、平板一致的可见胶囊背景，
+            // 不再全透明只剩文字（修复 PC 深色下“新建下载”按钮背景丢失、与平板手机不一致）
+            Button('新建下载')
+              .width(148)
+              .height(44)
+              .type(ButtonType.Capsule)
+              .backgroundColor(withAlpha(this.p.surface, 0.72))
+              .backgroundBlurStyle(MATERIAL_BLUR)
+              .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+              .shadow(softShadow(this.p.dark))
+              .fontColor(this.p.text)
+              .fontSize(15)
+              .fontWeight(FontWeight.Medium)
+              .clip(false)
+              .onClick(() => { this.openAddSheet(); })
+          } else {
+            // 手机端：保持原 ImmersionButton（沉浸光感动效 + 透明材质 + 适配文字色），不改动手机观感
+            ImmersionButton({
+              systemMaterialEffect: this.appMaterialEffect(),
+              text: '新建下载',
+              buttonModify: new ImmersionButtonModifier(148, 44, this.p.dark ? '#FFFFFF' : '#000000'),
+              click: (): void => {
+                this.openAddSheet();
+              }
+            })
+            .width(148)
+            .height(44)
+          }
         }
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
@@ -1758,7 +1798,7 @@ struct IndexPage {
           .width('100%')
           .height('100%')
           .divider({ strokeWidth: 1, color: this.p.border })
-          .padding({ bottom: 88 })
+          .contentEndOffset(this.naviIndicatorHeight + 52 + 10)
           .transition(TransitionEffect.OPACITY.animation({ duration: 250, curve: Curve.Smooth }))
           .animation({ duration: 200, curve: Curve.Smooth })
           .edgeEffect(EdgeEffect.Spring)
@@ -1794,7 +1834,7 @@ struct IndexPage {
           Button(`删除${this.selectedTaskIds.size > 0 ? `(${this.selectedTaskIds.size})` : ''}`)
             .type(ButtonType.Capsule)
             .fontSize(13)
-            .backgroundColor(this.selectedTaskIds.size > 0 ? '#E8553B' : Color.Transparent)
+            .backgroundColor(this.selectedTaskIds.size > 0 ? '#DB371A' : Color.Transparent)
             .backgroundBlurStyle(this.selectedTaskIds.size > 0 ? BlurStyle.COMPONENT_THIN : MATERIAL_BLUR)
             .border({ width: MATERIAL_BORDER_WIDTH, color: this.selectedTaskIds.size > 0 ? '#80E8553B' : materialBorder(this.p.dark) })
             .fontColor(this.selectedTaskIds.size > 0 ? '#FFFFFF' : this.p.textSecondary)
@@ -1815,7 +1855,7 @@ struct IndexPage {
         .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
         .borderRadius(24)
         .shadow(softShadow(this.p.dark))
-        .margin({ bottom: 84 })
+        .margin({ bottom: this.naviIndicatorHeight + 64 })
         .alignSelf(ItemAlign.Center)
       }
 
@@ -1835,7 +1875,7 @@ struct IndexPage {
       .backgroundColor(this.p.dark ? '#1FFFFFFF' : '#14000000')
       .backgroundBlurStyle(MATERIAL_BLUR)
       .shadow(softShadow(this.p.dark, true))
-      .margin({ right: 20, bottom: 84 })
+      .margin({ right: 20, bottom: this.naviIndicatorHeight + 64 })
       .alignSelf(ItemAlign.End)
       .clip(false)
       }
@@ -1877,7 +1917,7 @@ struct IndexPage {
       Blank()
       Column() {
         Text(title).fontSize(17).fontWeight(FontWeight.Medium).fontColor(this.p.text)
-        TextInput({ text: draft, placeholder: placeholder })
+        TextInput({ text: draft, placeholder: placeholder }).caretColor(this.p.primary)
           .fontSize(14)
           .fontColor(this.p.text)
           .placeholderColor(this.p.textSecondary)
@@ -1898,7 +1938,7 @@ struct IndexPage {
           Button('确定')
             .type(ButtonType.Capsule)
             .fontSize(14)
-            .backgroundColor(this.p.primary)
+            .backgroundColor(this.p.primarySolid)
             .fontColor(this.p.onPrimary)
             .layoutWeight(1)
             .margin({ left: 8 })
@@ -1936,7 +1976,7 @@ struct IndexPage {
     .layoutWeight(1)
     .height(40)
     .justifyContent(FlexAlign.Center)
-    .backgroundColor(this.currentTab === index ? this.p.primary : this.p.surface)
+    .backgroundColor(this.currentTab === index ? this.p.primarySolid : this.p.surface)
     .borderRadius(10)
     .margin({ left: 4, right: 4 })
     .animation({ duration: 250, curve: Curve.EaseInOut })
@@ -1961,7 +2001,7 @@ struct IndexPage {
       .fontColor(this.vm.statusFilter === key ? this.p.onPrimary : this.p.textSecondary)
       .padding({ left: 10, right: 10, top: 5, bottom: 5 })
       .borderRadius(12)
-      .backgroundColor(this.vm.statusFilter === key ? this.p.primary : this.p.surface)
+      .backgroundColor(this.vm.statusFilter === key ? this.p.primarySolid : this.p.surface)
       .margin({ right: 6 })
       .onClick(() => {
         this.vm.setStatusFilter(key);
@@ -1977,20 +2017,20 @@ struct IndexPage {
   StatusTab(label: string, key: string) {
     Stack({ alignContent: Alignment.Center }) {
       Text(`${label} ${this.countForStatus(key)}`)
-        .fontSize(this.winWidth > 600 ? 14 : (this.winWidth < 360 ? 10.5 : 12))
+        .fontSize(this.is2in1 ? 13 : (this.winWidth < 360 ? 11 : 12))
         .fontWeight(this.vm.statusFilter === key ? FontWeight.Medium : FontWeight.Normal)
         .fontColor(this.vm.statusFilter === key ? this.p.primary : this.p.textSecondary)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .padding({ left: this.winWidth > 600 ? 8 : 4, right: this.winWidth > 600 ? 8 : 4 })
+        .padding({ left: this.is2in1 ? 8 : 4, right: this.is2in1 ? 8 : 4 })
     }
-    .height(this.winWidth > 600 ? 38 : 32)
-    .borderRadius(this.winWidth > 600 ? 19 : 16)
+    .height(this.is2in1 ? 38 : 32)
+    .borderRadius(this.is2in1 ? 19 : 16)
     .backgroundColor(Color.Transparent)
     .backgroundBlurStyle(MATERIAL_BLUR)
     .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
     .layoutWeight(1)
-    .margin({ right: this.winWidth > 600 ? 10 : 4 })
+    .margin({ right: this.is2in1 ? 10 : 4 })
     .clip(false)
     .onClick(() => {
       this.vm.setStatusFilter(key);
@@ -2061,9 +2101,9 @@ struct IndexPage {
           MenuItem({ content: '重新检查' })
             .onChange(() => {
               this.vm.recheckTask(this.contextMenuTask!).then(() => {
-                promptAction.showToast({ message: '已重新检查，可从下载列表重新开始' });
+                safeToast(this.getUIContext(), '已重新检查，可从下载列表重新开始' );
               }).catch((e: Error) => {
-                promptAction.showToast({ message: '重新检查失败: ' + (e?.message || String(e)) });
+                safeToast(this.getUIContext(), '重新检查失败: ' + (e?.message || String(e)) );
               });
             })
         }
@@ -2090,7 +2130,7 @@ struct IndexPage {
 
   /** 删除确认对话框：可选择是否保留文件。 */
   private showDeleteDialog(tasks: DownloadTask[], isBatch: boolean): void {
-    AlertDialog.show(
+    this.getUIContext().showAlertDialog(
       {
         title: isBatch ? '批量删除' : '删除任务',
         message: isBatch
@@ -2102,7 +2142,7 @@ struct IndexPage {
           {
             value: '取消',
             action: () => {},
-            fontColor: '#888888'
+            fontColor: this.p.textSecondary
           },
           {
             value: '仅删除任务',
@@ -2115,7 +2155,7 @@ struct IndexPage {
                 this.vm.remove(tasks[0], true);
               }
             },
-            fontColor: '#007AFF'
+            fontColor: this.p.primary
           },
           {
             value: '删除并删除文件',
@@ -2128,7 +2168,7 @@ struct IndexPage {
                 this.vm.remove(tasks[0], false);
               }
             },
-            fontColor: '#FF3B30'
+            fontColor: this.p.error
           }
         ]
       }
@@ -2157,10 +2197,10 @@ struct IndexPage {
       return;
     }
     this.vm.renameTask(t, name).then(() => {
-      promptAction.showToast({ message: '已重命名' });
+      safeToast(this.getUIContext(), '已重命名' );
       this.renameDialogVisible = false;
     }).catch((e: Error) => {
-      promptAction.showToast({ message: '重命名失败: ' + (e?.message || String(e)) });
+      safeToast(this.getUIContext(), '重命名失败: ' + (e?.message || String(e)) );
     });
   }
 
@@ -2172,10 +2212,10 @@ struct IndexPage {
       return;
     }
     this.vm.moveTask(t, dir).then(() => {
-      promptAction.showToast({ message: '已移动任务' });
+      safeToast(this.getUIContext(), '已移动任务' );
       this.moveDialogVisible = false;
     }).catch((e: Error) => {
-      promptAction.showToast({ message: '移动失败: ' + (e?.message || String(e)) });
+      safeToast(this.getUIContext(), '移动失败: ' + (e?.message || String(e)) );
     });
   }
 
@@ -2191,7 +2231,7 @@ struct IndexPage {
           .justifyContent(FlexAlign.Center)
         }
         .type(ButtonType.Capsule)
-        .backgroundColor('#FFA940')
+        .backgroundColor('#B06100')
         .width(64)
         .height(40)
         .margin({ right: 6 })
@@ -2207,7 +2247,7 @@ struct IndexPage {
           .justifyContent(FlexAlign.Center)
         }
         .type(ButtonType.Capsule)
-        .backgroundColor('#52C41A')
+        .backgroundColor('#388512')
         .width(64)
         .height(40)
         .margin({ right: 6 })
@@ -2223,7 +2263,7 @@ struct IndexPage {
           .justifyContent(FlexAlign.Center)
         }
         .type(ButtonType.Capsule)
-        .backgroundColor('#007DFF')
+        .backgroundColor('#0070E5')
         .width(64)
         .height(40)
         .margin({ right: 6 })
@@ -2254,7 +2294,7 @@ struct IndexPage {
         .justifyContent(FlexAlign.Center)
       }
       .type(ButtonType.Capsule)
-      .backgroundColor('#E8553B')
+      .backgroundColor('#DB371A')
       .width(64)
       .height(40)
       .onClick(() => {
@@ -2272,6 +2312,7 @@ struct IndexPage {
       if (this.selectMode) {
         Checkbox()
           .select(this.selectedTaskIds.has(task.id))
+          .selectedColor(this.p.primarySolid)
           .shape(CheckBoxShape.ROUNDED_SQUARE)
           .width(22)
           .height(22)
@@ -2407,9 +2448,9 @@ struct IndexPage {
     .width(36).height(36)
     .borderRadius(18)
     .backgroundColor(
-      task.status === TaskStatus.Downloading || task.status === TaskStatus.Queued ? '#FFA940' :
-      task.status === TaskStatus.Paused || task.status === TaskStatus.Error ? '#52C41A' :
-      task.status === TaskStatus.Completed ? '#52C41A' : this.p.surfaceSolid
+      task.status === TaskStatus.Downloading || task.status === TaskStatus.Queued ? '#B06100' :
+      task.status === TaskStatus.Paused || task.status === TaskStatus.Error ? '#388512' :
+      task.status === TaskStatus.Completed ? '#388512' : this.p.surfaceSolid
     )
     .onClick(() => {
       if (task.status === TaskStatus.Downloading || task.status === TaskStatus.Queued) {
@@ -2496,6 +2537,15 @@ struct AddContent {
     }
   }
 
+  /** 将粘贴得到的文本填入输入框并识别协议。 */
+  private applyPastedText(text: string): void {
+    if (text && text.trim().length > 0) {
+      this.handleUrlInput(text.trim());
+    } else {
+      safeToast(this.getUIContext(), '剪贴板中没有文本' );
+    }
+  }
+
   /** Read clipboard text into the URL field and run detection. */
   private pasteFromClipboard(): void {
     try {
@@ -2516,12 +2566,7 @@ struct AddContent {
             if (!text && uri) text = uri;
           }
         }
-        if (text && text.trim().length > 0) {
-          this.handleUrlInput(text.trim());
-        } else {
-          logCollector.warn('Pasteboard', `剪贴板无文本内容: records=${recordCount}`);
-          promptAction.showToast({ message: '剪贴板中没有文本' });
-        }
+        this.applyPastedText(text || '');
       }).catch((e: Error) => {
         logCollector.error('Pasteboard', `getData失败: ${JSON.stringify(e)}`);
         // 降级用同步方式
@@ -2529,26 +2574,22 @@ struct AddContent {
           const pasteData2 = sysPasteboard.getDataSync();
           const text2 = pasteData2.getPrimaryText() || '';
           logCollector.info('Pasteboard', `同步降级读取: ${text2?.slice(0, 80) || '(空)'}`);
-          if (text2 && text2.trim().length > 0) {
-            this.handleUrlInput(text2.trim());
-          } else {
-            promptAction.showToast({ message: '剪贴板中没有文本' });
-          }
+          this.applyPastedText(text2);
         } catch (e2) {
           logCollector.error('Pasteboard', `同步降级也失败: ${JSON.stringify(e2)}`);
-          promptAction.showToast({ message: '读取剪贴板失败' });
+          safeToast(this.getUIContext(), '读取剪贴板失败，请长按输入框选择粘贴' );
         }
       });
     } catch (e) {
       logCollector.error('Pasteboard', `pasteFromClipboard异常: ${JSON.stringify(e)}`);
-      promptAction.showToast({ message: '读取剪贴板失败' });
+      safeToast(this.getUIContext(), '读取剪贴板失败，请长按输入框选择粘贴' );
     }
   }
 
   /** Pick a .txt file and load each line as a batch download URL. */
   async importTxtLinks(): Promise<void> {
     try {
-      const context = getContext(this) as common.UIAbilityContext;
+      const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
       const documentPicker = new picker.DocumentViewPicker(context);
       const options = new picker.DocumentSelectOptions();
       options.fileSuffixFilters = ['.txt'];
@@ -2567,18 +2608,18 @@ struct AddContent {
         const existing = new Set(this.batchUrls.split('\n').map((s: string) => s.trim()).filter((s: string) => s.length > 0));
         const lines = text.split('\n').map((s: string) => s.trim()).filter((s: string) => s.length > 0 && !existing.has(s));
         this.batchUrls = (this.batchUrls.trim().length > 0 ? this.batchUrls.trim() + '\n' : '') + lines.join('\n');
-        promptAction.showToast({ message: `已导入 ${lines.length} 条链接` });
+        safeToast(this.getUIContext(), `已导入 ${lines.length} 条链接` );
       } finally {
         fs.closeSync(file.fd);
       }
     } catch (e) {
-      promptAction.showToast({ message: '导入 TXT 失败: ' + ((e as Error)?.message || String(e)) });
+      safeToast(this.getUIContext(), '导入 TXT 失败: ' + ((e as Error)?.message || String(e)) );
     }
   }
 
   /** Open system file picker to select a .torrent file. */
   async pickTorrentFile(): Promise<void> {    try {
-      const context = getContext(this) as common.UIAbilityContext;
+      const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
       const documentPicker = new picker.DocumentViewPicker(context);
       const options = new picker.DocumentSelectOptions();
       // Filter for .torrent files
@@ -2600,16 +2641,21 @@ struct AddContent {
           this.hasDetection = true;
           this.autoFileName = fileNameFromUrl(trimmed) || uri.split('/').pop() || '';
         }
-        promptAction.showToast({ message: '已选择种子文件' });
+        safeToast(this.getUIContext(), '已选择种子文件' );
       }
     } catch (e) {
-      promptAction.showToast({ message: '选择文件失败: ' + (e as Error).message });
+      safeToast(this.getUIContext(), '选择文件失败: ' + (e as Error).message );
     }
   }
 
   @Computed
   get p(): Palette {
     return palette(this.vm.theme, this.vm.colorScheme);
+  }
+
+  @Computed
+  get tintColor(): string {
+    return this.vm.iconTint === 'mono' ? this.p.text : this.p.primary;
   }
 
   @Builder
@@ -2633,7 +2679,7 @@ struct AddContent {
     if (!info) {
       return;
     }
-    AlertDialog.show({
+    this.getUIContext().showAlertDialog({
       title: '重复下载',
       message: `链接「${info.url.length > 60 ? info.url.slice(0, 57) + '...' : info.url}」\n已存在下载任务，是否重新下载？原文件将保留。`,
       autoCancel: false,
@@ -2646,10 +2692,10 @@ struct AddContent {
       },
       secondaryButton: {
         value: '重新下载',
-        fontColor: '#007AFF',
+        fontColor: this.p.primary,
         action: () => {
           this.vm.confirmDuplicateDownload('redownload').then(() => {
-            promptAction.showToast({ message: '已重新添加下载任务' });
+            safeToast(this.getUIContext(), '已重新添加下载任务' );
             this.onDownloadStart?.();
           });
         }
@@ -2667,7 +2713,7 @@ struct AddContent {
         .margin({ bottom: 12 })
       // ── 下载链接（卡片式输入区） ──
       Row() {
-        Image(iconRes('link')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+        Image(iconRes('link')).width(18).height(18).fillColor(this.tintColor).margin({ right: 10 })
         Text('下载链接').fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.p.text)
         Blank()
         Text('支持 HTTP / BT / 磁力 / eD2K 等')
@@ -2683,7 +2729,7 @@ struct AddContent {
           .fillColor(this.url.trim().length > 0 && this.hasDetection ? this.detectedColor : this.p.textSecondary)
           .margin({ left: 4, right: 10 })
 
-        TextInput({ placeholder: '粘贴或输入下载链接，自动识别协议', text: this.url, controller: this.urlInputController })
+        TextInput({ placeholder: '粘贴或输入下载链接，自动识别协议', text: this.url, controller: this.urlInputController }).caretColor(this.p.primary)
           .fontColor(this.p.text)
           .placeholderColor(this.p.textSecondary)
           .fontSize(14)
@@ -2705,17 +2751,6 @@ struct AddContent {
               this.url = '';
             })
         }
-
-        // 粘贴按钮
-        Row() {
-          Image(iconRes('clipboard')).width(15).height(15).fillColor(this.p.primary)
-          Text('粘贴').fontSize(12).fontColor(this.p.primary).margin({ left: 4 })
-        }
-        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
-        .backgroundColor(this.p.surface)
-        .borderRadius(8)
-        .margin({ left: 6 })
-        .onClick(() => { this.pasteFromClipboard(); })
       }
       .width('100%')
       .height(52)
@@ -2794,7 +2829,7 @@ struct AddContent {
                 .fontColor(this.hlsQualityIndex === idx ? this.p.onPrimary : this.p.text)
                 .padding({ left: 10, right: 10, top: 5, bottom: 5 })
                 .borderRadius(10)
-                .backgroundColor(this.hlsQualityIndex === idx ? this.p.primary : this.p.surface)
+                .backgroundColor(this.hlsQualityIndex === idx ? this.p.primarySolid : this.p.surface)
                 .margin({ right: 6, bottom: 6 })
                 .onClick(() => {
                   this.hlsQualityIndex = idx;
@@ -2820,6 +2855,7 @@ struct AddContent {
           .padding({ left: 20, right: 20 })
           .backgroundColor(this.p.surface)
           .fontColor(this.p.text)
+          .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
           .borderRadius(10)
           .onClick(() => {
             this.pickTorrentFile();
@@ -2843,7 +2879,7 @@ struct AddContent {
           .width(15).height(15).fillColor(this.p.textSecondary)
           .margin({ right: 6 })
         Text('高级选项').fontSize(14).fontColor(this.p.text).layoutWeight(1)
-        Image(iconRes(this.showAdvanced ? 'chevron_up' : 'chevron_down'))
+        Image(iconRes(this.showAdvanced ? 'maximize' : 'minimize'))
           .width(16).height(16).fillColor(this.p.textSecondary)
       }
       .width('100%')
@@ -2855,12 +2891,13 @@ struct AddContent {
           // 保存路径
           Text('保存路径').fontSize(13).fontColor(this.p.textSecondary).margin({ bottom: 6 })
           Row() {
-            TextInput({ placeholder: '留空使用默认目录', text: this.saveDir })
+            TextInput({ placeholder: '留空使用默认目录', text: this.saveDir }).caretColor(this.p.primary)
               .fontColor(this.p.text)
               .placeholderColor(this.p.textSecondary)
               .fontSize(13)
               .layoutWeight(1)
               .backgroundColor(this.p.surface)
+              .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
               .borderRadius(8)
               .height(40)
               .onChange((v: string) => { this.saveDir = v; })
@@ -2870,12 +2907,13 @@ struct AddContent {
 
           // 线程数
           Text('线程数（留空=默认）').fontSize(13).fontColor(this.p.textSecondary).margin({ bottom: 6 })
-          TextInput({ placeholder: '如 16', text: this.segmentsDraft })
+          TextInput({ placeholder: '如 16', text: this.segmentsDraft }).caretColor(this.p.primary)
             .fontColor(this.p.text)
             .placeholderColor(this.p.textSecondary)
             .fontSize(13)
             .width('100%')
             .backgroundColor(this.p.surface)
+            .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
             .borderRadius(8)
             .height(40)
             .type(InputType.Number)
@@ -2884,12 +2922,13 @@ struct AddContent {
 
           // Cookie
           Text('Cookie').fontSize(13).fontColor(this.p.textSecondary).margin({ bottom: 6 })
-          TextInput({ placeholder: 'name=value; name2=value2', text: this.cookie })
+          TextInput({ placeholder: 'name=value; name2=value2', text: this.cookie }).caretColor(this.p.primary)
             .fontColor(this.p.text)
             .placeholderColor(this.p.textSecondary)
             .fontSize(13)
             .width('100%')
             .backgroundColor(this.p.surface)
+            .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
             .borderRadius(8)
             .height(40)
             .margin({ bottom: 12 })
@@ -2897,12 +2936,13 @@ struct AddContent {
 
           // Referer
           Text('Referer').fontSize(13).fontColor(this.p.textSecondary).margin({ bottom: 6 })
-          TextInput({ placeholder: 'https://example.com', text: this.referer })
+          TextInput({ placeholder: 'https://example.com', text: this.referer }).caretColor(this.p.primary)
             .fontColor(this.p.text)
             .placeholderColor(this.p.textSecondary)
             .fontSize(13)
             .width('100%')
             .backgroundColor(this.p.surface)
+            .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
             .borderRadius(8)
             .height(40)
             .margin({ bottom: 12 })
@@ -2910,38 +2950,20 @@ struct AddContent {
 
           // 自定义请求头
           Text('自定义请求头（每行 Key: Value）').fontSize(13).fontColor(this.p.textSecondary).margin({ bottom: 6 })
-          TextArea({ placeholder: 'X-Key: value\nAuthorization: Bearer xxx', text: this.customHeaders })
+          TextArea({ placeholder: 'X-Key: value\nAuthorization: Bearer xxx', text: this.customHeaders }).caretColor(this.p.primary)
             .fontColor(this.p.text)
             .placeholderColor(this.p.textSecondary)
             .fontSize(13)
             .width('100%')
             .height(80)
             .backgroundColor(this.p.surface)
+            .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
             .borderRadius(8)
             .onChange((v: string) => { this.customHeaders = v; })
         }
         .width('100%')
         .padding({ left: 4, right: 4, bottom: 4 })
       }
-
-      // 支持协议标签
-      Text('支持协议')
-        .fontSize(13)
-        .fontColor(this.p.textSecondary)
-        .width('100%')
-        .margin({ top: 20, bottom: 8 })
-
-      Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(8), cross: LengthMetrics.vp(8) } }) {
-        ForEach(ALL_PROTOCOLS, (proto: ProtocolType) => {
-          this.ProtocolChip(
-            protocolMeta(proto).label,
-            protocolMeta(proto).color,
-            protocolMeta(proto).implemented,
-            protocolIcon(proto)
-          )
-        })
-      }
-      .width('100%')
 
       Button() {
         Row() {
@@ -2952,7 +2974,7 @@ struct AddContent {
       }
         .width('100%')
         .height(44)
-        .backgroundColor(this.p.primary)
+        .backgroundColor(this.p.primarySolid)
         .fontColor(this.p.onPrimary)
         .borderRadius(22)
         .margin({ top: 24 })
@@ -2991,7 +3013,7 @@ struct AddContent {
             this.customHeaders = '';
             this.showAdvanced = false;
             this.selectedTorrentPath = '';
-            promptAction.showToast({ message: '已添加下载任务' });
+            safeToast(this.getUIContext(), '已添加下载任务' );
             this.onDownloadStart?.();
           });
         })
@@ -3005,7 +3027,7 @@ struct AddContent {
         .margin({ bottom: 8 })
 
       Column() {
-        TextArea({ text: this.batchUrls, placeholder: 'https://example.com/file1.zip\nhttps://example.com/file2.zip', controller: this.batchInputController })
+        TextArea({ text: this.batchUrls, placeholder: 'https://example.com/file1.zip\nhttps://example.com/file2.zip', controller: this.batchInputController }).caretColor(this.p.primary)
           .fontColor(this.p.text)
           .placeholderColor(this.p.textSecondary)
           .width('100%')
@@ -3050,7 +3072,7 @@ struct AddContent {
       Row({ space: 12 }) {
         Stack({ alignContent: Alignment.Center }) {
           ImmersionButton({
-            systemMaterialEffect: globalMaterialEffect(),
+            systemMaterialEffect: buildMaterialEffect(this.vm.glassStyle, this.vm.glassLevel),
             text: '从 TXT 导入',
             buttonModify: new ActionButtonModifier('100%', 44),
             click: (): void => { this.importTxtLinks(); }
@@ -3062,7 +3084,7 @@ struct AddContent {
         .height(44)
         Stack({ alignContent: Alignment.Center }) {
           ImmersionButton({
-            systemMaterialEffect: globalMaterialEffect(),
+            systemMaterialEffect: buildMaterialEffect(this.vm.glassStyle, this.vm.glassLevel),
             text: '批量添加',
             buttonModify: new ActionButtonModifier('100%', 44),
             click: (): void => {
@@ -3074,7 +3096,7 @@ struct AddContent {
                 this.showDuplicateDialog();
               }
               if (n > 0) {
-                promptAction.showToast({ message: `已添加 ${n} 个下载` });
+                safeToast(this.getUIContext(), `已添加 ${n} 个下载` );
               }
               this.batchUrls = '';
               if (n > 0) {
@@ -3105,9 +3127,14 @@ struct AddContent {
     .width('100%')
     .height('100%')
     .scrollBar(BarState.Off)
+    .contentEndOffset((AppStorage.get<number>('fluxdown_naviIndicatorHeight') ?? 0) + 52 + 16 + 16)
     .edgeEffect(EdgeEffect.Spring)
   }
 }
+
+// 配色分组：设置页按 经典 / 莫兰迪 两组展示（COLOR_SCHEMES 里 group 已标好）
+const CLASSIC_SCHEMES: ColorScheme[] = COLOR_SCHEMES.filter((s: ColorScheme) => s.group === 'classic');
+const MORANDI_SCHEMES: ColorScheme[] = COLOR_SCHEMES.filter((s: ColorScheme) => s.group === 'morandi');
 
 // ── 设置页面 ──
 @ComponentV2
@@ -3159,6 +3186,8 @@ struct SettingsContent {
   @Local fileExistsBehaviorLocal: string = '';
   @Local fileMissingActionLocal: string = '';
   @Local btOperatorLocal: string = '';
+  @Local glassLevelLocal: string = '';
+  @Local iconTintLocal: string = '';
   // 设置分组折叠状态（默认全部收起）
   @Local sectionDownload: boolean = false;
   @Local sectionAppearance: boolean = false;
@@ -3167,6 +3196,9 @@ struct SettingsContent {
   @Local sectionRss: boolean = false;
   // 当前被按下的卡片式入口 key（统一物理按压反馈）
   @Local pressedKey: string = '';
+  // 顶部状态栏 / 底部导航安全区高度（EntryAbility 发布到 AppStorage），用于内容避让悬浮标题栏/底部导航
+  @Local statusBarHeight: number = 0;
+  @Local naviIndicatorHeight: number = 0;
 
   aboutToAppear(): void {
     this.fileExistsBehaviorLocal = this.vm.fileExistsBehavior;
@@ -3174,11 +3206,54 @@ struct SettingsContent {
     if (this.vm.btSettings) {
       this.btOperatorLocal = this.vm.btSettings.limits.operator === SeedConditionOperator.AND ? 'and' : 'or';
     }
+    this.glassLevelLocal = this.vm.glassLevel;
+    this.iconTintLocal = this.vm.iconTint;
+    this.statusBarHeight = AppStorage.get<number>('fluxdown_statusBarHeight') ?? 0;
+    this.naviIndicatorHeight = AppStorage.get<number>('fluxdown_naviIndicatorHeight') ?? 0;
   }
 
   @Computed
   get p(): Palette {
     return palette(this.vm.theme, this.vm.colorScheme);
+  }
+
+  @Computed
+  get tintColor(): string {
+    return this.vm.iconTint === 'mono' ? this.p.text : this.p.primary;
+  }
+
+  /** 同步窗口背景色和系统栏属性（App内手动切换主题时调用，避免底部安全区透出旧窗口背景色） */
+  private applyWindowAppearance(isDark: boolean): void {
+    try {
+      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      window.getLastWindow(ctx).then((win: window.Window) => {
+        win.setWindowBackgroundColor(isDark ? '#FF000000' : '#FFE8EBF0');
+        win.setWindowSystemBarProperties({
+          statusBarColor: '#00000000',
+          navigationBarColor: isDark ? '#FF000000' : '#FFE8EBF0',
+          isStatusBarLightIcon: isDark,
+          isNavigationBarLightIcon: isDark,
+          navigationBarContentColor: isDark ? '#FFEEEEEE' : '#FF1A1A1A',
+          statusBarContentColor: isDark ? '#FFEEEEEE' : '#FF1A1A1A'
+        });
+      }).catch((_e: Error) => {});
+    } catch (_e) {}
+  }
+
+  /** 跟随系统时根据系统颜色模式同步主题和窗口背景 */
+  private updateSystemTheme(): void {
+    if (this.vm.themeMode !== 'system') {
+      return;
+    }
+    try {
+      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      const isDark = ctx.config.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK;
+      const target: 'light' | 'dark' = isDark ? 'dark' : 'light';
+      if (this.vm.theme !== target) {
+        this.vm.setTheme(target);
+        this.applyWindowAppearance(isDark);
+      }
+    } catch (_e) {}
   }
 
   /** 统一按压反馈：按下时返回 PRESS_SCALE，否则 1 */
@@ -3193,6 +3268,30 @@ struct SettingsContent {
     } else if ((event.type === TouchType.Up || event.type === TouchType.Cancel) && this.pressedKey === key) {
       this.pressedKey = '';
     }
+  }
+
+  /**
+   * 打开外部链接。必须用 openLink：直接 startAbility({ bundleName, uri })
+   * 指定浏览器包名时，系统匹配不到可处理 https 的 Ability，会弹「暂无可打开方式」。
+   */
+  private openExternalUrl(url: string): void {
+    const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    ctx.openLink(url, { appLinkingOnly: false } as OpenLinkOptions)
+      .then(() => {
+        // 系统已拉起浏览器
+      })
+      .catch(() => {
+        // 降级：显式声明 viewData + browsable，让系统自行匹配浏览器
+        const want: Want = {
+          action: 'ohos.want.action.viewData',
+          entities: ['entity.system.browsable'],
+          uri: url
+        };
+        ctx.startAbility(want).catch(() => {
+          pasteboard.getSystemPasteboard().setData(pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, url));
+          safeToast(this.getUIContext(), '链接已复制，请在浏览器中粘贴打开' );
+        });
+      });
   }
 
   /** 打开QQ群：检测QQ，有QQ直接跳转，没QQ用浏览器打开 */
@@ -3213,46 +3312,27 @@ struct SettingsContent {
     }
 
     if (hasQQ) {
-      // 有QQ，直接跳转QQ加群
+      // 有 QQ，直接跳转 QQ 加群
       const want: Want = { uri: qqScheme };
-      (getContext(this) as common.UIAbilityContext).startAbility(want).catch(() => {
-        // QQ跳转失败，降级浏览器
-        const h5Want: Want = { uri: h5Url };
-        (getContext(this) as common.UIAbilityContext).startAbility(h5Want);
+      (this.getUIContext().getHostContext() as common.UIAbilityContext).startAbility(want).catch(() => {
+        // QQ 跳转失败 → 用系统浏览器打开分享页
+        this.openExternalUrl(h5Url);
       });
     } else {
-      // 没安装QQ，检测浏览器包名后直接指定浏览器打开（绕过系统选择逻辑，避免弹"暂无可打开方式"）
-      const browserBundleNames = ['com.huawei.browser', 'com.huawei.browser.pad', 'com.android.chrome', 'com.microsoft.emmx'];
-      let browserBundleName = '';
-      for (const bn of browserBundleNames) {
-        try {
-          bundleManager.getBundleInfo(bn, bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT);
-          browserBundleName = bn;
-          break;
-        } catch (_) {
-          // 未安装，继续检测
-        }
-      }
-      if (browserBundleName) {
-        const h5Want: Want = { bundleName: browserBundleName, uri: h5Url };
-        (getContext(this) as common.UIAbilityContext).startAbility(h5Want).catch(() => {
-          // 指定浏览器打开失败，降级为系统方式
-          const fallbackWant: Want = { uri: h5Url };
-          (getContext(this) as common.UIAbilityContext).startAbility(fallbackWant);
-        });
-      } else {
-        // 没检测到浏览器，复制链接
-        pasteboard.getSystemPasteboard().setData(pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, h5Url));
-        promptAction.showToast({ message: '群链接已复制，请在浏览器中粘贴打开' });
-      }
+      // 没装 QQ → 交给系统按 scheme 解析（指定浏览器包名反而会弹「暂无可打开方式」）
+      this.openExternalUrl(h5Url);
     }
   }
 
   /** 长按QQ群：复制群号 */
   private copyQQGroupNumber(): void {
     const groupNumber = '1121565536';
-    pasteboard.getSystemPasteboard().setData(pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, groupNumber));
-    promptAction.showToast({ message: '群号已复制: ' + groupNumber });
+    try {
+      pasteboard.getSystemPasteboard().setData(pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, groupNumber));
+      safeToast(this.getUIContext(), '群号已复制: ' + groupNumber );
+    } catch (e) {
+      safeToast(this.getUIContext(), '复制失败，请手动记录群号 ' + groupNumber );
+    }
   }
 
   private minToTime(min: number): string {
@@ -3270,14 +3350,14 @@ struct SettingsContent {
   private addCategory(): void {
     const name = this.catName.trim();
     if (name.length === 0) {
-      promptAction.showToast({ message: '请输入分类名称' });
+      safeToast(this.getUIContext(), '请输入分类名称' );
       return;
     }
     this.vm.createCategory(name, this.catExts.trim(), this.catDir.trim()).then(() => {
       this.catName = '';
       this.catExts = '';
       this.catDir = '';
-      promptAction.showToast({ message: '已添加分类' });
+      safeToast(this.getUIContext(), '已添加分类' );
     });
   }
 
@@ -3289,13 +3369,13 @@ struct SettingsContent {
     }
     const name = this.catEditName.trim();
     if (name.length === 0) {
-      promptAction.showToast({ message: '分类名称不能为空' });
+      safeToast(this.getUIContext(), '分类名称不能为空' );
       return;
     }
     this.vm.updateCategory(cat, { name: name, extensions: this.catEditExts.trim(), saveDir: this.catEditDir.trim() })
       .then(() => {
         this.catEditVisible = false;
-        promptAction.showToast({ message: '已保存分类' });
+        safeToast(this.getUIContext(), '已保存分类' );
       });
   }
 
@@ -3307,8 +3387,8 @@ struct SettingsContent {
         if (this.mode === '' || this.mode === 'appearance') {
         Column() {
           Row() {
-            Image(iconRes('palette')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
-            Text('外观').fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.p.text).layoutWeight(1)
+            Image(iconRes('palette')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+            Text('外观').fontSize(15).fontColor(this.p.text).layoutWeight(1)
             if (this.mode === '') {
               Image(iconRes('chevron_right'))
                 .width(16).height(16).fillColor(this.p.textSecondary)
@@ -3331,7 +3411,7 @@ struct SettingsContent {
             Divider().color(this.p.border).margin({ left: 16, right: 16 })
             Column() {
               Row() {
-                Image(iconRes(this.vm.theme === 'dark' ? 'moon' : 'sun')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+                Image(iconRes(this.vm.theme === 'dark' ? 'moon' : 'sun')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
                 Text('主题').fontColor(this.p.text).layoutWeight(1).fontSize(15)
               }
               .width('100%')
@@ -3348,31 +3428,163 @@ struct SettingsContent {
               Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           Row() {
-            Image(iconRes('palette')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+            Image(iconRes('palette')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('配色').fontColor(this.p.text).fontSize(15)
           }
           .width('100%')
           .padding({ left: 16, top: 12, bottom: 4 })
 
-          // ── 配色（18 色，按顺序排列，无文字） ──
-          Flex({ wrap: FlexWrap.Wrap }) {
-            ForEach(COLOR_SCHEMES, (scheme: ColorScheme) => {
-              Column() {
-                Column()
-                  .width(36)
-                  .height(36)
-                  .borderRadius(18)
-                  .backgroundColor(this.p.dark && scheme.darkPrimary ? scheme.darkPrimary : scheme.primary)
-                  .border({
-                    width: this.vm.colorScheme === scheme.id ? 3 : 0,
-                    color: this.p.text
-                  })
-              }
-              .margin(8)
-              .onClick(() => { this.vm.setColorScheme(scheme.id); })
-            })
+          // ── 配色（按 经典 / 莫兰迪 分组，色块下方显示对应名称）──
+          // 注意：两组色卡样式完全一致，改样式时请同步两处。
+          // 未抽成 @Builder 是因为本组件在 V2 细粒度更新下曾出现 @Builder 参数不刷新的问题
+          // （见上方 PolicyChip 相关说明），内联最稳妥。
+          Column() {
+            // 左边界与「配色」「外观」等分区标题及分隔线保持一致（均为 16），不再额外缩进
+            Text('经典')
+              .fontSize(12)
+              .fontColor(this.p.textSecondary)
+              .margin({ top: 4, bottom: 2 })
+            Flex({ wrap: FlexWrap.Wrap }) {
+              ForEach(CLASSIC_SCHEMES, (scheme: ColorScheme) => {
+                Column() {
+                  Column()
+                    .width(36)
+                    .height(36)
+                    .borderRadius(18)
+                    // 必须展示 "真正应用到界面上" 的主色（即 palette() 里经 ensureContrast 压缩后的
+                    // readablePrimary / darkPrimary），而不是 scheme.primary 原色。
+                    // 否则色卡与实际应用效果不一致 —— 会出现"选了不同色却看起来一样"的错觉。
+                    .backgroundColor(palette(this.vm.theme, scheme.id).primary)
+                    .border({
+                      width: this.vm.colorScheme === scheme.id ? 3 : 0,
+                      color: this.p.text
+                    })
+                  // 名称：选中项用主题主色 + 中粗，其余用次要文字色，便于辨认当前配色
+                  Text(scheme.name)
+                    .fontSize(10)
+                    .maxLines(1)
+                    .textAlign(TextAlign.Center)
+                    .width(56)
+                    .margin({ top: 4 })
+                    .fontColor(this.vm.colorScheme === scheme.id ? this.p.primary : this.p.textSecondary)
+                    .fontWeight(this.vm.colorScheme === scheme.id ? FontWeight.Medium : FontWeight.Normal)
+                }
+                .width(56)
+                .margin(8)
+                .onClick(() => { this.vm.setColorScheme(scheme.id); })
+              })
+            }
+
+            Text('莫兰迪')
+              .fontSize(12)
+              .fontColor(this.p.textSecondary)
+              .margin({ top: 12, bottom: 2 })
+            Flex({ wrap: FlexWrap.Wrap }) {
+              ForEach(MORANDI_SCHEMES, (scheme: ColorScheme) => {
+                Column() {
+                  Column()
+                    .width(36)
+                    .height(36)
+                    .borderRadius(18)
+                    .backgroundColor(palette(this.vm.theme, scheme.id).primary)
+                    .border({
+                      width: this.vm.colorScheme === scheme.id ? 3 : 0,
+                      color: this.p.text
+                    })
+                  Text(scheme.name)
+                    .fontSize(10)
+                    .maxLines(1)
+                    .textAlign(TextAlign.Center)
+                    .width(56)
+                    .margin({ top: 4 })
+                    .fontColor(this.vm.colorScheme === scheme.id ? this.p.primary : this.p.textSecondary)
+                    .fontWeight(this.vm.colorScheme === scheme.id ? FontWeight.Medium : FontWeight.Normal)
+                }
+                .width(56)
+                .margin(8)
+                .onClick(() => { this.vm.setColorScheme(scheme.id); })
+              })
+            }
           }
           .padding({ left: 16, right: 16, top: 8, bottom: 16 })
+
+          Divider().color(this.p.border).margin({ left: 16, right: 16 })
+
+          // ── 材质浓度（模糊/光感的强弱档位）──
+          Row() {
+            Image(iconRes('gauge')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+            Text('材质浓度').fontColor(this.p.text).fontSize(15)
+          }
+          .width('100%')
+          .padding({ left: 16, top: 12, bottom: 4 })
+
+          Row() {
+            Text('自动')
+              .fontSize(12)
+              .fontColor(this.glassLevelLocal === 'auto' ? this.p.onPrimary : this.p.textSecondary)
+              .backgroundColor(this.glassLevelLocal === 'auto' ? this.p.primarySolid : this.p.surfaceHighlight)
+              .borderRadius(14)
+              .padding({ left: 12, right: 12, top: 5, bottom: 5 })
+              .margin({ right: 8 })
+              .onClick(() => { this.glassLevelLocal = 'auto'; this.vm.setGlassLevel('auto'); })
+            Text('浓郁')
+              .fontSize(12)
+              .fontColor(this.glassLevelLocal === 'high' ? this.p.onPrimary : this.p.textSecondary)
+              .backgroundColor(this.glassLevelLocal === 'high' ? this.p.primarySolid : this.p.surfaceHighlight)
+              .borderRadius(14)
+              .padding({ left: 12, right: 12, top: 5, bottom: 5 })
+              .margin({ right: 8 })
+              .onClick(() => { this.glassLevelLocal = 'high'; this.vm.setGlassLevel('high'); })
+            Text('适中')
+              .fontSize(12)
+              .fontColor(this.glassLevelLocal === 'medium' ? this.p.onPrimary : this.p.textSecondary)
+              .backgroundColor(this.glassLevelLocal === 'medium' ? this.p.primarySolid : this.p.surfaceHighlight)
+              .borderRadius(14)
+              .padding({ left: 12, right: 12, top: 5, bottom: 5 })
+              .margin({ right: 8 })
+              .onClick(() => { this.glassLevelLocal = 'medium'; this.vm.setGlassLevel('medium'); })
+            Text('清淡')
+              .fontSize(12)
+              .fontColor(this.glassLevelLocal === 'low' ? this.p.onPrimary : this.p.textSecondary)
+              .backgroundColor(this.glassLevelLocal === 'low' ? this.p.primarySolid : this.p.surfaceHighlight)
+              .borderRadius(14)
+              .padding({ left: 12, right: 12, top: 5, bottom: 5 })
+              .margin({ right: 8 })
+              .onClick(() => { this.glassLevelLocal = 'low'; this.vm.setGlassLevel('low'); })
+          }
+          .width('100%')
+          .padding({ left: 16, top: 4, bottom: 8 })
+
+          Divider().color(this.p.border).margin({ left: 16, right: 16 })
+
+          // ── 图标着色（顶部/底部等框架图标用主题色还是中性单色）──
+          Row() {
+            Image(iconRes('eye')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+            Text('图标着色').fontColor(this.p.text).fontSize(15)
+          }
+          .width('100%')
+          .padding({ left: 16, top: 12, bottom: 4 })
+
+          Row() {
+            Text('主题色')
+              .fontSize(12)
+              .fontColor(this.iconTintLocal === 'accent' ? this.p.onPrimary : this.p.textSecondary)
+              .backgroundColor(this.iconTintLocal === 'accent' ? this.p.primarySolid : this.p.surfaceHighlight)
+              .borderRadius(14)
+              .padding({ left: 12, right: 12, top: 5, bottom: 5 })
+              .margin({ right: 8 })
+              .onClick(() => { this.iconTintLocal = 'accent'; this.vm.setIconTint('accent'); })
+            Text('单色')
+              .fontSize(12)
+              .fontColor(this.iconTintLocal === 'mono' ? this.p.onPrimary : this.p.textSecondary)
+              .backgroundColor(this.iconTintLocal === 'mono' ? this.p.primarySolid : this.p.surfaceHighlight)
+              .borderRadius(14)
+              .padding({ left: 12, right: 12, top: 5, bottom: 5 })
+              .margin({ right: 8 })
+              .onClick(() => { this.iconTintLocal = 'mono'; this.vm.setIconTint('mono'); })
+          }
+          .width('100%')
+          .padding({ left: 16, top: 4, bottom: 16 })
             }
           }
         }
@@ -3387,7 +3599,7 @@ struct SettingsContent {
         Column() {
           // 下载设置入口
           Row() {
-            Image(iconRes('download')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+            Image(iconRes('download')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('下载设置').fontColor(this.p.text).layoutWeight(1).fontSize(15)
             Image(iconRes('chevron_right')).width(16).height(16).fillColor(this.p.textSecondary)
           }
@@ -3402,8 +3614,8 @@ struct SettingsContent {
 
           // BT下载入口
           Row() {
-            Image(iconRes('magnet')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
-            Text('BT 下载').fontColor(this.p.text).layoutWeight(1).fontSize(15)
+            Image(iconRes('magnet')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+            Text('BT 下载').fontColor(this.p.text).layoutWeight(1).fontSize(15).padding({ left: -1 })
             Image(iconRes('chevron_right')).width(16).height(16).fillColor(this.p.textSecondary)
           }
           .width('100%')
@@ -3417,7 +3629,7 @@ struct SettingsContent {
 
           // 下载统计入口
           Row() {
-            Image(iconRes('chart')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+            Image(iconRes('chart')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('下载统计').fontColor(this.p.text).layoutWeight(1).fontSize(15)
             Image(iconRes('chevron_right')).width(16).height(16).fillColor(this.p.textSecondary)
           }
@@ -3432,7 +3644,7 @@ struct SettingsContent {
 
           // 下载队列入口
           Row() {
-            Image(iconRes('list')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+            Image(iconRes('list')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('下载队列').fontColor(this.p.text).layoutWeight(1).fontSize(15)
             Image(iconRes('chevron_right')).width(16).height(16).fillColor(this.p.textSecondary)
           }
@@ -3447,7 +3659,7 @@ struct SettingsContent {
 
           // 自定义分类入口
           Row() {
-            Image(iconRes('folder')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+            Image(iconRes('folder')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('自定义分类').fontColor(this.p.text).layoutWeight(1).fontSize(15)
             Image(iconRes('chevron_right')).width(16).height(16).fillColor(this.p.textSecondary)
           }
@@ -3468,8 +3680,8 @@ struct SettingsContent {
         if (this.mode === 'download') {
         Column() {
           Row() {
-            Image(iconRes('download')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
-            Text('下载设置').fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.p.text).layoutWeight(1)
+            Image(iconRes('download')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+            Text('下载设置').fontSize(15).fontColor(this.p.text).layoutWeight(1)
           }
           .width('100%')
           .padding({ left: 16, right: 16, top: 16, bottom: 16 })
@@ -3478,7 +3690,7 @@ struct SettingsContent {
           Column() {
               // ── 下载统计入口 ──
               Row() {
-                Image(iconRes('chart')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+                Image(iconRes('chart')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
                 Text('下载统计').fontColor(this.p.text).layoutWeight(1).fontSize(15)
                 Image(iconRes('chevron_right')).width(16).height(16).fillColor(this.p.textSecondary)
               }
@@ -3491,7 +3703,7 @@ struct SettingsContent {
               Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
               Row() {
-                Image(iconRes('cpu')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+                Image(iconRes('cpu')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
                 Text('最大线程数').fontColor(this.p.text).layoutWeight(1).fontSize(15)
                 Text(String(this.vm.maxSegments)).fontColor(this.p.primaryDark).fontSize(15)
               }
@@ -3510,14 +3722,14 @@ struct SettingsContent {
                 })
                 .width('100%')
                 .padding({ left: 12, right: 12, bottom: 8 })
-            .blockColor(this.p.primary)
+            .blockColor(this.p.primary).selectedColor(this.p.primary)
 
           Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           Row() {
-            Image(iconRes('shield_check')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+            Image(iconRes('shield_check')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('校验完整性').fontColor(this.p.text).layoutWeight(1).fontSize(15)
-            Toggle({ isOn: this.vm.verifyIntegrity, type: ToggleType.Switch })
+            Toggle({ isOn: this.vm.verifyIntegrity, type: ToggleType.Switch }).selectedColor(this.p.primarySolid)
               .onChange((v: boolean) => {
                 this.vm.setVerify(v);
               })
@@ -3527,7 +3739,7 @@ struct SettingsContent {
 
           // 全局限速
           Row() {
-            Image(iconRes('gauge')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+            Image(iconRes('gauge')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('全局限速').fontColor(this.p.text).layoutWeight(1).fontSize(15)
             Text(this.vm.globalSpeedLimit > 0 ? formatSpeed(this.vm.globalSpeedLimit) : '不限')
               .fontColor(this.p.primaryDark).fontSize(15)
@@ -3547,13 +3759,13 @@ struct SettingsContent {
             })
             .width('100%')
             .padding({ left: 12, right: 12, bottom: 8 })
-            .blockColor(this.p.primary)
+            .blockColor(this.p.primary).selectedColor(this.p.primary)
 
           Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // ── 下载策略（失败重试 / 文件策略 / 服务器时间） ──
           Row() {
-            Image(iconRes('retry')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+            Image(iconRes('retry')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('失败自动重试').fontColor(this.p.text).layoutWeight(1).fontSize(15)
             Text(`${this.vm.autoRetryCount} 次`)
               .fontColor(this.p.primaryDark).fontSize(15)
@@ -3563,7 +3775,7 @@ struct SettingsContent {
 
           Row() {
             Text('重试次数 (0=关闭)').fontSize(12).fontColor(this.p.textSecondary).layoutWeight(1)
-            TextInput({ text: this.retryCountDraft, placeholder: String(this.vm.autoRetryCount) })
+            TextInput({ text: this.retryCountDraft, placeholder: String(this.vm.autoRetryCount) }).caretColor(this.p.primary)
               .type(InputType.Number)
               .fontSize(13)
               .fontColor(this.p.text)
@@ -3579,7 +3791,7 @@ struct SettingsContent {
 
           Row() {
             Text('重试间隔 (秒)').fontSize(12).fontColor(this.p.textSecondary).layoutWeight(1)
-            TextInput({ text: this.retryDelayDraft, placeholder: String(this.vm.autoRetryDelaySec) })
+            TextInput({ text: this.retryDelayDraft, placeholder: String(this.vm.autoRetryDelaySec) }).caretColor(this.p.primary)
               .type(InputType.Number)
               .fontSize(13)
               .fontColor(this.p.text)
@@ -3613,7 +3825,7 @@ struct SettingsContent {
           Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           Row() {
-            Image(iconRes('file_check')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+            Image(iconRes('file_check')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('文件已存在时').fontColor(this.p.text).layoutWeight(1).fontSize(15)
           }
           .width('100%')
@@ -3623,7 +3835,7 @@ struct SettingsContent {
             Text('覆盖')
               .fontSize(12)
               .fontColor(this.fileExistsBehaviorLocal === 'overwrite' ? this.p.onPrimary : this.p.textSecondary)
-              .backgroundColor(this.fileExistsBehaviorLocal === 'overwrite' ? this.p.primary : this.p.surfaceHighlight)
+              .backgroundColor(this.fileExistsBehaviorLocal === 'overwrite' ? this.p.primarySolid : this.p.surfaceHighlight)
               .borderRadius(14)
               .padding({ left: 12, right: 12, top: 5, bottom: 5 })
               .margin({ right: 8 })
@@ -3631,7 +3843,7 @@ struct SettingsContent {
             Text('重命名')
               .fontSize(12)
               .fontColor(this.fileExistsBehaviorLocal === 'rename' ? this.p.onPrimary : this.p.textSecondary)
-              .backgroundColor(this.fileExistsBehaviorLocal === 'rename' ? this.p.primary : this.p.surfaceHighlight)
+              .backgroundColor(this.fileExistsBehaviorLocal === 'rename' ? this.p.primarySolid : this.p.surfaceHighlight)
               .borderRadius(14)
               .padding({ left: 12, right: 12, top: 5, bottom: 5 })
               .margin({ right: 8 })
@@ -3639,7 +3851,7 @@ struct SettingsContent {
             Text('跳过')
               .fontSize(12)
               .fontColor(this.fileExistsBehaviorLocal === 'skip' ? this.p.onPrimary : this.p.textSecondary)
-              .backgroundColor(this.fileExistsBehaviorLocal === 'skip' ? this.p.primary : this.p.surfaceHighlight)
+              .backgroundColor(this.fileExistsBehaviorLocal === 'skip' ? this.p.primarySolid : this.p.surfaceHighlight)
               .borderRadius(14)
               .padding({ left: 12, right: 12, top: 5, bottom: 5 })
               .margin({ right: 8 })
@@ -3651,7 +3863,7 @@ struct SettingsContent {
           Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           Row() {
-            Image(iconRes('file')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+            Image(iconRes('file')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('重新检查时文件丢失').fontColor(this.p.text).layoutWeight(1).fontSize(15)
           }
           .width('100%')
@@ -3661,7 +3873,7 @@ struct SettingsContent {
             Text('保留记录')
               .fontSize(12)
               .fontColor(this.fileMissingActionLocal === 'keep' ? this.p.onPrimary : this.p.textSecondary)
-              .backgroundColor(this.fileMissingActionLocal === 'keep' ? this.p.primary : this.p.surfaceHighlight)
+              .backgroundColor(this.fileMissingActionLocal === 'keep' ? this.p.primarySolid : this.p.surfaceHighlight)
               .borderRadius(14)
               .padding({ left: 12, right: 12, top: 5, bottom: 5 })
               .margin({ right: 8 })
@@ -3669,7 +3881,7 @@ struct SettingsContent {
             Text('移除任务')
               .fontSize(12)
               .fontColor(this.fileMissingActionLocal === 'remove' ? this.p.onPrimary : this.p.textSecondary)
-              .backgroundColor(this.fileMissingActionLocal === 'remove' ? this.p.primary : this.p.surfaceHighlight)
+              .backgroundColor(this.fileMissingActionLocal === 'remove' ? this.p.primarySolid : this.p.surfaceHighlight)
               .borderRadius(14)
               .padding({ left: 12, right: 12, top: 5, bottom: 5 })
               .margin({ right: 8 })
@@ -3681,9 +3893,9 @@ struct SettingsContent {
           Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           Row() {
-            Image(iconRes('clock')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+            Image(iconRes('clock')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('使用服务器文件时间').fontColor(this.p.text).layoutWeight(1).fontSize(15)
-            Toggle({ isOn: this.vm.useServerTime, type: ToggleType.Switch })
+            Toggle({ isOn: this.vm.useServerTime, type: ToggleType.Switch }).selectedColor(this.p.primarySolid)
               .onChange((v: boolean) => {
                 this.vm.setUseServerTime(v);
               })
@@ -3694,12 +3906,12 @@ struct SettingsContent {
           Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           Row() {
-            Image(iconRes('shield_check')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+            Image(iconRes('shield_check')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Column() {
               Text('忽略 TLS 证书错误').fontColor(this.p.text).fontSize(15)
               Text('自签名/过期证书的 HTTPS 源也可下载（有安全风险）').fontColor(this.p.textSecondary).fontSize(12)
             }.layoutWeight(1).alignItems(HorizontalAlign.Start)
-            Toggle({ isOn: this.vm.ignoreTlsErrors, type: ToggleType.Switch })
+            Toggle({ isOn: this.vm.ignoreTlsErrors, type: ToggleType.Switch }).selectedColor(this.p.primarySolid)
               .onChange((v: boolean) => {
                 this.vm.setIgnoreTlsErrors(v);
               })
@@ -3712,10 +3924,10 @@ struct SettingsContent {
           // 代理
           Column() {
             Row() {
-              Image(iconRes('globe')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+              Image(iconRes('globe')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
               Text('代理地址').fontColor(this.p.textSecondary).fontSize(13)
             }
-            TextInput({ text: this.vm.proxyUrl, placeholder: 'http://host:port 或留空' })
+            TextInput({ text: this.vm.proxyUrl, placeholder: 'http://host:port 或留空' }).caretColor(this.p.primary)
               .fontColor(this.p.text)
               .placeholderColor(this.p.textSecondary)
               .onChange((v: string) => { this.vm.setProxyUrl(v); })
@@ -3733,7 +3945,7 @@ struct SettingsContent {
           // GitHub 镜像
           Column() {
             Row() {
-              Image(iconRes('code')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+              Image(iconRes('code')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
               Text('GitHub 下载加速').fontColor(this.p.textSecondary).fontSize(13)
             }
             // 预设镜像快速选择
@@ -3763,7 +3975,7 @@ struct SettingsContent {
               })
             // 自定义输入（选择非预设时显示）
             if (!['https://gh-proxy.com/', 'https://mirror.ghproxy.com/', 'https://ghproxy.com/', 'https://ghfast.top/', ''].includes(this.vm.githubMirrorUrl)) {
-              TextInput({ text: this.vm.githubMirrorUrl, placeholder: '输入自定义镜像地址' })
+              TextInput({ text: this.vm.githubMirrorUrl, placeholder: '输入自定义镜像地址' }).caretColor(this.p.primary)
                 .fontColor(this.p.text)
                 .placeholderColor(this.p.textSecondary)
                 .onChange((v: string) => { this.vm.setGithubMirrorUrl(v); })
@@ -3785,9 +3997,9 @@ struct SettingsContent {
 
           // 剪贴板监听
           Row() {
-            Image(iconRes('clipboard')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+            Image(iconRes('clipboard')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('剪贴板监听').fontColor(this.p.text).layoutWeight(1).fontSize(15)
-            Toggle({ isOn: this.vm.clipboardMonitor, type: ToggleType.Switch })
+            Toggle({ isOn: this.vm.clipboardMonitor, type: ToggleType.Switch }).selectedColor(this.p.primarySolid)
               .onChange((v: boolean) => { this.vm.setClipboardMonitor(v); })
           }
           .width('100%')
@@ -3797,20 +4009,10 @@ struct SettingsContent {
 
           // 完成通知
           Row() {
-            Image(iconRes('bell')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+            Image(iconRes('bell')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('下载完成通知').fontColor(this.p.text).layoutWeight(1).fontSize(15)
-            Toggle({ isOn: this.vm.notifyOnComplete, type: ToggleType.Switch })
+            Toggle({ isOn: this.vm.notifyOnComplete, type: ToggleType.Switch }).selectedColor(this.p.primarySolid)
               .onChange((v: boolean) => { this.vm.setNotifyOnComplete(v); })
-          }
-          .width('100%')
-          .padding(16)
-
-          // 实况窗胶囊
-          Row() {
-            Image(iconRes('eye')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
-            Text('实况窗胶囊').fontColor(this.p.text).layoutWeight(1).fontSize(15)
-            Toggle({ isOn: this.vm.liveViewEnabled, type: ToggleType.Switch })
-              .onChange((v: boolean) => { this.vm.setLiveViewEnabled(v); })
           }
           .width('100%')
           .padding(16)
@@ -3821,7 +4023,7 @@ struct SettingsContent {
           Row() {
             Column() {
               Row() {
-                Image(iconRes('trash')).width(18).height(18).fillColor(this.p.error).margin({ right: 10 })
+                Image(iconRes('trash')).width(20).height(20).fillColor(this.p.error).margin({ right: 12 })
                 Text('清理失效任务').fontColor(this.p.text).fontSize(15)
               }
               Text('删除所有「错误」状态的任务（可保留文件）').fontColor(this.p.textSecondary).fontSize(12)
@@ -3835,7 +4037,7 @@ struct SettingsContent {
               .fontColor(this.p.error)
               .onClick(() => {
                 this.vm.cleanupFailed(false).then((n: number) => {
-                  promptAction.showToast({ message: n > 0 ? `已清理 ${n} 个失效任务` : '没有失效任务' });
+                  safeToast(this.getUIContext(), n > 0 ? `已清理 ${n} 个失效任务` : '没有失效任务' );
                 });
               })
           }
@@ -3855,13 +4057,12 @@ struct SettingsContent {
           Column() {
             Row() {
               Image(iconRes('magnet'))
-                .width(18)
-                .height(18)
-                .fillColor(this.p.primary)
-                .margin({ right: 8 })
+                .width(20)
+                .height(20)
+                .fillColor(this.tintColor)
+                .margin({ right: 12 })
               Text('BT 下载')
-                .fontSize(16)
-                .fontWeight(FontWeight.Medium)
+                .fontSize(15)
                 .fontColor(this.p.text)
                 .layoutWeight(1)
             }
@@ -3872,7 +4073,7 @@ struct SettingsContent {
             Column() {
             Row() {
               Text('启用 DHT').fontColor(this.p.text).layoutWeight(1).fontSize(15)
-              Toggle({ type: ToggleType.Switch, isOn: this.vm.btSettings.enableDht })
+              Toggle({ type: ToggleType.Switch, isOn: this.vm.btSettings.enableDht }).selectedColor(this.p.primarySolid)
                 .onChange((on: boolean) => {
                   if (this.vm.btSettings) {
                     this.vm.btSettings.enableDht = on;
@@ -3888,7 +4089,7 @@ struct SettingsContent {
 
             Row() {
               Text('启用 UPnP').fontColor(this.p.text).layoutWeight(1).fontSize(15)
-              Toggle({ type: ToggleType.Switch, isOn: this.vm.btSettings.enableUpnp })
+              Toggle({ type: ToggleType.Switch, isOn: this.vm.btSettings.enableUpnp }).selectedColor(this.p.primarySolid)
                 .onChange((on: boolean) => {
                   if (this.vm.btSettings) {
                     this.vm.btSettings.enableUpnp = on;
@@ -3904,13 +4105,13 @@ struct SettingsContent {
 
             Row() {
               Text('监听端口范围').fontColor(this.p.text).layoutWeight(1).fontSize(15)
-              TextInput({ text: this.btPortStartDraft, placeholder: String(this.vm.btSettings.listenPortStart) })
+              TextInput({ text: this.btPortStartDraft, placeholder: String(this.vm.btSettings.listenPortStart) }).caretColor(this.p.primary)
                 .type(InputType.Number).fontSize(13).fontColor(this.p.text).width(90).height(36)
                 .backgroundColor(Color.Transparent)
                 .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
                 .onChange((v: string) => { this.btPortStartDraft = v; })
               Text('—').fontColor(this.p.textSecondary).fontSize(13).margin({ left: 4, right: 4 })
-              TextInput({ text: this.btPortEndDraft, placeholder: String(this.vm.btSettings.listenPortEnd) })
+              TextInput({ text: this.btPortEndDraft, placeholder: String(this.vm.btSettings.listenPortEnd) }).caretColor(this.p.primary)
                 .type(InputType.Number).fontSize(13).fontColor(this.p.text).width(90).height(36)
                 .backgroundColor(Color.Transparent)
                 .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
@@ -3922,7 +4123,7 @@ struct SettingsContent {
 
             Row() {
               Text('完成后自动做种').fontColor(this.p.text).layoutWeight(1).fontSize(15)
-              Toggle({ type: ToggleType.Switch, isOn: this.vm.btSettings.seedEnabled })
+              Toggle({ type: ToggleType.Switch, isOn: this.vm.btSettings.seedEnabled }).selectedColor(this.p.primarySolid)
                 .onChange((on: boolean) => {
                   if (this.vm.btSettings) {
                     this.vm.btSettings.seedEnabled = on;
@@ -3936,7 +4137,7 @@ struct SettingsContent {
 
             Row() {
               Text('启动时自动做种').fontColor(this.p.text).layoutWeight(1).fontSize(15)
-              Toggle({ type: ToggleType.Switch, isOn: this.vm.btSettings.autoReseed })
+              Toggle({ type: ToggleType.Switch, isOn: this.vm.btSettings.autoReseed }).selectedColor(this.p.primarySolid)
                 .onChange((on: boolean) => {
                   if (this.vm.btSettings) {
                     this.vm.btSettings.autoReseed = on;
@@ -3952,7 +4153,7 @@ struct SettingsContent {
 
             Row() {
               Text('总分享率').fontSize(12).fontColor(this.p.textSecondary).layoutWeight(1)
-              TextInput({ text: this.btRatioDraft, placeholder: String(this.vm.btSettings.limits.ratioLimit) })
+              TextInput({ text: this.btRatioDraft, placeholder: String(this.vm.btSettings.limits.ratioLimit) }).caretColor(this.p.primary)
                 .type(InputType.Number).fontSize(13).fontColor(this.p.text).width(90).height(36)
                 .backgroundColor(Color.Transparent)
                 .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
@@ -3963,7 +4164,7 @@ struct SettingsContent {
 
             Row() {
               Text('做种时长 (小时)').fontSize(12).fontColor(this.p.textSecondary).layoutWeight(1)
-              TextInput({ text: this.btTimeDraft, placeholder: String(Math.round(this.vm.btSettings.limits.timeLimitSec / 3600)) })
+              TextInput({ text: this.btTimeDraft, placeholder: String(Math.round(this.vm.btSettings.limits.timeLimitSec / 3600)) }).caretColor(this.p.primary)
                 .type(InputType.Number).fontSize(13).fontColor(this.p.text).width(90).height(36)
                 .backgroundColor(Color.Transparent)
                 .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
@@ -3974,7 +4175,7 @@ struct SettingsContent {
 
             Row() {
               Text('不活跃停止 (分钟)').fontSize(12).fontColor(this.p.textSecondary).layoutWeight(1)
-              TextInput({ text: this.btInactiveDraft, placeholder: String(Math.round(this.vm.btSettings.limits.inactiveTimeSec / 60)) })
+              TextInput({ text: this.btInactiveDraft, placeholder: String(Math.round(this.vm.btSettings.limits.inactiveTimeSec / 60)) }).caretColor(this.p.primary)
                 .type(InputType.Number).fontSize(13).fontColor(this.p.text).width(90).height(36)
                 .backgroundColor(Color.Transparent)
                 .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
@@ -3985,7 +4186,7 @@ struct SettingsContent {
 
             Row() {
               Text('上传限速 (KB/s)').fontSize(12).fontColor(this.p.textSecondary).layoutWeight(1)
-              TextInput({ text: this.btUploadDraft, placeholder: String(Math.round(this.vm.btSettings.limits.uploadLimit / 1024)) })
+              TextInput({ text: this.btUploadDraft, placeholder: String(Math.round(this.vm.btSettings.limits.uploadLimit / 1024)) }).caretColor(this.p.primary)
                 .type(InputType.Number).fontSize(13).fontColor(this.p.text).width(90).height(36)
                 .backgroundColor(Color.Transparent)
                 .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
@@ -3996,7 +4197,7 @@ struct SettingsContent {
 
             Row() {
               Text('同时做种数').fontSize(12).fontColor(this.p.textSecondary).layoutWeight(1)
-              TextInput({ text: this.btMaxActiveDraft, placeholder: String(this.vm.btSettings.limits.maxActive) })
+              TextInput({ text: this.btMaxActiveDraft, placeholder: String(this.vm.btSettings.limits.maxActive) }).caretColor(this.p.primary)
                 .type(InputType.Number).fontSize(13).fontColor(this.p.text).width(90).height(36)
                 .backgroundColor(Color.Transparent)
                 .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
@@ -4011,7 +4212,7 @@ struct SettingsContent {
               Text('满足任一')
                 .fontSize(12)
                 .fontColor(this.btOperatorLocal === 'or' ? this.p.onPrimary : this.p.textSecondary)
-                .backgroundColor(this.btOperatorLocal === 'or' ? this.p.primary : this.p.surfaceHighlight)
+                .backgroundColor(this.btOperatorLocal === 'or' ? this.p.primarySolid : this.p.surfaceHighlight)
                 .borderRadius(14)
                 .padding({ left: 12, right: 12, top: 5, bottom: 5 })
                 .margin({ right: 8 })
@@ -4025,7 +4226,7 @@ struct SettingsContent {
               Text('全部满足')
                 .fontSize(12)
                 .fontColor(this.btOperatorLocal === 'and' ? this.p.onPrimary : this.p.textSecondary)
-                .backgroundColor(this.btOperatorLocal === 'and' ? this.p.primary : this.p.surfaceHighlight)
+                .backgroundColor(this.btOperatorLocal === 'and' ? this.p.primarySolid : this.p.surfaceHighlight)
                 .borderRadius(14)
                 .padding({ left: 12, right: 12, top: 5, bottom: 5 })
                 .margin({ right: 8 })
@@ -4042,7 +4243,7 @@ struct SettingsContent {
 
             Button('保存 BT 设置')
               .fontSize(14)
-              .backgroundColor(this.p.primary)
+              .backgroundColor(this.p.primarySolid)
               .fontColor(this.p.onPrimary)
               .width('100%')
               .onClick(() => {
@@ -4070,7 +4271,7 @@ struct SettingsContent {
                 this.btUploadDraft = '';
                 this.btMaxActiveDraft = '';
                 this.vm.saveBtSettings();
-                promptAction.showToast({ message: 'BT 设置已保存' });
+                safeToast(this.getUIContext(), 'BT 设置已保存' );
               })
               .padding({ left: 16, right: 16, bottom: 12 })
             }
@@ -4087,8 +4288,8 @@ struct SettingsContent {
         if (this.mode === '') {
         Column() {
           Row() {
-            Image(iconRes('server')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
-            Text('服务').fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.p.text).layoutWeight(1)
+            Image(iconRes('server')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+            Text('服务').fontSize(15).fontColor(this.p.text).layoutWeight(1)
           }
           .width('100%')
           .padding({ left: 16, right: 16, top: 16, bottom: 16 })
@@ -4097,7 +4298,7 @@ struct SettingsContent {
 
           // MCP服务入口
           Row() {
-            Image(iconRes('terminal')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+            Image(iconRes('terminal')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('MCP 服务').fontColor(this.p.text).layoutWeight(1).fontSize(15)
             Image(iconRes('chevron_right')).width(16).height(16).fillColor(this.p.textSecondary)
           }
@@ -4112,7 +4313,7 @@ struct SettingsContent {
 
           // 浏览器扩展入口
           Row() {
-            Image(iconRes('link')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+            Image(iconRes('link')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('浏览器扩展').fontColor(this.p.text).layoutWeight(1).fontSize(15)
             Image(iconRes('chevron_right')).width(16).height(16).fillColor(this.p.textSecondary)
           }
@@ -4127,7 +4328,7 @@ struct SettingsContent {
 
           // RSS订阅入口
           Row() {
-            Image($r('app.media.ic_rss')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+            Image($r('app.media.ic_rss')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('RSS 订阅').fontColor(this.p.text).layoutWeight(1).fontSize(15)
             Image(iconRes('chevron_right')).width(16).height(16).fillColor(this.p.textSecondary)
           }
@@ -4148,8 +4349,8 @@ struct SettingsContent {
         if (this.mode === 'mcp') {
         Column() {
           Row() {
-            Image(iconRes('server')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
-            Text('MCP 服务').fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.p.text).layoutWeight(1)
+            Image(iconRes('server')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+            Text('MCP 服务').fontSize(15).fontColor(this.p.text).layoutWeight(1)
           }
           .width('100%')
           .padding({ left: 16, right: 16, top: 16, bottom: 16 })
@@ -4159,14 +4360,14 @@ struct SettingsContent {
               Row() {
                 Column() {
                   Row() {
-                    Image(iconRes('terminal')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+                    Image(iconRes('terminal')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
                     Text('MCP 本地服务').fontColor(this.p.text).fontSize(15)
                   }
                   Text('127.0.0.1:17800').fontColor(this.p.textSecondary).fontSize(12).margin({ top: 2 })
                 }
                 .alignItems(HorizontalAlign.Start)
                 .layoutWeight(1)
-                Toggle({ isOn: this.vm.mcpEnabled, type: ToggleType.Switch })
+                Toggle({ isOn: this.vm.mcpEnabled, type: ToggleType.Switch }).selectedColor(this.p.primarySolid)
                   .onChange((v: boolean) => {
                     this.vm.setMcp(v);
                   })
@@ -4178,10 +4379,10 @@ struct SettingsContent {
 
               Column() {
                 Row() {
-                  Image(iconRes('lock')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+                  Image(iconRes('lock')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
                   Text('Bearer Token').fontColor(this.p.textSecondary).fontSize(13)
                 }
-                TextInput({ text: this.vm.mcpToken })
+                TextInput({ text: this.vm.mcpToken }).caretColor(this.p.primary)
                   .fontColor(this.p.text)
                   .onChange((v: string) => {
                     this.vm.setMcpToken(v);
@@ -4206,8 +4407,8 @@ struct SettingsContent {
         if (this.mode === 'ext') {
         Column() {
           Row() {
-            Image(iconRes('link')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
-            Text('浏览器扩展').fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.p.text).layoutWeight(1)
+            Image(iconRes('link')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+            Text('浏览器扩展').fontSize(15).fontColor(this.p.text).layoutWeight(1)
           }
           .width('100%')
           .padding({ left: 16, right: 16, top: 16, bottom: 16 })
@@ -4215,7 +4416,7 @@ struct SettingsContent {
           Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           Row() {
-            Image(iconRes('link')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+            Image(iconRes('link')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('深度链接协议').fontColor(this.p.textSecondary).fontSize(13).layoutWeight(1)
             Text('fluxdown://').fontColor(this.p.primary).fontSize(13).fontFamily('monospace')
           }
@@ -4245,8 +4446,8 @@ struct SettingsContent {
         if (this.mode === 'queue') {
         Column() {
           Row() {
-            Image(iconRes('list')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
-            Text('下载队列').fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.p.text).layoutWeight(1)
+            Image(iconRes('list')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+            Text('下载队列').fontSize(15).fontColor(this.p.text).layoutWeight(1)
           }
           .width('100%')
           .padding({ left: 16, right: 16, top: 16, bottom: 16 })
@@ -4266,9 +4467,9 @@ struct SettingsContent {
               .padding({ left: 12, right: 12, top: 10, bottom: 4 })
 
               Row() {
-                Image(iconRes('play')).width(14).height(14).fillColor(this.p.primary).margin({ right: 10 })
+                Image(iconRes('play')).width(14).height(14).fillColor(this.tintColor).margin({ right: 12 })
                 Text('自动开始').fontSize(13).fontColor(this.p.textSecondary).layoutWeight(1)
-                Toggle({ type: ToggleType.Switch, isOn: q.autoStart })
+                Toggle({ type: ToggleType.Switch, isOn: q.autoStart }).selectedColor(this.p.primarySolid)
                   .onChange((on: boolean) => {
                     q.autoStart = on;
                     this.vm.queueStoreUpdate(q);
@@ -4278,9 +4479,9 @@ struct SettingsContent {
               .padding({ left: 12, right: 12, top: 2, bottom: 2 })
 
               Row() {
-                Image(iconRes('timer')).width(14).height(14).fillColor(this.p.primary).margin({ right: 10 })
+                Image(iconRes('timer')).width(14).height(14).fillColor(this.tintColor).margin({ right: 12 })
                 Text('每日限时').fontSize(13).fontColor(this.p.textSecondary).layoutWeight(1)
-                Toggle({ type: ToggleType.Switch, isOn: q.scheduledEnabled })
+                Toggle({ type: ToggleType.Switch, isOn: q.scheduledEnabled }).selectedColor(this.p.primarySolid)
                   .onChange((on: boolean) => {
                     this.vm.setQueueSchedule(q.id, on, q.startAt, q.stopAt);
                   })
@@ -4316,7 +4517,7 @@ struct SettingsContent {
               }
 
               Row() {
-                Image(iconRes('gauge')).width(14).height(14).fillColor(this.p.primary).margin({ right: 10 })
+                Image(iconRes('gauge')).width(14).height(14).fillColor(this.tintColor).margin({ right: 12 })
                 Text('队列限速').fontSize(13).fontColor(this.p.textSecondary).layoutWeight(1)
                 Text(q.speedLimit > 0 ? formatSpeed(q.speedLimit) : '不限')
                   .fontSize(13).fontColor(this.p.primaryDark)
@@ -4333,15 +4534,15 @@ struct SettingsContent {
                 })
                 .width('100%')
                 .padding({ left: 8, right: 8, bottom: 6 })
-                .blockColor(this.p.primary)
+                .blockColor(this.p.primary).selectedColor(this.p.primary)
 
               Row() {
                 Button('开始')
-                  .fontSize(12).backgroundColor('#52C41A').fontColor('#FFFFFF').height(30)
+                  .fontSize(12).backgroundColor(this.p.successSolid).fontColor('#FFFFFF').height(30)
                   .margin({ right: 6 })
                   .onClick(() => { this.vm.startQueue(q.id); })
                 Button('暂停')
-                  .fontSize(12).backgroundColor('#FFA940').fontColor('#FFFFFF').height(30)
+                  .fontSize(12).backgroundColor(this.p.warningSolid).fontColor('#FFFFFF').height(30)
                   .margin({ right: 6 })
                   .onClick(() => { this.vm.pauseQueue(q.id); })
                 Button('高级')
@@ -4367,16 +4568,16 @@ struct SettingsContent {
                   .width(36).margin({ right: 6 })
                   .onClick(() => { this.vm.moveQueue(q.id, 1); })
                 Button('删除')
-                  .fontSize(12).backgroundColor(this.p.error).fontColor('#FFFFFF').height(30)
+                  .fontSize(12).backgroundColor(this.p.errorSolid).fontColor('#FFFFFF').height(30)
                   .onClick(() => {
-                    AlertDialog.show({
+                    this.getUIContext().showAlertDialog({
                       title: '删除队列',
                     message: `确定要删除队列「${q.name}」吗？任务不会受影响。`,
                     autoCancel: true,
                     alignment: DialogAlignment.Center,
                     primaryButton: { value: '取消', action: () => {} },
                     secondaryButton: {
-                      value: '删除', fontColor: '#FF3B30',
+                      value: '删除', fontColor: this.p.error,
                       action: () => { this.vm.deleteQueue(q.id); }
                     }
                   });
@@ -4389,7 +4590,7 @@ struct SettingsContent {
               Column() {
                 Row() {
                   Text('线程数 (0=全局)').fontSize(12).fontColor(this.p.textSecondary).layoutWeight(1)
-                  TextInput({ text: this.queueSegDraft, placeholder: q.segments > 0 ? String(q.segments) : '默认' })
+                  TextInput({ text: this.queueSegDraft, placeholder: q.segments > 0 ? String(q.segments) : '默认' }).caretColor(this.p.primary)
                     .type(InputType.Number).fontSize(13).fontColor(this.p.text).width(80).height(30)
                     .backgroundColor(Color.Transparent)
                     .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
@@ -4403,7 +4604,7 @@ struct SettingsContent {
                 }
                 .width('100%')
                 .margin({ bottom: 4 })
-                TextInput({ text: this.queueUaDraft, placeholder: '留空 = 使用全局 UA' })
+                TextInput({ text: this.queueUaDraft, placeholder: '留空 = 使用全局 UA' }).caretColor(this.p.primary)
                   .fontSize(13).fontColor(this.p.text).placeholderColor(this.p.textSecondary)
                   .backgroundColor(Color.Transparent)
                   .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
@@ -4415,7 +4616,7 @@ struct SettingsContent {
                 }
                 .width('100%')
                 .margin({ bottom: 4 })
-                TextInput({ text: this.queueDirDraft, placeholder: '留空 = 默认目录' })
+                TextInput({ text: this.queueDirDraft, placeholder: '留空 = 默认目录' }).caretColor(this.p.primary)
                   .fontSize(13).fontColor(this.p.text).placeholderColor(this.p.textSecondary)
                   .backgroundColor(Color.Transparent)
                   .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
@@ -4423,7 +4624,7 @@ struct SettingsContent {
                   .onChange((v: string) => { this.queueDirDraft = v; })
 
                 Button('保存队列设置')
-                  .fontSize(13).backgroundColor(this.p.primary).fontColor(this.p.onPrimary).width('100%').height(34)
+                  .fontSize(13).backgroundColor(this.p.primarySolid).fontColor(this.p.onPrimary).width('100%').height(34)
                   .onClick(() => {
                     const seg = parseInt(this.queueSegDraft, 10);
                     if (!isNaN(seg) && seg >= 0 && seg <= 32) {
@@ -4433,7 +4634,7 @@ struct SettingsContent {
                     q.saveDir = this.queueDirDraft.trim();
                     this.vm.queueStoreUpdate(q);
                     this.queueAdvId = '';
-                    promptAction.showToast({ message: '队列设置已保存' });
+                    safeToast(this.getUIContext(), '队列设置已保存' );
                   })
               }
               .width('100%')
@@ -4452,7 +4653,7 @@ struct SettingsContent {
 
           // 新建队列
           Column() {
-            TextInput({ text: this.newQueueName, placeholder: '新队列名称' })
+            TextInput({ text: this.newQueueName, placeholder: '新队列名称' }).caretColor(this.p.primary)
               .fontColor(this.p.text)
               .placeholderColor(this.p.textSecondary)
               .fontSize(14)
@@ -4464,18 +4665,18 @@ struct SettingsContent {
               }
               .justifyContent(FlexAlign.Center)
             }
-              .backgroundColor(this.p.primary)
+              .backgroundColor(this.p.primarySolid)
               .width('100%')
               .margin({ top: 8 })
               .onClick(() => {
                 const name = this.newQueueName.trim();
                 if (name.length === 0) {
-                  promptAction.showToast({ message: '请输入队列名称' });
+                  safeToast(this.getUIContext(), '请输入队列名称' );
                   return;
                 }
                 this.vm.createQueue(name, 2).then(() => {
                   this.newQueueName = '';
-                  promptAction.showToast({ message: '已创建队列' });
+                  safeToast(this.getUIContext(), '已创建队列' );
                 });
               })
           }
@@ -4493,8 +4694,8 @@ struct SettingsContent {
         if (this.mode === 'cat') {
         Column() {
           Row() {
-            Image(iconRes('folder')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
-            Text('自定义分类').fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.p.text).layoutWeight(1)
+            Image(iconRes('folder')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+            Text('自定义分类').fontSize(15).fontColor(this.p.text).layoutWeight(1)
           }
           .width('100%')
           .padding({ left: 16, right: 16, top: 16, bottom: 16 })
@@ -4503,18 +4704,18 @@ struct SettingsContent {
 
           // 添加分类
           Column() {
-            TextInput({ text: this.catName, placeholder: '分类名称（如 视频）' })
+            TextInput({ text: this.catName, placeholder: '分类名称（如 视频）' }).caretColor(this.p.primary)
               .fontColor(this.p.text)
               .placeholderColor(this.p.textSecondary)
               .fontSize(14)
               .onChange((v: string) => { this.catName = v; })
-            TextInput({ text: this.catExts, placeholder: '扩展名规则，逗号分隔（如 mp4,mkv，留空=全部）' })
+            TextInput({ text: this.catExts, placeholder: '扩展名规则，逗号分隔（如 mp4,mkv，留空=全部）' }).caretColor(this.p.primary)
               .fontColor(this.p.text)
               .placeholderColor(this.p.textSecondary)
               .fontSize(14)
               .margin({ top: 8 })
               .onChange((v: string) => { this.catExts = v; })
-            TextInput({ text: this.catDir, placeholder: '保存目录（留空=默认）' })
+            TextInput({ text: this.catDir, placeholder: '保存目录（留空=默认）' }).caretColor(this.p.primary)
               .fontColor(this.p.text)
               .placeholderColor(this.p.textSecondary)
               .fontSize(14)
@@ -4522,7 +4723,7 @@ struct SettingsContent {
               .onChange((v: string) => { this.catDir = v; })
             Button('添加分类')
               .fontSize(14)
-              .backgroundColor(this.p.primary)
+              .backgroundColor(this.p.primarySolid)
               .fontColor(this.p.onPrimary)
               .width('100%')
               .margin({ top: 8 })
@@ -4536,7 +4737,7 @@ struct SettingsContent {
           ForEach(this.vm.categories, (cat: DownloadCategory) => {
             Column() {
               Row() {
-                Image(iconRes('tag')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
+                Image(iconRes('tag')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
                 Text(cat.name).fontSize(16).fontColor(this.p.text).layoutWeight(1)
                 Button('编辑')
                   .fontSize(12)
@@ -4557,7 +4758,7 @@ struct SettingsContent {
                   .height(30)
                   .margin({ left: 8 })
                   .onClick(() => {
-                    AlertDialog.show({
+                    this.getUIContext().showAlertDialog({
                     title: '删除分类',
                     message: `确定要删除分类「${cat.name}」吗？任务不会受影响。`,
                     autoCancel: true,
@@ -4565,7 +4766,7 @@ struct SettingsContent {
                     primaryButton: { value: '取消', action: () => {} },
                     secondaryButton: {
                       value: '删除',
-                      fontColor: '#FF3B30',
+                      fontColor: this.p.error,
                       action: () => { this.vm.deleteCategory(cat.id); }
                     }
                   });
@@ -4602,13 +4803,12 @@ struct SettingsContent {
         Column() {
           Row() {
             Image($r('app.media.ic_rss'))
-              .width(18)
-              .height(18)
-              .fillColor(this.p.primary)
-              .margin({ right: 8 })
+              .width(20)
+              .height(20)
+              .fillColor(this.tintColor)
+              .margin({ right: 12 })
             Text('RSS 订阅')
-              .fontSize(16)
-              .fontWeight(FontWeight.Medium)
+              .fontSize(15)
               .fontColor(this.p.text)
               .layoutWeight(1)
           }
@@ -4617,24 +4817,24 @@ struct SettingsContent {
 
           Divider().color(this.p.border).margin({ left: 16, right: 16 })
           Column() {
-              TextInput({ text: this.rssUrl, placeholder: 'RSS 订阅地址' })
+              TextInput({ text: this.rssUrl, placeholder: 'RSS 订阅地址' }).caretColor(this.p.primary)
                 .fontColor(this.p.text)
                 .placeholderColor(this.p.textSecondary)
                 .fontSize(14)
                 .onChange((v: string) => { this.rssUrl = v; })
-              TextInput({ text: this.rssName, placeholder: '名称' })
+              TextInput({ text: this.rssName, placeholder: '名称' }).caretColor(this.p.primary)
                 .fontColor(this.p.text)
                 .placeholderColor(this.p.textSecondary)
                 .fontSize(14)
                 .margin({ top: 8 })
                 .onChange((v: string) => { this.rssName = v; })
-              TextInput({ text: this.rssFilter, placeholder: '包含关键词 (逗号分隔, 任一命中)' })
+              TextInput({ text: this.rssFilter, placeholder: '包含关键词 (逗号分隔, 任一命中)' }).caretColor(this.p.primary)
                 .fontColor(this.p.text)
                 .placeholderColor(this.p.textSecondary)
                 .fontSize(14)
                 .margin({ top: 8 })
                 .onChange((v: string) => { this.rssFilter = v; })
-              TextInput({ text: this.rssExclude, placeholder: '排除关键词 (逗号分隔, 命中即跳过)' })
+              TextInput({ text: this.rssExclude, placeholder: '排除关键词 (逗号分隔, 命中即跳过)' }).caretColor(this.p.primary)
                 .fontColor(this.p.text)
                 .placeholderColor(this.p.textSecondary)
                 .fontSize(14)
@@ -4642,7 +4842,7 @@ struct SettingsContent {
                 .onChange((v: string) => { this.rssExclude = v; })
               Button('添加订阅')
                 .fontSize(14)
-                .backgroundColor(this.p.primary)
+                .backgroundColor(this.p.primarySolid)
                 .fontColor(this.p.onPrimary)
                 .width('100%')
                 .margin({ top: 8 })
@@ -4660,13 +4860,13 @@ struct SettingsContent {
                 })
               Button('立即检查所有订阅')
                 .fontSize(14)
-                .backgroundColor(this.p.primary)
+                .backgroundColor(this.p.primarySolid)
                 .fontColor(this.p.onPrimary)
                 .width('100%')
                 .margin({ top: 8 })
                 .onClick(() => {
                   this.vm.pollRss().then((n: number) => {
-                    promptAction.showToast({ message: `新增 ${n} 个下载` });
+                    safeToast(this.getUIContext(), `新增 ${n} 个下载` );
                   });
                 })
             }
@@ -4682,7 +4882,7 @@ struct SettingsContent {
             Column() {
               Row() {
                 Text(sub.name).fontSize(16).fontColor(this.p.text).layoutWeight(1)
-                Toggle({ type: ToggleType.Switch, isOn: sub.enabled })
+                Toggle({ type: ToggleType.Switch, isOn: sub.enabled }).selectedColor(this.p.primarySolid)
                   .onChange((on: boolean) => { this.vm.toggleRss(sub.id, on); })
               }
               .width('100%')
@@ -4718,7 +4918,7 @@ struct SettingsContent {
                   })
                 Button('删除')
                   .fontSize(12)
-                  .backgroundColor(this.p.error)
+                  .backgroundColor(this.p.errorSolid)
                   .fontColor('#FFFFFF')
                   .layoutWeight(1)
                   .height(32)
@@ -4742,32 +4942,8 @@ struct SettingsContent {
         .margin({ left: 16, right: 16, top: 12 })
         }
 
-        // ── 关于入口（仅在设置首页显示） ──
-        if (this.mode === '') {
-        Row() {
-          Image(iconRes('info')).width(18).height(18).fillColor(this.p.primary).margin({ right: 10 })
-          Text('关于').fontColor(this.p.text).layoutWeight(1).fontSize(16)
-          Image(iconRes('chevron_right')).width(16).height(16).fillColor(this.p.textSecondary)
-        }
-        
-        .padding(16)
-        .backgroundColor(this.p.surface)
-        .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
-        .borderRadius(RADIUS_CARD)
-        .margin({ left: 16, right: 16, top: 12 })
-        .scale({ x: this.pressScale('about'), y: this.pressScale('about') })
-        .animation({ duration: PRESS_DURATION, curve: Curve.Friction })
-        .onTouch((event: TouchEvent) => {
-          this.handlePress('about', event);
-        })
-        .onClick(() => {
-          this.navStack.pushPath({ name: 'about' });
-        })
-        }
-
       }
       .width('100%')
-      .padding({ bottom: 88 })
       .justifyContent(FlexAlign.Start)
       .alignItems(HorizontalAlign.Start)
     }
@@ -4775,7 +4951,9 @@ struct SettingsContent {
     .width('100%')
     .height('100%')
     .backgroundColor(this.p.bg)
-    .edgeEffect(EdgeEffect.None)
+    .contentStartOffset(this.mode === '' ? this.statusBarHeight + 56 + 10 : 8)
+    .contentEndOffset(this.mode === '' ? (this.naviIndicatorHeight + 52 + 10 + 18) : (this.naviIndicatorHeight + 52 + 16 + 16))
+    .edgeEffect(EdgeEffect.Spring)
     .align(Alignment.TopStart)
 
       // ── 分类编辑覆盖层 ──
@@ -4827,7 +5005,7 @@ struct SettingsContent {
 
       Row() {
         Text('检查间隔 (分钟)').fontSize(13).fontColor(this.p.text).layoutWeight(1)
-        TextInput({ text: this.rssEditInterval, placeholder: '30' })
+        TextInput({ text: this.rssEditInterval, placeholder: '30' }).caretColor(this.p.primary)
           .type(InputType.Number)
           .fontSize(13)
           .fontColor(this.p.text)
@@ -4842,14 +5020,14 @@ struct SettingsContent {
 
       Row() {
         Text('自动下载匹配条目').fontSize(13).fontColor(this.p.text).layoutWeight(1)
-        Toggle({ type: ToggleType.Switch, isOn: this.rssEditAuto })
+        Toggle({ type: ToggleType.Switch, isOn: this.rssEditAuto }).selectedColor(this.p.primarySolid)
           .onChange((on: boolean) => { this.rssEditAuto = on; })
       }
       .width('100%')
       .margin({ bottom: 10 })
 
       Text('排除关键词 (逗号分隔)').fontSize(13).fontColor(this.p.text).margin({ bottom: 6 })
-      TextInput({ text: this.rssEditExclude, placeholder: '命中即跳过' })
+      TextInput({ text: this.rssEditExclude, placeholder: '命中即跳过' }).caretColor(this.p.primary)
         .fontSize(13)
         .fontColor(this.p.text)
         .placeholderColor(this.p.textSecondary)
@@ -4862,7 +5040,7 @@ struct SettingsContent {
       Row() {
         Column() {
           Text('最小体积 (MB)').fontSize(12).fontColor(this.p.textSecondary)
-          TextInput({ text: this.rssEditSizeMin, placeholder: '0 = 不限' })
+          TextInput({ text: this.rssEditSizeMin, placeholder: '0 = 不限' }).caretColor(this.p.primary)
             .type(InputType.Number)
             .fontSize(13)
             .fontColor(this.p.text)
@@ -4877,7 +5055,7 @@ struct SettingsContent {
         .margin({ right: 8 })
         Column() {
           Text('最大体积 (MB)').fontSize(12).fontColor(this.p.textSecondary)
-          TextInput({ text: this.rssEditSizeMax, placeholder: '0 = 不限' })
+          TextInput({ text: this.rssEditSizeMax, placeholder: '0 = 不限' }).caretColor(this.p.primary)
             .type(InputType.Number)
             .fontSize(13)
             .fontColor(this.p.text)
@@ -4917,7 +5095,7 @@ struct SettingsContent {
           .onClick(() => { this.rssEditVisible = false; })
         Button('保存')
           .fontSize(14)
-          .backgroundColor(this.p.primary)
+          .backgroundColor(this.p.primarySolid)
           .fontColor(this.p.onPrimary)
           .layoutWeight(1)
           .height(40)
@@ -4957,7 +5135,7 @@ struct SettingsContent {
     Text(label)
       .fontSize(12)
       .fontColor(this.rssEditQueueId === id ? this.p.onPrimary : this.p.textSecondary)
-      .backgroundColor(this.rssEditQueueId === id ? this.p.primary : this.p.surfaceHighlight)
+      .backgroundColor(this.rssEditQueueId === id ? this.p.primarySolid : this.p.surfaceHighlight)
       .borderRadius(14)
       .padding({ left: 12, right: 12, top: 5, bottom: 5 })
       .margin({ right: 6 })
@@ -4969,14 +5147,19 @@ struct SettingsContent {
     Text(label)
       .fontSize(12)
       .fontColor(this.vm.themeMode === mode ? this.p.onPrimary : this.p.textSecondary)
-      .backgroundColor(this.vm.themeMode === mode ? this.p.primary : this.p.surfaceHighlight)
+      .backgroundColor(this.vm.themeMode === mode ? this.p.primarySolid : this.p.surfaceHighlight)
       .borderRadius(14)
       .padding({ left: 12, right: 12, top: 5, bottom: 5 })
       .margin({ right: 8 })
       .onClick(() => {
         this.vm.setThemeMode(mode);
+        // 同步应用级颜色模式，让 HDS 组件/系统毛玻璃跟随，避免手动切深色时底部导航留白
+        applyAppColorMode(this.getUIContext().getHostContext() as common.UIAbilityContext, mode);
         if (mode !== 'system') {
           this.vm.setTheme(mode);
+          this.applyWindowAppearance(mode === 'dark');
+        } else {
+          this.updateSystemTheme();
         }
       })
   }
@@ -4986,7 +5169,7 @@ struct SettingsContent {
     Text(label)
       .fontSize(12)
       .fontColor(current === value ? this.p.onPrimary : this.p.textSecondary)
-      .backgroundColor(current === value ? this.p.primary : this.p.surfaceHighlight)
+      .backgroundColor(current === value ? this.p.primarySolid : this.p.surfaceHighlight)
       .borderRadius(14)
       .padding({ left: 12, right: 12, top: 5, bottom: 5 })
       .margin({ right: 8 })
@@ -4999,15 +5182,15 @@ struct SettingsContent {
       Blank()
       Column() {
         Text('编辑分类').fontSize(17).fontWeight(FontWeight.Medium).fontColor(this.p.text)
-        TextInput({ text: this.catEditName, placeholder: '分类名称' })
+        TextInput({ text: this.catEditName, placeholder: '分类名称' }).caretColor(this.p.primary)
           .fontSize(14).fontColor(this.p.text).placeholderColor(this.p.textSecondary)
           .backgroundColor(this.p.surfaceHighlight).borderRadius(8).width('100%').margin({ top: 16 })
           .onChange((v: string) => { this.catEditName = v; })
-        TextInput({ text: this.catEditExts, placeholder: '扩展名，逗号分隔（留空=全部）' })
+        TextInput({ text: this.catEditExts, placeholder: '扩展名，逗号分隔（留空=全部）' }).caretColor(this.p.primary)
           .fontSize(14).fontColor(this.p.text).placeholderColor(this.p.textSecondary)
           .backgroundColor(this.p.surfaceHighlight).borderRadius(8).width('100%').margin({ top: 8 })
           .onChange((v: string) => { this.catEditExts = v; })
-        TextInput({ text: this.catEditDir, placeholder: '保存目录（留空=默认）' })
+        TextInput({ text: this.catEditDir, placeholder: '保存目录（留空=默认）' }).caretColor(this.p.primary)
           .fontSize(14).fontColor(this.p.text).placeholderColor(this.p.textSecondary)
           .backgroundColor(this.p.surfaceHighlight).borderRadius(8).width('100%').margin({ top: 8 })
           .onChange((v: string) => { this.catEditDir = v; })
@@ -5019,7 +5202,7 @@ struct SettingsContent {
             .onClick(() => { this.catEditVisible = false; })
           Button('保存')
             .type(ButtonType.Capsule).fontSize(14)
-            .backgroundColor(this.p.primary).fontColor(this.p.onPrimary)
+            .backgroundColor(this.p.primarySolid).fontColor(this.p.onPrimary)
             .layoutWeight(1).margin({ left: 8 })
             .onClick(() => { this.saveCategoryEdit(); })
         }
@@ -5040,906 +5223,58 @@ struct SettingsContent {
   }
 }
 
-// ── 关于页面 ──
-@ComponentV2
-struct AboutContent {
-  @Param vm: DownloadViewModel = new DownloadViewModel();
-  @Param onCheckUpdate?: () => void = undefined;
+// ── 开源致谢 ──
 
-  // 双击版本号复制日志（双击判定窗口 350ms）
-  @Local lastVersionClick: number = 0;
-  @Local qqGroupSheetVisible: boolean = false;
-
-  private copyQQGroupNumber(): void {
-    const groupNumber = '1121565536';
-    const data = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, groupNumber);
-    pasteboard.getSystemPasteboard().setData(data);
-    promptAction.showToast({ message: '群号已复制' });
-  }
-
-  private onVersionClick(): void {
-    const now = Date.now();
-    if (now - this.lastVersionClick < 350) {
-      const logs = logCollector.getAll();
-      const pasteData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, logs);
-      pasteboard.getSystemPasteboard().setData(pasteData);
-      promptAction.showToast({ message: `日志已复制（${logCollector.getCount()}条）` });
-      this.lastVersionClick = 0;
-    } else {
-      this.lastVersionClick = now;
-    }
-  }
-
-  /** 打开QQ群：检测QQ，有QQ直接跳转，没QQ用浏览器打开 */
-  private openQQGroup(): void {
-    const groupNumber = '1121565536';
-    const h5Url = 'https://qun.qq.com/universal-share/share?ac=1&authKey=Jcxm9Kgi22K0O%2FPwws6chnIVQSjKNpEAcfq0tADTNJ1EwMFzohA4YOlXuwOz%2B8xz&busi_data=eyJncm91cENvZGUiOiIxMTIxNTY1NTM2IiwidG9rZW4iOiJwSzBkNTFKSGFGbXRjZk5pOFE0aGtQSDZSMHN0MnExWVJGcDR6WlgzeE5VcEJ0M3JTcnIrZHNlc0kzK3RRV1lJIiwidWluIjoiMTAxMjQ0MzU1NyJ9&data=Hvy3TedB6d7PgopsRuZzjY00d9OYpE_-5ASDCIym0LPHvCNBY6s7Q6IAdChl4iYB5L1L6r7YVZ4fQz0Dio5PGQ&svctype=4&tempid=h5_group_info';
-    const qqScheme = `mqqapi://card/show_pslcard?src_type=internal&version=1&uin=${groupNumber}&card_type=group&source=qrcode`;
-    const qqBundles = ['com.tencent.mobileqq', 'com.tencent.tim', 'com.tencent.qq', 'com.tencent.mobileqqi', 'com.tencent.minihd.qq'];
-    let hasQQ = false;
-    for (const bn of qqBundles) {
-      try {
-        bundleManager.getBundleInfo(bn, bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT);
-        hasQQ = true;
-        break;
-      } catch (_) { }
-    }
-    if (hasQQ) {
-      const want: Want = { uri: qqScheme };
-      (getContext(this) as common.UIAbilityContext).startAbility(want).catch(() => {
-        const h5Want: Want = { uri: h5Url };
-        (getContext(this) as common.UIAbilityContext).startAbility(h5Want);
-      });
-    } else {
-      const browserBundleNames = ['com.huawei.browser', 'com.huawei.browser.pad', 'com.android.chrome', 'com.microsoft.emmx'];
-      let browserBundleName = '';
-      for (const bn of browserBundleNames) {
-        try {
-          bundleManager.getBundleInfo(bn, bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT);
-          browserBundleName = bn;
-          break;
-        } catch (_) { }
-      }
-      if (browserBundleName) {
-        const want: Want = { uri: h5Url, bundleName: browserBundleName };
-        (getContext(this) as common.UIAbilityContext).startAbility(want);
-      } else {
-        const want: Want = { uri: h5Url };
-        (getContext(this) as common.UIAbilityContext).startAbility(want);
-      }
-    }
-  }
-
-  @Computed
-  get p(): Palette {
-    return palette(this.vm.theme, this.vm.colorScheme);
-  }
-
-  build() {
-    Scroll() {
-      Column() {
-        // App icon & name
-        Column() {
-          Image($r('app.media.app_icon'))
-            .width(80)
-            .height(80)
-            .borderRadius(20)
-            .margin({ bottom: 12 })
-
-          Text('FluxDown Cover')
-            .fontSize(22)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.p.text)
-
-          Text(`v${APP_VERSION}`)
-            .fontSize(14)
-            .fontColor(this.p.textSecondary)
-            .margin({ top: 4 })
-            .onClick(() => { this.onVersionClick(); })
-        }
-        .width('100%')
-        .padding({ top: 36, bottom: 28 })
-        .alignItems(HorizontalAlign.Center)
-          .transition(TransitionEffect.translate({ x: 40 }).combine(TransitionEffect.OPACITY).animation({ duration: 250, curve: Curve.EaseOut }))
-
-        // 关于本应用（简介 + 支持协议融合）
-        Column() {
-          Text('关于本应用')
-            .fontSize(14)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.p.textSecondary)
-            .width('100%')
-            .margin({ bottom: 10 })
-
-          Scroll() {
-            Column() {
-              Text('FluxDown Cover 是一款多协议下载管理器，支持 HTTP/HTTPS、FTP、HLS/DASH 流媒体、BitTorrent P2P、eD2K 网络及迅雷/快车/旋风专用链接。基于 HarmonyOS NEXT 原生开发，提供流畅的下载体验与任务管理功能。')
-                .fontSize(14)
-                .fontColor(this.p.text)
-                .lineHeight(22)
-                .width('100%')
-                .margin({ bottom: 16 })
-
-              Text('支持协议')
-                .fontSize(13)
-                .fontWeight(FontWeight.Medium)
-                .fontColor(this.p.textSecondary)
-                .width('100%')
-                .margin({ bottom: 10 })
-
-              ForEach(ALL_PROTOCOLS, (pt: ProtocolType) => {
-                this.ProtocolItem(protocolMeta(pt))
-              }, (pt: ProtocolType) => pt)
-            }
-            .width('100%')
-          }
-          .scrollBar(BarState.Off)
-          .height(220)
-          .width('100%')
-        }
-        .padding(16)
-        .backgroundColor(this.p.surface)
-        .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
-        .borderRadius(RADIUS_CARD)
-        .margin({ left: 16, right: 16, bottom: 16 })
-
-        // ── 作者 ──
-        Column() {
-          Row() {
-            Image('https://avatars.githubusercontent.com/zerx-lab?v=4')
-              .width(40)
-              .height(40)
-              .borderRadius(20)
-            Column() {
-              Text('原开发').fontSize(12).fontColor(this.p.textSecondary)
-              Text('zerx-lab').fontSize(14).fontColor(this.p.text).fontWeight(FontWeight.Medium)
-            }
-            .layoutWeight(1)
-            .alignItems(HorizontalAlign.Start)
-            .margin({ left: 12 })
-          }
-          .width('100%')
-          .onClick(() => {
-            const want: Want = { uri: 'https://github.com/zerx-lab' };
-            (getContext(this) as common.UIAbilityContext).startAbility(want);
-          })
-
-          Divider().color(this.p.border).strokeWidth(1).margin({ top: 12, bottom: 12 })
-
-          Row() {
-            Image('https://avatars.githubusercontent.com/Pkeji?v=4')
-              .width(40)
-              .height(40)
-              .borderRadius(20)
-            Column() {
-              Text('移植开发').fontSize(12).fontColor(this.p.textSecondary)
-              Text('Pkeji').fontSize(14).fontColor(this.p.text).fontWeight(FontWeight.Medium)
-            }
-            .layoutWeight(1)
-            .alignItems(HorizontalAlign.Start)
-            .margin({ left: 12 })
-          }
-          .width('100%')
-          .onClick(() => {
-            const want: Want = { uri: 'https://github.com/Pkeji' };
-            (getContext(this) as common.UIAbilityContext).startAbility(want);
-          })
-        }
-        .padding(16)
-        .backgroundColor(this.p.surface)
-        .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
-        .borderRadius(RADIUS_CARD)
-        .margin({ left: 16, right: 16, bottom: 16 })
-
-        // QQ群
-        Row() {
-          Image(iconRes('qq'))
-            .width(18).height(18).objectFit(ImageFit.Contain).margin({ right: 10 })
-          Text('QQ 交流群').fontColor(this.p.text).layoutWeight(1).fontSize(16)
-          Image(iconRes('chevron_right')).width(16).height(16).fillColor(this.p.textSecondary).margin({ left: 8 })
-        }
-        .padding(16)
-        .backgroundColor(this.p.surface)
-        .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
-        .borderRadius(RADIUS_CARD)
-        .margin({ left: 16, right: 16, bottom: 16 })
-        .onClick(() => { this.qqGroupSheetVisible = true; })
-
-        // 检查更新
-        Row() {
-          Text('检查更新').fontColor(this.p.text).layoutWeight(1).fontSize(16)
-          if (this.onCheckUpdate) {
-            Text('→').fontColor(this.p.textSecondary).fontSize(16)
-          }
-        }
-        .padding(16)
-        .backgroundColor(this.p.surface)
-        .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
-        .borderRadius(RADIUS_CARD)
-        .margin({ left: 16, right: 16, bottom: 16 })
-        .onClick(() => {
-          this.onCheckUpdate?.();
-        })
-
-        Text('© 2026 FluxDown Cover for HarmonyOS')
-          .fontSize(12)
-          .fontColor(this.p.textSecondary)
-          .margin({ bottom: 32 })
-      }
-      .width('100%')
-      .alignItems(HorizontalAlign.Center)
-          .transition(TransitionEffect.translate({ x: 40 }).combine(TransitionEffect.OPACITY).animation({ duration: 250, curve: Curve.EaseOut }))
-    }
-    .scrollBar(BarState.Off)
-    .width('100%')
-    .height('100%')
-    .backgroundColor(this.p.bg)
-    .edgeEffect(EdgeEffect.Spring)
-    .bindSheet($$this.qqGroupSheetVisible, this.QQGroupSheet(), {
-      height: 260,
-      dragBar: true,
-      showClose: false,
-      backgroundColor: this.p.surface,
-      blurStyle: BlurStyle.COMPONENT_THIN
-    })
-  }
-
-  @Builder
-  ProtocolItem(meta: ProtocolMeta) {
-    Row() {
-      Image(iconRes(protocolLabelIcon(meta.label)))
-        .width(15).height(15).fillColor(meta.color)
-        .margin({ right: 10 })
-
-      Column() {
-        Row() {
-          Text(meta.label).fontSize(13).fontColor(this.p.text).fontWeight(FontWeight.Medium)
-          if (!meta.implemented) {
-            Text('开发中')
-              .fontSize(10)
-              .fontColor(this.p.textSecondary)
-              .backgroundColor(this.p.surfaceHighlight)
-              .borderRadius(4)
-              .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-              .margin({ left: 8 })
-          }
-        }
-        Text(meta.fullDesc).fontSize(12).fontColor(this.p.textSecondary).margin({ top: 2 })
-      }
-      .layoutWeight(1)
-      .alignItems(HorizontalAlign.Start)
-    }
-    .width('100%')
-    .margin({ bottom: 10 })
-  }
-
-  @Builder
-  QQGroupSheet() {
-    Column({ space: 16 }) {
-      Row() {
-        Text('加入QQ交流群')
-          .fontSize(18)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.p.text)
-          .layoutWeight(1)
-        Stack({ alignContent: Alignment.Center }) {
-          Column()
-            .width(32).height(32)
-            .borderRadius(16)
-            .backgroundColor(this.p.dark ? '#F23A3A3A' : '#F2F3F5')
-            .border({ width: 0.5, color: this.p.dark ? '#33FFFFFF' : '#1A000000' })
-          Image(iconRes('x'))
-            .width(16).height(16)
-            .fillColor(this.p.text)
-        }
-        .onClick(() => { this.qqGroupSheetVisible = false; })
-      }
-      .width('100%')
-
-      Text('群号：1121565536')
-        .fontSize(14)
-        .fontColor(this.p.textSecondary)
-
-      Row({ space: 12 }) {
-        Stack({ alignContent: Alignment.Center }) {
-          ImmersionButton({
-            systemMaterialEffect: globalMaterialEffect(),
-            text: '复制群号',
-            buttonModify: new ActionButtonModifier('100%', 44),
-            click: (): void => {
-              this.copyQQGroupNumber();
-            }
-          })
-          .width('100%')
-          .height(44)
-        }
-        .layoutWeight(1)
-        .height(44)
-        Stack({ alignContent: Alignment.Center }) {
-          ImmersionButton({
-            systemMaterialEffect: globalMaterialEffect(),
-            text: '加入QQ群',
-            buttonModify: new ActionButtonModifier('100%', 44),
-            click: (): void => {
-              this.qqGroupSheetVisible = false;
-              this.openQQGroup();
-            }
-          })
-          .width('100%')
-          .height(44)
-        }
-        .layoutWeight(1)
-        .height(44)
-      }
-      .width('100%')
-    }
-    .width('100%')
-    .padding({ left: 24, right: 24, top: 20, bottom: 24 })
-    .alignItems(HorizontalAlign.Center)
-  }
+/**
+ * 单个开源致谢条目。
+ * 字段按华为应用市场对第三方开源组件的披露要求组织：
+ * 组件名称 / 版本 / 使用方式 / 版权所有 / 许可证（SPDX 标识）/ 源代码获取地址。
+ */
+interface OssAttribution {
+  name: string; // 开源组件名称
+  version: string; // 版本，无明确版本时填分支或 commit
+  role: string; // 在本项目中的使用方式
+  author: string; // 版权所有者
+  license: string; // 许可证（SPDX 标识）
+  repoUrl: string; // 源代码获取地址（可点击访问）
+  avatarUrl: string; // 版权所有者头像网络地址，留空则用首字母占位
 }
 
-// ── 任务详情页面 ──
-@ComponentV2
-struct TaskDetailContent {
-  @Param task: DownloadTask = new DownloadTask();
-  @Param vm: DownloadViewModel = new DownloadViewModel();
-  @Local renameVisible: boolean = false;
-  @Local renameDraft: string = '';
-  @Local moveVisible: boolean = false;
-  @Local movePathDraft: string = '';
-
-  @Computed
-  get p(): Palette {
-    return palette(this.vm.theme, this.vm.colorScheme);
+/**
+ * 开源致谢清单。
+ * 名称、版本、版权所有者与许可证均以仓库根目录 NOTICE 文件的声明为准。
+ *
+ * OpenAuthenticator 上游实际采用 GPL-3.0（NOTICE 早期误写为 MIT，已更正）。
+ * 但本项目仅参考其设计系统与交互规范，未复制其源代码（上游为 Dart/Flutter，
+ * 无法直接复用于 ArkTS），故不涉及 GPL-3.0 的代码级义务，此处列示仅为来源标注。
+ */
+const OSS_ATTRIBUTIONS: OssAttribution[] = [
+  {
+    name: 'FluxDown',
+    version: '0.4.7',
+    role: '上游原作品（Rust + Flutter），本项目为其衍生作品',
+    author: 'zerx-lab 及 FluxDown contributors',
+    license: 'AGPL-3.0',
+    repoUrl: 'https://github.com/zerx-lab/FluxDown',
+    avatarUrl: 'https://github.com/zerx-lab.png'
+  },
+  {
+    name: 'OpenAuthenticator',
+    version: 'main 分支',
+    role: '界面与交互设计参考（未使用其源代码）',
+    author: 'OpenAuthenticator contributors',
+    license: 'GPL-3.0',
+    repoUrl: 'https://github.com/openauthenticator-app/openauthenticator',
+    avatarUrl: 'https://github.com/openauthenticator-app.png'
+  },
+  {
+    name: '@tangs/components',
+    version: '1.5.3',
+    role: '界面组件库（药丸式滚动标签栏、沉浸按钮 / 搜索栏等）',
+    author: '汤于艺',
+    license: 'Apache-2.0',
+    repoUrl: 'https://gitcode.com/tangs_2003/components',
+    avatarUrl: ''
   }
+];
 
-  build() {
-    Column() {
-      Row() {
-        Text(this.task.fileName).fontSize(18).fontColor(this.p.text).fontWeight(FontWeight.Medium)
-      }
-      .width('100%')
-      .padding(12)
-
-      Scroll() {
-        Column() {
-          // ── 基础信息 ──
-          Column() {
-            this.Row2('状态', statusText(this.task.status))
-            this.Row2('协议', protocolMeta(this.task.protocol).label + ' · ' + protocolMeta(this.task.protocol).desc)
-            this.Row2('大小', this.task.totalBytes > 0 ? formatBytes(this.task.totalBytes) : '未知')
-            this.Row2('已下载', formatBytes(this.task.downloadedBytes))
-            this.Row2('进度', this.task.totalBytes > 0 ? this.task.percent + '%' : '-')
-            this.Row2('速度', formatSpeed(this.task.status === TaskStatus.Completed ? this.task.peakSpeed : this.task.speed))
-            this.Row2('分类', this.task.category || '默认')
-            this.Row2('优先级', this.task.priority > 0 ? `高 (${this.task.priority})` :
-              this.task.priority < 0 ? `低 (${this.task.priority})` : '普通')
-            if (this.task.queueId) {
-              this.Row2('所属队列', this.queueNameOf(this.task.queueId))
-            }
-            this.Row2('线程数', this.task.segmentCount > 0 ? `${this.task.segmentCount} 线程` :
-              this.task.segments.length > 0 ? `${this.task.segments.length} 线程 (自动)` : `${this.vm.maxSegments} 线程 (自动)`)
-            this.Row2('任务限速', this.task.speedLimit > 0 ? formatSpeed(this.task.speedLimit) : '不限')
-            this.Row2('创建时间', formatDateTime(this.task.createdAt))
-            if (this.task.finishedAt > 0) {
-              this.Row2('完成时间', formatDateTime(this.task.finishedAt))
-              this.Row2('下载耗时', formatDuration(this.task.finishedAt - this.task.createdAt))
-            }
-            if (this.task.sha256) {
-              this.Row2('SHA-256', this.task.sha256)
-            }
-            this.Row2('保存位置', this.task.filePath || this.task.dirPath || '未知')
-            this.Row2('校验完整性', this.task.verifyIntegrity ? '开启' : '关闭')
-            this.Row2('HTTP 认证', this.task.authHeader ? '已设置' : '无')
-            this.Row2('链接', this.task.url)
-            if (this.task.status === TaskStatus.Error) {
-              this.Row2('错误', this.task.errorMessage)
-            }
-          }
-          .width('100%')
-          .backgroundColor(this.p.surface)
-                    .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
-                    .borderRadius(RADIUS_CARD)
-          .margin({ left: 12, right: 12, top: 4, bottom: 8 })
-          .clip(true)
-
-          // ── BT 做种面板 ──
-          if (this.task.protocol === ProtocolType.BITTORRENT) {
-            Column() {
-              this.Row2('做种状态', this.seedStatusText(this.task.seedingStatus))
-              if (this.task.uploadedBytes > 0) {
-                this.Row2('已上传', formatBytes(this.task.uploadedBytes))
-                this.Row2('分享率', this.task.seedRatio > 0 ? this.task.seedRatio.toFixed(3) : '-')
-              }
-              if (this.task.seedSeconds > 0) {
-                this.Row2('做种时长', formatDuration(this.task.seedSeconds * 1000))
-              }
-              Row() {
-                Button() {
-                  Row() {
-                    Image(iconRes(this.task.seedingStatus === 'none' ? 'upload' : 'pause'))
-                      .width(15).height(15).fillColor(this.p.onPrimary)
-                    Text(this.task.seedingStatus === 'none' ? '开始做种' : '停止做种')
-                      .fontSize(13).fontColor(this.p.onPrimary).margin({ left: 5 })
-                  }
-                  .justifyContent(FlexAlign.Center)
-                }
-                  .backgroundColor(this.p.primary)
-                  .borderRadius(8)
-                  .height(36)
-                  .layoutWeight(1)
-                  .margin({ right: 6 })
-                  .onClick(() => {
-                    if (this.task.seedingStatus === 'none') {
-                      this.vm.startSeeding(this.task);
-                    } else {
-                      this.vm.stopSeeding(this.task);
-                    }
-                  })
-              }
-              .width('100%')
-              .padding({ left: 12, right: 12, bottom: 12 })
-            }
-            .width('100%')
-            .backgroundColor(this.p.surface)
-                        .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
-                        .borderRadius(RADIUS_CARD)
-            .margin({ left: 12, right: 12, bottom: 8 })
-            .clip(true)
-          }
-
-          // ── 分段信息 ──
-          if (this.task.segments.length > 0) {
-            Column() {
-              Row() {
-                Text(`分段信息 (${this.task.segments.length})`)
-                  .fontSize(14)
-                  .fontWeight(FontWeight.Medium)
-                  .fontColor(this.p.text)
-                Blank()
-                Text(`${this.doneSegments()}/${this.task.segments.length} 完成`)
-                  .fontSize(12)
-                  .fontColor(this.p.textSecondary)
-              }
-              .width('100%')
-              .padding({ left: 12, right: 12, top: 12, bottom: 6 })
-
-              // 分段进度可视化格子矩阵
-              Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-                ForEach(this.task.segments.slice(0, 120), (seg: Segment) => {
-                  Stack()
-                    .width(10).height(10)
-                    .borderRadius(2)
-                    .margin(1.5)
-                    .backgroundColor(
-                      seg.done ? this.p.success :
-                      seg.downloaded > 0 ? this.p.primary :
-                      this.p.surfaceHighlight
-                    )
-                }, (seg: Segment) => seg.index.toString())
-              }
-              .width('100%')
-              .padding({ left: 12, right: 12, bottom: 8 })
-
-              ForEach(this.task.segments.slice(0, 50), (seg: Segment, idx: number) => {
-                Row() {
-                  Text(`#${seg.index}`).fontSize(11).fontColor(this.p.textSecondary).width(36)
-                  Text((seg.url || '').length > 44 ? (seg.url || '').substring(0, 41) + '...' : (seg.url || ''))
-                    .fontSize(11)
-                    .fontColor(this.p.text)
-                    .maxLines(1)
-                    .textOverflow({ overflow: TextOverflow.Ellipsis })
-                    .layoutWeight(1)
-                  if (seg.done) {
-                    Image(iconRes('check')).width(13).height(13).fillColor(this.p.success).width(64)
-                  } else {
-                    Text(`${formatBytes(seg.downloaded)}`)
-                      .fontSize(11)
-                      .fontColor(this.p.textSecondary)
-                      .width(64)
-                      .textAlign(TextAlign.End)
-                  }
-                }
-                .width('100%')
-                .padding({ left: 12, right: 12, top: 4, bottom: 4 })
-              }, (seg: Segment) => seg.index.toString())
-              if (this.task.segments.length > 50) {
-                Text(`… 仅显示前 50 个分片`)
-                  .fontSize(11)
-                  .fontColor(this.p.textSecondary)
-                  .padding({ left: 12, right: 12, bottom: 10 })
-                  .width('100%')
-              }
-            }
-            .width('100%')
-            .backgroundColor(this.p.surface)
-                        .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
-                        .borderRadius(RADIUS_CARD)
-            .margin({ left: 12, right: 12, bottom: 8 })
-            .clip(true)
-          }
-
-          // ── 任务操作 ──
-          Column() {
-            Row() {
-              if (this.task.status === TaskStatus.Downloading || this.task.status === TaskStatus.Queued) {
-                Button() {
-                  Row() {
-                    Image(iconRes('pause')).width(14).height(14).fillColor('#FFFFFF')
-                    Text('暂停').fontSize(13).fontColor('#FFFFFF').margin({ left: 4 })
-                  }
-                  .justifyContent(FlexAlign.Center)
-                }
-                  .backgroundColor('#FFA940').borderRadius(8).height(36).layoutWeight(1).margin({ right: 6 })
-                  .onClick(() => { this.vm.pause(this.task); })
-              } else if (this.task.status === TaskStatus.Paused || this.task.status === TaskStatus.Error) {
-                Button() {
-                  Row() {
-                    Image(iconRes('play')).width(14).height(14).fillColor('#FFFFFF')
-                    Text('继续下载').fontSize(13).fontColor('#FFFFFF').margin({ left: 4 })
-                  }
-                  .justifyContent(FlexAlign.Center)
-                }
-                  .backgroundColor('#52C41A').borderRadius(8).height(36).layoutWeight(1).margin({ right: 6 })
-                  .onClick(() => { this.vm.resume(this.task); })
-              }
-              if (this.task.status === TaskStatus.Completed) {
-                Button() {
-                  Row() {
-                    Image(iconRes('open')).width(14).height(14).fillColor('#FFFFFF')
-                    Text('打开文件').fontSize(13).fontColor('#FFFFFF').margin({ left: 4 })
-                  }
-                  .justifyContent(FlexAlign.Center)
-                }
-                  .backgroundColor('#007DFF').borderRadius(8).height(36).layoutWeight(1).margin({ right: 6 })
-                  .onClick(() => { this.openFromDetail(); })
-              }
-            }
-            .width('100%')
-
-            if (this.task.status !== TaskStatus.Downloading && this.task.status !== TaskStatus.Verifying) {
-              Row() {
-                Button() {
-                  Row() {
-                    Image(iconRes('rename')).width(14).height(14).fillColor(this.p.text)
-                    Text('重命名').fontSize(13).fontColor(this.p.text).margin({ left: 4 })
-                  }
-                  .justifyContent(FlexAlign.Center)
-                }
-                  .backgroundColor(this.p.surfaceSolid).borderRadius(8).height(36).layoutWeight(1).margin({ right: 6 })
-                  .onClick(() => {
-                    this.renameDraft = this.task.fileName;
-                    this.renameVisible = true;
-                  })
-                Button() {
-                  Row() {
-                    Image(iconRes('folder')).width(14).height(14).fillColor(this.p.text)
-                    Text('移动').fontSize(13).fontColor(this.p.text).margin({ left: 4 })
-                  }
-                  .justifyContent(FlexAlign.Center)
-                }
-                  .backgroundColor(this.p.surfaceSolid).borderRadius(8).height(36).layoutWeight(1).margin({ right: 6 })
-                  .onClick(() => {
-                    this.movePathDraft = this.task.dirPath || this.task.filePath || '';
-                    this.moveVisible = true;
-                  })
-                Button() {
-                  Row() {
-                    Image(iconRes('recheck')).width(14).height(14).fillColor(this.p.text)
-                    Text('重新检查').fontSize(13).fontColor(this.p.text).margin({ left: 4 })
-                  }
-                  .justifyContent(FlexAlign.Center)
-                }
-                  .backgroundColor(this.p.surfaceSolid).borderRadius(8).height(36).layoutWeight(1).margin({ right: 6 })
-                  .onClick(() => {
-                    this.vm.recheckTask(this.task).then(() => {
-                      promptAction.showToast({ message: '重新检查完成' });
-                    }).catch((e: Error) => {
-                      promptAction.showToast({ message: e?.message || '重新检查失败' });
-                    });
-                  })
-                Button() {
-                  Row() {
-                    Image(iconRes('trash')).width(14).height(14).fillColor('#FFFFFF')
-                    Text('删除').fontSize(13).fontColor('#FFFFFF').margin({ left: 4 })
-                  }
-                  .justifyContent(FlexAlign.Center)
-                }
-                  .backgroundColor('#E8553B').borderRadius(8).height(36).layoutWeight(1)
-                  .onClick(() => {
-                    AlertDialog.show({
-                      title: '删除任务',
-                      message: '确定要删除此下载任务吗？\n相关文件将被同时删除。',
-                      autoCancel: true,
-                      alignment: DialogAlignment.Center,
-                      primaryButton: { value: '取消', action: () => {} },
-                      secondaryButton: {
-                        value: '删除',
-                        fontColor: '#FF3B30',
-                        action: () => { this.vm.remove(this.task); }
-                      }
-                    });
-                  })
-              }
-              .width('100%')
-              .margin({ top: 8 })
-            }
-          }
-          .padding(12)
-          .backgroundColor(this.p.surface)
-                    .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
-                    .borderRadius(RADIUS_CARD)
-          .margin({ left: 12, right: 12, bottom: 12 })
-        }
-        .width('100%')
-        .padding({ bottom: 60 })
-      }
-      .layoutWeight(1)
-      .scrollBar(BarState.Off)
-      .edgeEffect(EdgeEffect.Spring)
-      .width('100%')
-
-      // ── 重命名对话框覆盖层 ──
-      if (this.renameVisible) {
-        this.RenameOverlay()
-      }
-      if (this.moveVisible) {
-        this.MoveOverlay()
-      }
-    }
-    .width('100%')
-    .height('100%')
-    .backgroundColor(this.p.bg)
-  }
-
-  @Builder
-  RenameOverlay() {
-    Column() {
-      Blank()
-      Column() {
-        Text('重命名').fontSize(17).fontWeight(FontWeight.Medium).fontColor(this.p.text)
-        TextInput({ text: this.renameDraft, placeholder: '输入新文件名' })
-          .fontSize(14)
-          .fontColor(this.p.text)
-          .placeholderColor(this.p.textSecondary)
-          .backgroundColor(this.p.surfaceHighlight)
-          .borderRadius(8)
-          .width('100%')
-          .margin({ top: 16 })
-          .onChange((v: string) => { this.renameDraft = v; })
-        Row() {
-          Button('取消')
-            .type(ButtonType.Capsule)
-            .fontSize(14)
-            .backgroundColor(this.p.surfaceSolid)
-            .fontColor(this.p.textSecondary)
-            .layoutWeight(1)
-            .margin({ right: 8 })
-            .onClick(() => { this.renameVisible = false; })
-          Button('确定')
-            .type(ButtonType.Capsule)
-            .fontSize(14)
-            .backgroundColor(this.p.primary)
-            .fontColor(this.p.onPrimary)
-            .layoutWeight(1)
-            .margin({ left: 8 })
-            .onClick(() => {
-              const name = this.renameDraft.trim();
-              if (name.length === 0) {
-                this.renameVisible = false;
-                return;
-              }
-              this.vm.renameTask(this.task, name).then(() => {
-                promptAction.showToast({ message: '已重命名' });
-                this.renameVisible = false;
-              }).catch((e: Error) => {
-                promptAction.showToast({ message: '重命名失败: ' + (e?.message || String(e)) });
-              });
-            })
-        }
-        .width('100%')
-        .margin({ top: 16 })
-      }
-      .padding(20)
-      .width('86%')
-      .backgroundColor(this.p.surfaceSolid)
-      .borderRadius(RADIUS_SHEET)
-      .shadow(softShadow(this.p.dark, true))
-      Blank()
-    }
-    .width('100%')
-    .height('100%')
-    .backgroundColor('#66000000')
-    .position({ x: 0, y: 0 })
-  }
-
-  @Builder
-  MoveOverlay() {
-    Column() {
-      Blank()
-      Column() {
-        Text('移动到').fontSize(17).fontWeight(FontWeight.Medium).fontColor(this.p.text)
-        TextInput({ text: this.movePathDraft, placeholder: '输入目标文件夹路径' })
-          .fontSize(14)
-          .fontColor(this.p.text)
-          .placeholderColor(this.p.textSecondary)
-          .backgroundColor(this.p.surfaceHighlight)
-          .borderRadius(8)
-          .width('100%')
-          .margin({ top: 16 })
-          .onChange((v: string) => { this.movePathDraft = v; })
-        Row() {
-          Button('取消')
-            .type(ButtonType.Capsule)
-            .fontSize(14)
-            .backgroundColor(this.p.surfaceSolid)
-            .fontColor(this.p.textSecondary)
-            .layoutWeight(1)
-            .margin({ right: 8 })
-            .onClick(() => { this.moveVisible = false; })
-          Button('确定')
-            .type(ButtonType.Capsule)
-            .fontSize(14)
-            .backgroundColor(this.p.primary)
-            .fontColor(this.p.onPrimary)
-            .layoutWeight(1)
-            .margin({ left: 8 })
-            .onClick(() => {
-              const dir = this.movePathDraft.trim();
-              if (dir.length === 0) {
-                this.moveVisible = false;
-                return;
-              }
-              this.vm.moveTask(this.task, dir).then(() => {
-                promptAction.showToast({ message: '已移动' });
-                this.moveVisible = false;
-              }).catch((e: Error) => {
-                promptAction.showToast({ message: '移动失败: ' + (e?.message || String(e)) });
-              });
-            })
-        }
-        .width('100%')
-        .margin({ top: 16 })
-      }
-      .padding(20)
-      .width('86%')
-      .backgroundColor(this.p.surfaceSolid)
-      .borderRadius(RADIUS_SHEET)
-      .shadow(softShadow(this.p.dark, true))
-      Blank()
-    }
-    .width('100%')
-    .height('100%')
-    .backgroundColor('#66000000')
-    .position({ x: 0, y: 0 })
-  }
-
-  private doneSegments(): number {
-    return this.task.segments.filter(s => s.done).length;
-  }
-
-  private queueNameOf(queueId: string): string {
-    const q = this.vm.listQueues().find((x: DownloadQueue) => x.id === queueId);
-    return q ? q.name : '未知队列';
-  }
-
-  private seedStatusText(s: string): string {    switch (s) {
-      case 'seeding':
-        return '做种中';
-      case 'queued':
-        return '排队做种';
-      case 'userStopped':
-        return '已停止（用户）';
-      case 'limitReached':
-        return '已停止（达到限制）';
-      default:
-        return '未做种';
-    }
-  }
-
-  private openFromDetail(): void {
-    // Reuse the master page's openFile via a lightweight capability: export + view.
-    this.vm.exportToDownload(this.task).then((path: string) => {
-      const ctx = getContext(this) as common.UIAbilityContext;
-      const fileUriObj = fileUri.getUriFromPath(path);
-      const want: Want = {
-        action: 'ohos.want.action.viewData',
-        uri: fileUriObj,
-        flags: wantConstant.Flags.FLAG_AUTH_READ_URI_PERMISSION | wantConstant.Flags.FLAG_AUTH_WRITE_URI_PERMISSION,
-      };
-      ctx.startAbility(want);
-    }).catch((e: Error) => {
-      promptAction.showToast({ message: '打开文件失败: ' + ((e as Error)?.message || String(e)) });
-    });
-  }
-
-  @Builder
-  Row2(k: string, v: string) {
-    Row() {
-      Text(k).fontSize(13).fontColor(this.p.textSecondary).width('30%')
-      Text(v)
-        .fontSize(13)
-        .fontColor(this.p.text)
-        .layoutWeight(1)
-        .maxLines(3)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .copyOption(CopyOptions.LocalDevice)
-    }
-    .padding({ left: 12, right: 12, top: 10, bottom: 10 })
-    .width('100%')
-  }
-}
-
-// ── 下载队列页面 ──
-// ── 下载统计页面 ──
-@ComponentV2
-struct StatsContent {
-  @Param vm: DownloadViewModel = new DownloadViewModel();
-
-  @Computed
-  get p(): Palette {
-    return palette(this.vm.theme, this.vm.colorScheme);
-  }
-
-  build() {
-    Scroll() {
-      Column() {
-        Column() {
-          Text('下载概览').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.p.text)
-            .margin({ bottom: 12 })
-
-          this.StatRow('总任务数', `${this.vm.getStats().totalTasks}`, 'list')
-          this.StatRow('下载中', `${this.vm.getStats().activeCount}`, 'download')
-          this.StatRow('已完成', `${this.vm.getStats().completedCount}`, 'check')
-          this.StatRow('已暂停', `${this.vm.getStats().pausedCount}`, 'pause')
-          this.StatRow('错误', `${this.vm.getStats().errorCount}`, 'alert')
-          this.StatRow('已下载', formatBytes(this.vm.getStats().totalDownloaded), 'download')
-          this.StatRow('总大小', formatBytes(this.vm.getStats().totalSize), 'disk')
-          this.StatRow('当前速度', formatSpeed(this.vm.getStats().currentSpeed), 'gauge')
-          this.StatRow('平均速度', formatSpeed(this.vm.getStats().avgSpeed), 'gauge')
-          this.StatRow('完成率', `${this.vm.getStats().completionRate.toFixed(1)}%`, 'circle_check')
-          this.StatRow('预计剩余',
-            this.vm.getStats().estimatedTimeRemaining > 0 ?
-            `${Math.ceil(this.vm.getStats().estimatedTimeRemaining)}秒` : '未知', 'clock')
-        }
-        .padding(16)
-        .backgroundColor(this.p.surface)
-        .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
-        .borderRadius(RADIUS_CARD)
-        .margin({ left: 16, right: 16, bottom: 16 })
-
-        // Category breakdown
-        Column() {
-          Text('分类统计').fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.p.text)
-            .margin({ bottom: 12 })
-          ForEach(this.vm.getCategories(), (cat: string) => {
-            this.StatRow(cat, `${this.vm.tasks.filter(t => t.category === cat).length} 个`, 'tag')
-          })
-        }
-        .padding(16)
-        .backgroundColor(this.p.surface)
-        .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
-        .borderRadius(RADIUS_CARD)
-        .margin({ left: 16, right: 16 })
-      }
-      .width('100%')
-    }
-    .scrollBar(BarState.Off)
-    .width('100%')
-    .height('100%')
-    .backgroundColor(this.p.bg)
-    .edgeEffect(EdgeEffect.Spring)
-  }
-
-  @Builder
-  StatRow(label: string, value: string, icon: string) {
-    Row() {
-      Image(iconRes(icon)).width(16).height(16).fillColor(this.p.primary).margin({ right: 12 })
-      Text(label).fontSize(14).fontColor(this.p.textSecondary).layoutWeight(1)
-      Text(value).fontSize(14).fontColor(this.p.text)
-    }
-    .width('100%')
-    .padding({ top: 10, bottom: 10 })
-  }
-}

@@ -1,50 +1,43 @@
 {
   "app": {
+    // ── 签名配置语义（2026-09-16 修正）──
+    // release = 上架专用：发布证书 + 无设备限制 Release-2 profile，勿改；
+    // default = DevEco 自动签名调试配置（products 使用）；重新自动签名会轮换证书，
+    //   新证书指纹需登记 AGC，并用其 CSR 在 AGC 建调试 profile 后替换 default 的 profile 路径。
+    // 发布证书叶子 SHA-256：A0:2D:A0:1A:B2:A6:81:11:2D:AD:94:69:C2:03:AD:86:02:08:D8:D7:EC:22:EA:42:76:86:A1:2A:E5:DE:5C:0B
     "signingConfigs": [
       {
-        "name": "default",
-        "type": "HarmonyOS",
-        "material": {
-          "certpath": "/Users/Zhuanz/Downloads/FluxDown Cover.cer",
-          "keyAlias": "fluxdowncover",
-          "keyPassword": "00000018EC6B49E8017B6A48E9D0CF8E4DC00AFABF0A603E8771F5CA8F595BBE9FDCE7BD0D795F79",
-          "profile": "/Users/Zhuanz/Downloads/fluxdowncoverRelease.p7b",
-          "signAlg": "SHA256withECDSA",
-          "storeFile": "/Users/Zhuanz/Downloads/fluxdowncover.p12",
-          "storePassword": "00000018F11D6968F160327FAAAD1B8927233395A53735C77B447DA414304FECAE5CD3224BB574DD"
-        }
-      },
-      {
+        // 发布签名＝上架专用，勿改
         "name": "release",
         "type": "HarmonyOS",
         "material": {
           "storeFile": "/Users/Zhuanz/Downloads/fluxdowncover.p12",
-          "storePassword": "00000018FB5C34A67BAF3667D483420BB266D5D1E6C9915D031131F8A717F5C735F0402D1D9DBDC7",
+          "storePassword": "00000018BD29FBAA121F21F7EDBAD87DF4CF76EE2426CB4D3258BBE4C07EC500C3F388D265FBC148",
           "keyAlias": "fluxdowncover",
-          "keyPassword": "00000018198E008FE5CAA0B5C2124C5D24787B122962980BE39DEA1DD823C656BD9205A758E7D7F6",
+          "keyPassword": "00000018D85BE90B1FCB2315ED33CCCCF9DB17FEEF247E50340A7309B279E47FE1F5373542D90DF6",
           "signAlg": "SHA256withECDSA",
           "profile": "/Users/Zhuanz/Downloads/fluxdowncoverRelease-2.p7b",
           "certpath": "/Users/Zhuanz/Downloads/fluxdowncover.cer"
         }
       },
       {
-        "name": "ceshi",
+        "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "/Users/Zhuanz/.ohos/config/ceshi_FluxDownCoverOHOS_Uf34VH7nFQqTCad3Jj5CuH8emxV_NsVt1MvAQVpDSy8=.cer",
+          "certpath": "/Users/Zhuanz/.ohos/config/default_FluxDownCoverOHOS_Uf34VH7nFQqTCad3Jj5CuH8emxV_NsVt1MvAQVpDSy8=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001B74499532A93C513861177C5F9C4982EE4F9F450A0D41DCF529F9F7FB33720D47C77B2C00854C7F",
-          "profile": "/Users/Zhuanz/.ohos/config/ceshi_FluxDownCoverOHOS_Uf34VH7nFQqTCad3Jj5CuH8emxV_NsVt1MvAQVpDSy8=.p7b",
+          "keyPassword": "0000001AFED1EED9CE79BB465F2605697E9A321C5B35ED2D51ED7E82024C5F6B9DA8C4154CA91629B472",
+          "profile": "/Users/Zhuanz/.ohos/config/default_FluxDownCoverOHOS_Uf34VH7nFQqTCad3Jj5CuH8emxV_NsVt1MvAQVpDSy8=.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "/Users/Zhuanz/.ohos/config/ceshi_FluxDownCoverOHOS_Uf34VH7nFQqTCad3Jj5CuH8emxV_NsVt1MvAQVpDSy8=.p12",
-          "storePassword": "0000001B81129DC8B4C87520428716C1E6B8111563F7144B4CC1E87F17BCDEC76DF7674E1A9C71A20E1103"
+          "storeFile": "/Users/Zhuanz/.ohos/config/default_FluxDownCoverOHOS_Uf34VH7nFQqTCad3Jj5CuH8emxV_NsVt1MvAQVpDSy8=.p12",
+          "storePassword": "0000001ACF68B911EA03D1569E29BC1F1326FC27165784F9EFA9BC20FB42989E2B7D43EA18478E3FD7A9"
         }
       }
     ],
     "products": [
       {
         "name": "default",
-        "signingConfig": "ceshi",
+        "signingConfig": "default",
         "compatibleSdkVersion": "6.1.0(23)",
         "compileSdkVersion": "6.1.1(24)",
         "targetSdkVersion": "6.1.1(24)",

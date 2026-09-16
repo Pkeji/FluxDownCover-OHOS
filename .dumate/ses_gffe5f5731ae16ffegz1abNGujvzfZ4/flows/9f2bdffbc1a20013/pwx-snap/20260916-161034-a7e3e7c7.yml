@@ -1,0 +1,971 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e8]:
+    - link "img" [ref=e9] [cursor=pointer]:
+      - /url: /consumer/cn/
+      - img "img" [ref=e10]
+    - generic:
+      - generic:
+        - generic [ref=e12]:
+          - generic: 简体中文
+          - generic: English
+        - generic [ref=e18]:
+          - generic:
+            - generic [ref=e20]: 我的
+            - img [ref=e22] [cursor=pointer]
+          - generic [ref=e27]:
+            - generic:
+              - paragraph: Hello，
+              - paragraph: 欢迎来到开发者联盟
+          - generic:
+            - list:
+              - listitem [ref=e33] [cursor=pointer]:
+                - generic [ref=e35]: 个人中心
+              - listitem [ref=e36] [cursor=pointer]
+              - listitem [ref=e37] [cursor=pointer]:
+                - generic [ref=e39]: 我的学堂
+              - listitem [ref=e40] [cursor=pointer]:
+                - generic [ref=e42]: 我的收藏
+              - listitem [ref=e43] [cursor=pointer]:
+                - generic [ref=e45]: 我的活动
+              - listitem [ref=e46] [cursor=pointer]:
+                - generic [ref=e48]: 我的工单
+          - generic: 立即登录
+      - generic [ref=e50]:
+        - generic [ref=e51]:
+          - link "探索" [ref=e54] [cursor=pointer]:
+            - /url: /consumer/cn/discover/
+            - generic [ref=e55]: 探索
+          - link "设计" [ref=e58] [cursor=pointer]:
+            - /url: /consumer/cn/design/
+            - generic [ref=e59]: 设计
+          - link "开发" [ref=e62] [cursor=pointer]:
+            - /url: /consumer/cn/develop/
+            - generic [ref=e63]: 开发
+          - link "分发" [ref=e66] [cursor=pointer]:
+            - /url: /consumer/cn/distribute/
+            - generic [ref=e67]: 分发
+          - link "推广与变现" [ref=e70] [cursor=pointer]:
+            - /url: /consumer/cn/promote/
+            - generic [ref=e71]: 推广与变现
+          - link "生态合作" [ref=e74] [cursor=pointer]:
+            - /url: /consumer/cn/cooperate/
+            - generic [ref=e75]: 生态合作
+          - link "支持" [ref=e78] [cursor=pointer]:
+            - /url: /consumer/cn/support/
+            - generic [ref=e79]: 支持
+        - generic [ref=e80]:
+          - link "文档" [ref=e83] [cursor=pointer]:
+            - /url: /consumer/cn/doc/
+          - link "App" [ref=e86] [cursor=pointer]:
+            - /url: /consumer/cn/huawei-app/
+    - generic [ref=e96]:
+      - textbox "输入关键字搜索" [ref=e97]
+      - img [ref=e99] [cursor=pointer]
+  - generic [ref=e101]:
+    - generic [ref=e107]:
+      - heading "设计" [level=4] [ref=e109]:
+        - link "设计" [ref=e110] [cursor=pointer]:
+          - /url: /consumer/cn/design/
+      - generic [ref=e117]: 设计资源
+    - generic [ref=e123]:
+      - generic [ref=e124]:
+        - generic [ref=e125]: 设计资源
+        - generic [ref=e126]: 不断更新的设计资源库，包含图标、色彩、文字、音效等丰富的资源，并且提供多种效率组件和界面模版，帮助快速准确地设计 HarmonyOS 应用。
+      - generic [ref=e127]:
+        - generic [ref=e129]:
+          - link "img" [ref=e130] [cursor=pointer]:
+            - /url: https://developer.huawei.com/consumer/cn/design/resource/#60272c45-248c-4367-9e5c-88bd3057d7f1
+            - img "img" [ref=e131]
+          - paragraph [ref=e132]: 设计组件
+        - generic [ref=e134]:
+          - link "img" [ref=e135] [cursor=pointer]:
+            - /url: https://developer.huawei.com/consumer/cn/design/resource/#d0ef2aba-6edf-4b93-a8fe-bb7da429c8a7
+            - img "img" [ref=e136]
+          - paragraph [ref=e137]: 系统能力特征
+        - generic [ref=e139]:
+          - link "img" [ref=e140] [cursor=pointer]:
+            - /url: https://developer.huawei.com/consumer/cn/design/resource/#f0093452-6f52-4b90-951d-636016b70008
+            - img "img" [ref=e141]
+          - paragraph [ref=e142]: 产品机框
+        - generic [ref=e144]:
+          - link "img" [ref=e145] [cursor=pointer]:
+            - /url: https://developer.huawei.com/consumer/cn/design/resource/#012589f7-4906-4ffc-ac39-eb7957fb4d76
+            - img "img" [ref=e146]
+          - paragraph [ref=e147]: 品牌与产品
+        - generic [ref=e149]:
+          - link "img" [ref=e150] [cursor=pointer]:
+            - /url: https://developer.huawei.com/consumer/cn/design/resource/#aca70492-8edf-4ae8-b789-74ed7daa2796
+            - img "img" [ref=e151]
+          - paragraph [ref=e152]: 字体与图标
+        - generic [ref=e154]:
+          - link "img" [ref=e155] [cursor=pointer]:
+            - /url: https://developer.huawei.com/consumer/cn/design/resource/#16196472-ba8e-46ab-9027-f668c66239f2
+            - img "img" [ref=e156]
+          - paragraph [ref=e157]: 工具
+    - generic [ref=e162]:
+      - heading "设计组件" [level=2] [ref=e163]
+      - generic [ref=e164]:
+        - generic [ref=e165]:
+          - img "手机/折叠屏/平板" [ref=e167]
+          - generic [ref=e168]:
+            - generic [ref=e169]: 手机/折叠屏/平板/电脑
+            - generic [ref=e170]:
+              - generic [ref=e172]:
+                - link "Sketch" [ref=e173] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611150901.77427210973854202925692996589432:50001231000000:2800:6FCC60B5221219F17E16ABAB443C70CA26D862FAA6C8029A94FBE7F4F8B7C0A0.zip?needInitFileName=true
+                  - paragraph [ref=e174]: Sketch
+                  - img [ref=e175]
+                - generic [ref=e178]: 33.0 MB
+                - generic [ref=e179]: 2026/06/12
+              - generic [ref=e181]:
+                - link "PIX" [ref=e182] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611150840.00697786917722354469478314337478:50001231000000:2800:DD30804E04116922C513B5DBEB13830BA8510C38CB087C7370CE784DE4E643B3.zip?needInitFileName=true
+                  - paragraph [ref=e183]: PIX
+                  - img [ref=e184]
+                - generic [ref=e187]: 13.1 MB
+                - generic [ref=e188]: 2026/06/12
+        - generic [ref=e189]:
+          - img "手机/折叠屏/平板" [ref=e191]
+          - generic [ref=e192]:
+            - generic [ref=e193]: 穿戴
+            - generic [ref=e194]:
+              - generic [ref=e196]:
+                - link "Sketch" [ref=e197] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611150828.03326691746312683370512633333508:50001231000000:2800:29F456774ADF5AC806259792215EBA8C5F836BBCF86F43F18FA30B809464A6DF.zip?needInitFileName=true
+                  - paragraph [ref=e198]: Sketch
+                  - img [ref=e199]
+                - generic [ref=e202]: 1.56 MB
+                - generic [ref=e203]: 2026/06/12
+              - generic [ref=e205]:
+                - link "PIX" [ref=e206] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611135850.37316115119675875916279797889354:50001231000000:2800:1F0B21E85E1939131F3EAD483609A7C7DECA27A71A00B7FDB110AF33A709842C.zip?needInitFileName=true
+                  - paragraph [ref=e207]: PIX
+                  - img [ref=e208]
+                - generic [ref=e211]: 2.01 MB
+                - generic [ref=e212]: 2026/06/12
+        - generic [ref=e213]:
+          - img "手机/折叠屏/平板" [ref=e215]
+          - generic [ref=e216]:
+            - generic [ref=e217]: 智慧屏
+            - generic [ref=e218]:
+              - generic [ref=e220]:
+                - link "Sketch" [ref=e221] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611151432.80654416717309230778700050770884:50001231000000:2800:84484DC84AA48B6CF59B122D34FE3218B72C5CFACFC4B03E5C6BAA54DEAFC81D.zip?needInitFileName=true
+                  - paragraph [ref=e222]: Sketch
+                  - img [ref=e223]
+                - generic [ref=e226]: 1.81 MB
+                - generic [ref=e227]: 2026/06/12
+              - generic [ref=e229]:
+                - link "PIX" [ref=e230] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611151423.57917284094080513283541918214495:50001231000000:2800:01B5CDF582CB7BE3CE4779580E75DC699677A316027E108359E18B8626BEBF6E.zip?needInitFileName=true
+                  - paragraph [ref=e231]: PIX
+                  - img [ref=e232]
+                - generic [ref=e235]: 2.05 MB
+                - generic [ref=e236]: 2026/06/12
+    - generic [ref=e241]:
+      - heading "系统能力特征" [level=2] [ref=e242]
+      - generic [ref=e243]:
+        - generic [ref=e244]:
+          - img "HarmonyOS Sans 字体" [ref=e246]
+          - generic [ref=e247]:
+            - generic [ref=e248]: 通知
+            - generic [ref=e249]:
+              - generic [ref=e251]:
+                - link "Sketch" [ref=e252] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611155523.11515595636537373737317521106324:50001231000000:2800:AC96E1D37562CD208796043754DE4EB539CEF3C3366DA981BFC7E48E1C889113.zip?needInitFileName=true
+                  - paragraph [ref=e253]: Sketch
+                  - img [ref=e254]
+                - generic [ref=e257]: 74.8 MB
+                - generic [ref=e258]: 2026/06/12
+              - generic [ref=e260]:
+                - link "PIX" [ref=e261] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611152336.46936794337084463153532639416952:50001231000000:2800:9C7E20B38E975F21AFC0E328175BD2E386A80430A74797E961D2286EA47B0335.zip?needInitFileName=true
+                  - paragraph [ref=e262]: PIX
+                  - img [ref=e263]
+                - generic [ref=e266]: 78.2 MB
+                - generic [ref=e267]: 2026/06/12
+        - generic [ref=e268]:
+          - img "HarmonyOS 服务组件库" [ref=e270]
+          - generic [ref=e271]:
+            - generic [ref=e272]: 实况窗
+            - generic [ref=e273]:
+              - generic [ref=e275]:
+                - link "Sketch" [ref=e276] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611152306.14135023764518340231738800650915:50001231000000:2800:6E7671D6DA13D45A214E8768B7F3FFEF719AC3DAD4D314D10C0359D79F9FC76E.zip?needInitFileName=true
+                  - paragraph [ref=e277]: Sketch
+                  - img [ref=e278]
+                - generic [ref=e281]: 5.04 MB
+                - generic [ref=e282]: 2026/06/12
+              - generic [ref=e284]:
+                - link "PIX" [ref=e285] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611152256.49378350035661205189160735949386:50001231000000:2800:8CAB5B37AA62B1108F5AA9F028FFE506906538CBDB4BFB00BC283B024DC54579.zip?needInitFileName=true
+                  - paragraph [ref=e286]: PIX
+                  - img [ref=e287]
+                - generic [ref=e290]: 10.8 MB
+                - generic [ref=e291]: 2026/06/12
+        - generic [ref=e292]:
+          - img "使用华为账号登录" [ref=e294]
+          - generic [ref=e295]:
+            - generic [ref=e296]: 闪控球和闪控窗
+            - generic [ref=e297]:
+              - generic [ref=e299]:
+                - link "Sketch" [ref=e300] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611155556.88839815373280787906343299468013:50001231000000:2800:931861F1F8B21FB747F2A4CB416CF92FAADA8701203621D28CAF6E387249A95C.zip?needInitFileName=true
+                  - paragraph [ref=e301]: Sketch
+                  - img [ref=e302]
+                - generic [ref=e305]: 7.67 MB
+                - generic [ref=e306]: 2026/06/12
+              - generic [ref=e308]:
+                - link "PIX" [ref=e309] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611155542.98182392105523849586910301818981:50001231000000:2800:1AE4C5549838D42717ECA4CFC302C9626212ED38404801C1FC0F6C07FA48351C.zip?needInitFileName=true
+                  - paragraph [ref=e310]: PIX
+                  - img [ref=e311]
+                - generic [ref=e314]: 8.59 MB
+                - generic [ref=e315]: 2026/06/12
+        - generic [ref=e316]:
+          - img "HarmonyOS 服务组件库" [ref=e318]
+          - generic [ref=e319]:
+            - generic [ref=e320]: 服务卡片
+            - generic [ref=e321]:
+              - generic [ref=e323]:
+                - link "Sketch" [ref=e324] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20250923104338.49716951885993297245515056057741:50001231000000:2800:893EEDAB3A35DA9182A4EBFB3A542C4A5252B537237B54C67E1600FDD853835D.zip?needInitFileName=true
+                  - paragraph [ref=e325]: Sketch
+                  - img [ref=e326]
+                - generic [ref=e329]: 8.93 MB
+                - generic [ref=e330]: 2026/06/12
+              - generic [ref=e332]:
+                - link "PIX" [ref=e333] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611152039.74720266035470248094251720475196:50001231000000:2800:11CE8AD89621BF2D915CAFDF18317A98E83A46909E2DFB149AA077E9ACE43C7C.zip?needInitFileName=true
+                  - paragraph [ref=e334]: PIX
+                  - img [ref=e335]
+                - generic [ref=e338]: 6.85 MB
+                - generic [ref=e339]: 2026/06/12
+        - generic [ref=e340]:
+          - generic [ref=e341]:
+            - img "HarmonyOS 应用图标"
+          - generic [ref=e342]:
+            - generic [ref=e343]: 播控中心
+            - generic [ref=e344]:
+              - generic [ref=e346]:
+                - link "Sketch" [ref=e347] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611152050.93828787310099983815706778680392:50001231000000:2800:ED910B880CC0703BEE38C1D8CC359C171FC301A0EC06A215D186D22B29E2DFE4.zip?needInitFileName=true
+                  - paragraph [ref=e348]: Sketch
+                  - img [ref=e349]
+                - generic [ref=e352]: 16.0 MB
+                - generic [ref=e353]: 2026/06/12
+              - generic [ref=e355]:
+                - link "PIX" [ref=e356] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611151516.83120731821863808155791025756713:50001231000000:2800:913F6560E8EE7896CEEBECDE98B501351BA1D7FE4C2172E35C20FCED5511FCAF.zip?needInitFileName=true
+                  - paragraph [ref=e357]: PIX
+                  - img [ref=e358]
+                - generic [ref=e361]: 18.7 MB
+                - generic [ref=e362]: 2026/06/12
+        - generic [ref=e363]:
+          - generic [ref=e364]:
+            - img "华为支付图标"
+          - generic [ref=e365]:
+            - generic [ref=e366]: 分享
+            - generic [ref=e367]:
+              - generic [ref=e369]:
+                - link "Sketch" [ref=e370] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611152024.05738609524791002025251642243725:50001231000000:2800:9B496553A1ACF3784A7A5B70BB75404EAB620E80B9EB264FB2871089E8615E28.zip?needInitFileName=true
+                  - paragraph [ref=e371]: Sketch
+                  - img [ref=e372]
+                - generic [ref=e375]: 63.8 MB
+                - generic [ref=e376]: 2026/06/12
+              - generic [ref=e378]:
+                - link "PIX" [ref=e379] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611151944.37556922052507777762093019927832:50001231000000:2800:A044100D1F05FC541F24E27D1F389C568F60F356477C66F2EB7D9D072AA3804E.zip?needInitFileName=true
+                  - paragraph [ref=e380]: PIX
+                  - img [ref=e381]
+                - generic [ref=e384]: 66.8 MB
+                - generic [ref=e385]: 2026/06/12
+        - generic [ref=e386]:
+          - generic [ref=e387]:
+            - img "元服务静默登录默认头像"
+          - generic [ref=e388]:
+            - generic [ref=e389]: 启动页
+            - generic [ref=e390]:
+              - generic [ref=e392]:
+                - link "Sketch" [ref=e393] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611152245.94741776207567488412518979303326:50001231000000:2800:10A76489896F2559E7AB7E90C0746E53256655A6C5BE1D4A7C7E17D1FC2A741B.zip?needInitFileName=true
+                  - paragraph [ref=e394]: Sketch
+                  - img [ref=e395]
+                - generic [ref=e398]: 12.9 MB
+                - generic [ref=e399]: 2026/06/12
+              - generic [ref=e401]:
+                - link "PIX" [ref=e402] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611152231.23048353296615395509109269225371:50001231000000:2800:30A4A3CCEA09B5BE4DBB766DFFEA176AE77678E92845D413D4904C584CA03E98.zip?needInitFileName=true
+                  - paragraph [ref=e403]: PIX
+                  - img [ref=e404]
+                - generic [ref=e407]: 11.1 MB
+                - generic [ref=e408]: 2026/06/12
+        - generic [ref=e409]:
+          - generic [ref=e410]:
+            - img "元服务静默登录默认头像"
+          - generic [ref=e411]:
+            - generic [ref=e412]: 碰一碰
+            - generic [ref=e413]:
+              - generic [ref=e415]:
+                - link "Sketch" [ref=e416] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611152217.17962674841177259216686892485357:50001231000000:2800:5E9C677C2771790ACC652132CBEB281C81CEE740AEC80D783A587BFCCAE07BDC.zip?needInitFileName=true
+                  - paragraph [ref=e417]: Sketch
+                  - img [ref=e418]
+                - generic [ref=e421]: 62.5 MB
+                - generic [ref=e422]: 2026/06/12
+              - generic [ref=e424]:
+                - link "PIX" [ref=e425] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611152148.11789477911821594126737520437155:50001231000000:2800:8C2AB8E5C4347A5621775844E8ECDDD313D58795E2D15EF9319F4F65DD0AA487.zip?needInitFileName=true
+                  - paragraph [ref=e426]: PIX
+                  - img [ref=e427]
+                - generic [ref=e430]: 65.9 MB
+                - generic [ref=e431]: 2026/06/12
+        - generic [ref=e432]:
+          - generic [ref=e433]:
+            - img "元服务静默登录默认头像"
+          - generic [ref=e434]:
+            - generic [ref=e435]: 靠近发现
+            - generic [ref=e436]:
+              - generic [ref=e438]:
+                - link "Sketch" [ref=e439] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611152120.92654493630417515061109147936105:50001231000000:2800:A839780DEBD3F4E238639E809F4839DD143BF7DBC6B7AC0C53CC7D33D6673587.zip?needInitFileName=true
+                  - paragraph [ref=e440]: Sketch
+                  - img [ref=e441]
+                - generic [ref=e444]: 21.5 MB
+                - generic [ref=e445]: 2026/06/12
+              - generic [ref=e447]:
+                - link "PIX" [ref=e448] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611152105.37830005785872346098627061300669:50001231000000:2800:625D06E792F2007CD31D1A8A1166DE5BB2B293103112DE06005B3F029F0ACAA6.zip?needInitFileName=true
+                  - paragraph [ref=e449]: PIX
+                  - img [ref=e450]
+                - generic [ref=e453]: 23.4 MB
+                - generic [ref=e454]: 2026/06/12
+    - generic [ref=e459]:
+      - heading "产品机框" [level=2] [ref=e460]
+      - generic [ref=e461]:
+        - generic [ref=e462]:
+          - generic [ref=e463]:
+            - img
+          - generic [ref=e464]:
+            - generic [ref=e465]: Mate X6
+            - generic [ref=e466]:
+              - generic [ref=e468]:
+                - link "Photoshop" [ref=e469] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611155725.03815105669802505223012700903016:50001231000000:2800:300BE62835279D14BFACAF798764EFC13A5B9CF788D39BA2BD4A2FBF47B4CDB4.zip?needInitFileName=true
+                  - paragraph [ref=e470]: Photoshop
+                  - img [ref=e471]
+                - generic [ref=e474]: 36.1 MB
+                - generic [ref=e475]: 2026/06/12
+              - generic [ref=e477]:
+                - link "PNG" [ref=e478] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611155705.91655580843045874412692544442675:50001231000000:2800:8C683A14C8F5571E5DF17A1267E3C0BFCA8E4E77CF66AE3F1694F3A1363B8E07.zip?needInitFileName=true
+                  - paragraph [ref=e479]: PNG
+                  - img [ref=e480]
+                - generic [ref=e483]: 22.4 MB
+                - generic [ref=e484]: 2026/06/12
+        - generic [ref=e485]:
+          - generic [ref=e486]:
+            - img
+          - generic [ref=e487]:
+            - generic [ref=e488]: Mate XT
+            - generic [ref=e489]:
+              - generic [ref=e491]:
+                - link "Photoshop" [ref=e492] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611160203.14460196516586647763169617994856:50001231000000:2800:668727EE13AB106AF52891CC5760BA8BF65000C37506B0385CB3E7F58D071E09.zip?needInitFileName=true
+                  - paragraph [ref=e493]: Photoshop
+                  - img [ref=e494]
+                - generic [ref=e497]: 18.1 MB
+                - generic [ref=e498]: 2026/06/12
+              - generic [ref=e500]:
+                - link "PNG" [ref=e501] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611160143.10456010309116437437302133142090:50001231000000:2800:7ED84B175AC946B7596EC0C33F3617173B07B8356AA410B6BCBB963D323E696B.zip?needInitFileName=true
+                  - paragraph [ref=e502]: PNG
+                  - img [ref=e503]
+                - generic [ref=e506]: 74.9 KB
+                - generic [ref=e507]: 2026/06/12
+        - generic [ref=e508]:
+          - generic [ref=e509]:
+            - img
+          - generic [ref=e510]:
+            - generic [ref=e511]: Mate70 Pro
+            - generic [ref=e512]:
+              - generic [ref=e514]:
+                - link "Photoshop" [ref=e515] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611155651.95338343228993586346935380326309:50001231000000:2800:A4499ACAA157FD5C83B568A17EA1AA946C1BFB40F71DF3EC134737881057E91F.zip?needInitFileName=true
+                  - paragraph [ref=e516]: Photoshop
+                  - img [ref=e517]
+                - generic [ref=e520]: 117 KB
+                - generic [ref=e521]: 2026/06/12
+              - generic [ref=e523]:
+                - link "PNG" [ref=e524] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611155642.40961310533278235044617513318941:50001231000000:2800:D7435146B02353531F12C173C45D393731C2B7A51D689F9A2D6B785F0CE7A897.zip?needInitFileName=true
+                  - paragraph [ref=e525]: PNG
+                  - img [ref=e526]
+                - generic [ref=e529]: 1.57 MB
+                - generic [ref=e530]: 2026/06/12
+        - generic [ref=e531]:
+          - generic [ref=e532]:
+            - img
+          - generic [ref=e533]:
+            - generic [ref=e534]: Pura X
+            - generic [ref=e535]:
+              - generic [ref=e537]:
+                - link "Photoshop" [ref=e538] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611163350.30234301629740682507403999571099:50001231000000:2800:4E12287666B6083256485916430893773D0320B30DA0AEA84B291038B1153E70.zip?needInitFileName=true
+                  - paragraph [ref=e539]: Photoshop
+                  - img [ref=e540]
+                - generic [ref=e543]: 36.5 MB
+                - generic [ref=e544]: 2026/06/12
+              - generic [ref=e546]:
+                - link "PNG" [ref=e547] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611163330.50375394787247821166027661215494:50001231000000:2800:D5B20E87892593CD68B9642E93A32B59D5065D15E31A83382CF5007A11735A36.zip?needInitFileName=true
+                  - paragraph [ref=e548]: PNG
+                  - img [ref=e549]
+                - generic [ref=e552]: 284 KB
+                - generic [ref=e553]: 2026/06/12
+        - generic [ref=e554]:
+          - generic [ref=e555]:
+            - img
+          - generic [ref=e556]:
+            - generic [ref=e557]: Pura70 Pro
+            - generic [ref=e558]:
+              - generic [ref=e560]:
+                - link "Photoshop" [ref=e561] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611163409.57818325111742295092604804972879:50001231000000:2800:C668B9B55F7AEB8CBCA29152B87BA4A1BEE44BB468319913309E803DE39DF9A8.zip?needInitFileName=true
+                  - paragraph [ref=e562]: Photoshop
+                  - img [ref=e563]
+                - generic [ref=e566]: 102 KB
+                - generic [ref=e567]: 2026/06/12
+              - generic [ref=e569]:
+                - link "PNG" [ref=e570] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611163359.58979056888687317771393116978022:50001231000000:2800:926CA01253DFB5D5B4330810ABC0C8146C3F1F90B11371245A841188BF0A4C11.zip?needInitFileName=true
+                  - paragraph [ref=e571]: PNG
+                  - img [ref=e572]
+                - generic [ref=e575]: 1.14 MB
+                - generic [ref=e576]: 2026/06/12
+        - generic [ref=e577]:
+          - generic [ref=e578]:
+            - img
+          - generic [ref=e579]:
+            - generic [ref=e580]: Matebook X Pro
+            - generic [ref=e581]:
+              - generic [ref=e583]:
+                - link "Photoshop" [ref=e584] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611163157.22314100257714965962691114272964:50001231000000:2800:62DB3BAB66DF97DAB7251839928594E5DBA0AD77159D01F46B2D321136EDEEF5.zip?needInitFileName=true
+                  - paragraph [ref=e585]: Photoshop
+                  - img [ref=e586]
+                - generic [ref=e589]: 18.4 MB
+                - generic [ref=e590]: 2026/06/12
+              - generic [ref=e592]:
+                - link "PNG" [ref=e593] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611163141.82266592432094476767326608537574:50001231000000:2800:ACCE9992505F111DC80C3B880D4D5BF80ABD0AD527D21AD391B0F4AC3409371C.zip?needInitFileName=true
+                  - paragraph [ref=e594]: PNG
+                  - img [ref=e595]
+                - generic [ref=e598]: 153 KB
+                - generic [ref=e599]: 2026/06/12
+        - generic [ref=e600]:
+          - generic [ref=e601]:
+            - img
+          - generic [ref=e602]:
+            - generic [ref=e603]: Mate 80
+            - generic [ref=e604]:
+              - generic [ref=e606]:
+                - link "Photoshop" [ref=e607] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260617092351.79605818048526971672870529915863:50001231000000:2800:D8A124387413EC4B2DFE57E8411A9D0A74D59862AB8D696895B89674DD0EF03F.zip?needInitFileName=true
+                  - paragraph [ref=e608]: Photoshop
+                  - img [ref=e609]
+                - generic [ref=e612]: 1.69 MB
+                - generic [ref=e613]: 2026/06/12
+              - generic [ref=e615]:
+                - link "PNG" [ref=e616] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260617092345.84327278200368923531351392514501:50001231000000:2800:49B1D9A25C75C74080322D87192F2D4836B54CF898C74CA1C300133A063D1DDF.zip?needInitFileName=true
+                  - paragraph [ref=e617]: PNG
+                  - img [ref=e618]
+                - generic [ref=e621]: 3.54 MB
+                - generic [ref=e622]: 2026/06/17
+        - generic [ref=e623]:
+          - generic [ref=e624]:
+            - img
+          - generic [ref=e625]:
+            - generic [ref=e626]: Pura 90
+            - generic [ref=e629]:
+              - link "PNG" [ref=e630] [cursor=pointer]:
+                - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260617092445.18501231120106617092059685127770:50001231000000:2800:913D800D3032A582F66AA576DF304216E007FF9261902E1F730E028BC5D1B59B.zip?needInitFileName=true
+                - paragraph [ref=e631]: PNG
+                - img [ref=e632]
+              - generic [ref=e635]: 23.5 MB
+              - generic [ref=e636]: 2026/06/17
+        - generic [ref=e637]:
+          - generic [ref=e638]:
+            - img
+          - generic [ref=e639]:
+            - generic [ref=e640]: Matebook Fold
+            - generic [ref=e641]:
+              - generic [ref=e643]:
+                - link "Photoshop" [ref=e644] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260617092425.70436089421440645030978514518465:50001231000000:2800:F668697CC52911A9387AAD4E6A6C217704E0CF64CBD721D4692B28EF7B31A310.zip?needInitFileName=true
+                  - paragraph [ref=e645]: Photoshop
+                  - img [ref=e646]
+                - generic [ref=e649]: 62.8 MB
+                - generic [ref=e650]: 2026/06/12
+              - generic [ref=e652]:
+                - link "PNG" [ref=e653] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260617092359.32167147438232460223337943652972:50001231000000:2800:4E3A4D7F525DD05AFBD7F268AFB1A15E747DCFF2E2F065FD1394A46EACE1BD88.zip?needInitFileName=true
+                  - paragraph [ref=e654]: PNG
+                  - img [ref=e655]
+                - generic [ref=e658]: 4.76 MB
+                - generic [ref=e659]: 2026/06/17
+        - generic [ref=e660]:
+          - generic [ref=e661]:
+            - img
+          - generic [ref=e662]:
+            - generic [ref=e663]: Watch Fit3
+            - generic [ref=e664]:
+              - generic [ref=e666]:
+                - link "Photoshop" [ref=e667] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611163552.48451788483727731155592604965736:50001231000000:2800:E5F3815BF0BBEAB44CF4DA54AFF9F6E262D7E125A7F02E1B2BC361203552A196.zip?needInitFileName=true
+                  - paragraph [ref=e668]: Photoshop
+                  - img [ref=e669]
+                - generic [ref=e672]: 844 KB
+                - generic [ref=e673]: 2026/06/12
+              - generic [ref=e675]:
+                - link "PNG" [ref=e676] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611163429.78094069945699850947073699121083:50001231000000:2800:C66C6C0606DC72CFE678130BB24D618DA1AC7C2416C17BE2F103C38C7126E03F.zip?needInitFileName=true
+                  - paragraph [ref=e677]: PNG
+                  - img [ref=e678]
+                - generic [ref=e681]: 15.6 MB
+                - generic [ref=e682]: 2026/06/12
+        - generic [ref=e683]:
+          - generic [ref=e684]:
+            - img
+          - generic [ref=e685]:
+            - generic [ref=e686]: Watch 5
+            - generic [ref=e687]:
+              - generic [ref=e689]:
+                - link "Photoshop" [ref=e690] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611163611.80498845082280950555964236089513:50001231000000:2800:E570F3C2C575515EFB3D2FB67CC3429B8D34CD89F26994582E1A6950F43F7E32.zip?needInitFileName=true
+                  - paragraph [ref=e691]: Photoshop
+                  - img [ref=e692]
+                - generic [ref=e695]: 716 KB
+                - generic [ref=e696]: 2026/06/12
+              - generic [ref=e698]:
+                - link "PNG" [ref=e699] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611163602.95582319654080181319494876083935:50001231000000:2800:CCA1EF2EE6B18F1698B2B898EB6C6A58574CBEE2A7221C9712C0E1523141209B.zip?needInitFileName=true
+                  - paragraph [ref=e700]: PNG
+                  - img [ref=e701]
+                - generic [ref=e704]: 3.70 MB
+                - generic [ref=e705]: 2026/06/12
+        - generic [ref=e706]:
+          - generic [ref=e707]:
+            - img
+          - generic [ref=e708]:
+            - generic [ref=e709]: Mate TV
+            - generic [ref=e710]:
+              - generic [ref=e712]:
+                - link "Photoshop" [ref=e713] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260616084835.24797164338423248120273781303168:50001231000000:2800:0AEFD4FF571E12128B3B8461E5F5405DC92A6CD85589FB343044F5BAF3C5A14D.zip?needInitFileName=true
+                  - paragraph [ref=e714]: Photoshop
+                  - img [ref=e715]
+                - generic [ref=e718]: 2.76 MB
+                - generic [ref=e719]: 2026/06/12
+              - generic [ref=e721]:
+                - link "PNG" [ref=e722] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260616084826.48859360144584724910553938400314:50001231000000:2800:D077FC6DD086083A30F0B9416E60E27794DB08E1FB991CCE2D9A18CDBED98F2B.zip?needInitFileName=true
+                  - paragraph [ref=e723]: PNG
+                  - img [ref=e724]
+                - generic [ref=e727]: 799 KB
+                - generic [ref=e728]: 2026/06/12
+        - generic [ref=e729]:
+          - generic [ref=e730]:
+            - img
+          - generic [ref=e731]:
+            - generic [ref=e732]: MatePad Pro
+            - generic [ref=e733]:
+              - generic [ref=e735]:
+                - link "Photoshop" [ref=e736] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260729113706.61426423279149253542550759804136:50001231000000:2800:EB13F4533FCDFB72BC503F296A0A2CA119960096FB9D447776EF436A16C5685A.zip?needInitFileName=true
+                  - paragraph [ref=e737]: Photoshop
+                  - img [ref=e738]
+                - generic [ref=e741]: 7.92 MB
+                - generic [ref=e742]: 2026/07/29
+              - generic [ref=e744]:
+                - link "PNG" [ref=e745] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260729113656.16006527271006000645722949831744:50001231000000:2800:67465AC0154F324FCCA9F00E51E87367C647A16A3D76574ACFA6FE879FE6A513.zip?needInitFileName=true
+                  - paragraph [ref=e746]: PNG
+                  - img [ref=e747]
+                - generic [ref=e750]: 1.58 MB
+                - generic [ref=e751]: 2026/07/29
+    - generic [ref=e756]:
+      - heading "品牌与产品" [level=2] [ref=e757]
+      - generic [ref=e758]:
+        - generic [ref=e759]:
+          - generic [ref=e760]:
+            - img
+          - generic [ref=e761]:
+            - generic [ref=e762]: 华为品牌资源
+            - generic [ref=e763]:
+              - generic [ref=e765]:
+                - link "Sketch,PIX" [ref=e766] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260622102138.09993075323838461066810173595284:50001231000000:2800:940B1EBCBDD2F45029A692F808679F04764707060F7FB38AAFDA20256AAC702A.zip?needInitFileName=true
+                  - paragraph [ref=e767]: Sketch,PIX
+                  - img [ref=e768]
+                - generic [ref=e771]: 198 KB
+                - generic [ref=e772]: 2026/06/12
+              - generic [ref=e774]:
+                - link "SVG, PNG" [ref=e775] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260622101732.99818861409129566894562995460251:50001231000000:2800:4410EC974F804192D32DA5CEB58EE24E8F5B6E39BA5B9828DA5885648F695C79.zip?needInitFileName=true
+                  - paragraph [ref=e776]: SVG, PNG
+                  - img [ref=e777]
+                - generic [ref=e780]: 989 KB
+                - generic [ref=e781]: 2026/06/12
+        - generic [ref=e782]:
+          - generic [ref=e783]:
+            - img
+          - generic [ref=e784]:
+            - generic [ref=e785]: 华为分享图标
+            - generic [ref=e786]:
+              - generic [ref=e788]:
+                - link "Sketch,PIX" [ref=e789] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611163641.87544689595179381402608682979397:50001231000000:2800:88148306F588DEC99A33C3CBA73633344D7DB190D7E4606348466BDD3B1E91DA.zip?needInitFileName=true
+                  - paragraph [ref=e790]: Sketch,PIX
+                  - img [ref=e791]
+                - generic [ref=e794]: 241 KB
+                - generic [ref=e795]: 2026/06/12
+              - generic [ref=e797]:
+                - link "SVG, PNG" [ref=e798] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611163805.71293369677220123704387033509533:50001231000000:2800:BD560094237AC8751BEA8C3C9A37EB14E62F8DEE66BAE4A2B42544D96AC1CDB8.zip?needInitFileName=true
+                  - paragraph [ref=e799]: SVG, PNG
+                  - img [ref=e800]
+                - generic [ref=e803]: 158 KB
+                - generic [ref=e804]: 2026/06/12
+        - generic [ref=e805]:
+          - generic [ref=e806]:
+            - img
+          - generic [ref=e807]:
+            - generic [ref=e808]: 使用华为账号登录
+            - generic [ref=e809]:
+              - generic [ref=e811]:
+                - link "Sketch,PIX" [ref=e812] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611171511.10630004931748093536712892790047:50001231000000:2800:BE314AA41AF2C60AB30813A6755ED2E8FFF7D00783A8E6773FD6EDBAA501694E.zip?needInitFileName=true
+                  - paragraph [ref=e813]: Sketch,PIX
+                  - img [ref=e814]
+                - generic [ref=e817]: 62.5 KB
+                - generic [ref=e818]: 2026/06/12
+              - generic [ref=e820]:
+                - link "SVG, PNG" [ref=e821] [cursor=pointer]:
+                  - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611171522.90684147721476265766938986588501:50001231000000:2800:53797C1CAA192E8B9322A73BFE62D379ADF9160D5A36F937823BB760239C939E.zip?needInitFileName=true
+                  - paragraph [ref=e822]: SVG, PNG
+                  - img [ref=e823]
+                - generic [ref=e826]: 27.7 KB
+                - generic [ref=e827]: 2026/06/12
+        - generic [ref=e828]:
+          - generic [ref=e829]:
+            - img
+          - generic [ref=e830]:
+            - generic [ref=e831]: 华为支付图标
+            - generic [ref=e834]:
+              - link "SVG, PNG" [ref=e835] [cursor=pointer]:
+                - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611171426.56608684767199901195402941487889:50001231000000:2800:5E14F7BA13CB3C664078DE3779BBBE97173A8315D29BD4C0578EF1A912FBACDE.zip?needInitFileName=true
+                - paragraph [ref=e836]: SVG, PNG
+                - img [ref=e837]
+              - generic [ref=e840]: 298 KB
+              - generic [ref=e841]: 2026/06/12
+        - generic [ref=e842]:
+          - generic [ref=e843]:
+            - img
+          - generic [ref=e844]:
+            - generic [ref=e845]: 元服务静默登录默认头像
+            - generic [ref=e848]:
+              - link "SVG, PNG" [ref=e849] [cursor=pointer]:
+                - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611171544.50011268687460870554121303634659:50001231000000:2800:602DB4BEA39BEA31BE9C69E0DD68667F1E38AFE7D6DD47448D191593365FFE24.zip?needInitFileName=true
+                - paragraph [ref=e850]: SVG, PNG
+                - img [ref=e851]
+              - generic [ref=e854]: 12.2 KB
+              - generic [ref=e855]: 2026/06/12
+        - generic [ref=e856]:
+          - generic [ref=e857]:
+            - img
+          - generic [ref=e858]:
+            - generic [ref=e859]: 华为应用市场图标
+            - generic [ref=e862]:
+              - link "SVG, PNG" [ref=e863] [cursor=pointer]:
+                - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611171407.85245456581695949705808035220398:50001231000000:2800:D61765232E06BB41B1B4363E7B14FED58E3FFB92779684ACC619129039782520.zip?needInitFileName=true
+                - paragraph [ref=e864]: SVG, PNG
+                - img [ref=e865]
+              - generic [ref=e868]: 171 KB
+              - generic [ref=e869]: 2026/06/12
+    - generic [ref=e874]:
+      - heading "字体与图标" [level=2] [ref=e875]
+      - generic [ref=e876]:
+        - generic [ref=e877]:
+          - generic [ref=e878]:
+            - img "手机/折叠屏/平板"
+          - generic [ref=e879]:
+            - generic [ref=e880]: HarmonyOS Sans 字体
+            - generic [ref=e883]:
+              - link "立即下载" [ref=e884] [cursor=pointer]:
+                - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260627152129.89276966309836366526585265125586:50001231000000:2800:A0161E048334FE0271F9F5ECBBD5070D17381C7846125F4D7109DBC7B532C715.zip?needInitFileName=true
+                - paragraph [ref=e885]: 立即下载
+                - img [ref=e886]
+              - generic [ref=e889]: 21.6 MB
+              - generic [ref=e890]: 2026/06/12
+        - generic [ref=e891]:
+          - generic [ref=e892]:
+            - img "手机/折叠屏/平板"
+          - generic [ref=e893]:
+            - generic [ref=e894]: HarmonyOS 应用图标
+            - generic [ref=e897]:
+              - link "立即下载" [ref=e898] [cursor=pointer]:
+                - /url: https://alliance-communityfile-drcn.dbankcdn.com/FileServer/getFile/cmtyManage/011/111/111/0000000000011111111.20260611171642.78007656459889216167895516089761:50001231000000:2800:578F5B2EE3BAA2B053ACA6CF46932B997FE4B5E695F7B1599F329394B159B087.zip?needInitFileName=true
+                - paragraph [ref=e899]: 立即下载
+                - img [ref=e900]
+              - generic [ref=e903]: 93.3 MB
+              - generic [ref=e904]: 2026/06/12
+    - generic [ref=e910]:
+      - generic [ref=e911]:
+        - generic [ref=e913]: HMOS 代码工坊
+        - generic [ref=e915]: 汇聚华为官方优质组件样式、设计效果与代码案例，覆盖多场景设计开发需求，帮助你快速掌握 HarmonyOS 应用的设计与开发技巧，加速项目落地进程。
+        - link "了解详情" [ref=e917] [cursor=pointer]:
+          - /url: https://developer.huawei.com/consumer/cn/forum/topic/0204188236313519626?fid=0109140870620153026
+      - img "HarmonyOS Symbol" [ref=e919]
+    - generic [ref=e925]:
+      - generic [ref=e926]:
+        - generic [ref=e928]: HarmonyOS Symbol
+        - generic [ref=e930]: HarmonyOS Symbol 系统图标设计是一次重要的演进。它不仅具备了字体属性，可以与系统字体无缝对接，而且超越了传统的静态图标功能，集成了多层颜色模式和分层动态效果。
+        - link "了解详情" [ref=e932] [cursor=pointer]:
+          - /url: https://developer.huawei.com/consumer/cn/design/harmonyos-symbol/
+      - img "HarmonyOS Symbol" [ref=e934]
+  - generic [ref=e939]:
+    - generic [ref=e940]:
+      - generic [ref=e941]:
+        - generic [ref=e944]:
+          - paragraph [ref=e947]: 工具
+          - list [ref=e950]:
+            - listitem [ref=e951]:
+              - link "ArkTS" [ref=e952] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/arkts/
+            - listitem [ref=e953]:
+              - link "ArkUI" [ref=e954] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/arkui/
+            - listitem [ref=e955]:
+              - link "ArkCompiler" [ref=e956] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/arkcompiler/
+            - listitem [ref=e957]:
+              - link "DevEco Studio" [ref=e958] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/deveco-studio/
+            - listitem [ref=e959]:
+              - link "DevEco Testing" [ref=e960] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/deveco-testing/
+            - listitem [ref=e961]:
+              - link "DevEco Device Tool" [ref=e962] [cursor=pointer]:
+                - /url: https://device.harmonyos.com/cn/develop/ide
+            - listitem [ref=e963]:
+              - link "DevEco Service" [ref=e964] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/deveco-service
+            - listitem [ref=e965]:
+              - link "仓颉体验版" [ref=e966] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/cangjie/
+            - listitem [ref=e967]:
+              - link "HarmonyOS Symbol" [ref=e968] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/design/harmonyos-symbol
+        - generic [ref=e971]:
+          - paragraph [ref=e974]: 开放能力
+          - list [ref=e977]:
+            - listitem [ref=e978]:
+              - link "Account Kit" [ref=e979] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/sdk/account-kit
+            - listitem [ref=e980]:
+              - link "Ads Kit" [ref=e981] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/sdk/ads-kit
+            - listitem [ref=e982]:
+              - link "Core Speech Kit" [ref=e983] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/sdk/core-speech-kit
+            - listitem [ref=e984]:
+              - link "Core Vision Kit" [ref=e985] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/sdk/core-vision-kit
+            - listitem [ref=e986]:
+              - link "IAP Kit" [ref=e987] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/sdk/iap-kit
+            - listitem [ref=e988]:
+              - link "Intents Kit" [ref=e989] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/sdk/intents-kit
+            - listitem [ref=e990]:
+              - link "Location Kit" [ref=e991] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/sdk/location-kit
+            - listitem [ref=e992]:
+              - link "Live View Kit" [ref=e993] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/sdk/live-view-kit
+            - listitem [ref=e994]:
+              - link "Payment Kit" [ref=e995] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/sdk/payment-kit
+            - listitem [ref=e996]:
+              - link "Push Kit" [ref=e997] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/sdk/push-kit
+            - listitem [ref=e998]:
+              - link "Scan Kit" [ref=e999] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/sdk/scan-kit
+        - generic [ref=e1002]:
+          - paragraph [ref=e1005]: 资源
+          - list [ref=e1008]:
+            - listitem [ref=e1009]:
+              - link "文档" [ref=e1010] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/doc/
+            - listitem [ref=e1011]:
+              - link "示例代码" [ref=e1012] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/samples/
+            - listitem [ref=e1013]:
+              - link "组件" [ref=e1014] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/market/prod-list/4437348dd20f48249540d1b57ef2eff6/categoryL2_202410080003
+            - listitem [ref=e1015]:
+              - link "模板" [ref=e1016] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/market/prod-list/4437348dd20f48249540d1b57ef2eff6/categoryL2_202410080002
+            - listitem [ref=e1017]:
+              - link "鸿蒙生态伙伴 SDK" [ref=e1018] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/market/landing/SDK?ha_source=gwyj
+            - listitem [ref=e1019]:
+              - link "最佳实践" [ref=e1020] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/doc/best-practices/bpta-best-practices-overview
+            - listitem [ref=e1021]:
+              - link "下载中心" [ref=e1022] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/download/
+            - listitem [ref=e1023]:
+              - link "视频课程" [ref=e1024] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/training/result?type1=101718934267126043&orderBy=1
+            - listitem [ref=e1025]:
+              - link "Codelabs" [ref=e1026] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/codelabsPortal/serviceTypes/43
+            - listitem [ref=e1027]:
+              - link "考试认证" [ref=e1028] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/training/dev-certification/a617e0d3bc144624864a04edb951f6c4?ha_source=GWxfk&ha_sourceId=89000474
+            - listitem [ref=e1029]:
+              - link "行业解决方案" [ref=e1030] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/solution/harmonyos/?ha_source=gwyj&ha_sourceId=89000071
+            - listitem [ref=e1031]:
+              - link "开发者月刊" [ref=e1032] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/monthly/
+        - generic [ref=e1035]:
+          - paragraph [ref=e1038]: 支持
+          - list [ref=e1041]:
+            - listitem [ref=e1042]:
+              - link "服务公告" [ref=e1043] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/notice
+            - listitem [ref=e1044]:
+              - link "支持文档" [ref=e1045] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/doc/start/introduction-0000001053446472
+            - listitem [ref=e1046]:
+              - link "AI 助手" [ref=e1047] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/customerService/#/bot-dev-top/faq-top/faq-talk-top
+            - listitem [ref=e1048]:
+              - link "社区问答" [ref=e1049] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/forum/
+            - listitem [ref=e1050]:
+              - link "在线提单" [ref=e1051] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/support/feedback/#/
+            - listitem [ref=e1052]:
+              - link "快速入门" [ref=e1053] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/develop-novice-guide/
+            - listitem [ref=e1054]:
+              - link "联系我们" [ref=e1055] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/support/contactUs
+            - listitem [ref=e1056]:
+              - link "协议与准则" [ref=e1057] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/agreement/
+            - listitem [ref=e1058]:
+              - link "举报中心" [ref=e1059] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/report
+            - listitem [ref=e1060]:
+              - link "联盟 APP" [ref=e1061] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/huawei-app/
+        - generic [ref=e1064]:
+          - paragraph [ref=e1067]: Programs
+          - list [ref=e1070]:
+            - listitem [ref=e1071]:
+              - link "HUAWEI Developer Groups" [ref=e1072] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/programs/hdg/
+            - listitem [ref=e1073]:
+              - link "HUAWEI Developer Experts" [ref=e1074] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/programs/hde
+            - listitem [ref=e1075]:
+              - link "HUAWEI Student Developers" [ref=e1076] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/programs/hsd
+            - listitem [ref=e1077]:
+              - link "鸿蒙极客" [ref=e1078] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/programs/harmonyosgeek/
+            - listitem [ref=e1079]:
+              - link "耀星计划" [ref=e1080] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/activity/yaoxingActivity/detail/617
+        - generic [ref=e1083]:
+          - paragraph [ref=e1086]: 活动
+          - list [ref=e1089]:
+            - listitem [ref=e1090]:
+              - link "活动概览" [ref=e1091] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/activity/
+            - listitem [ref=e1092]:
+              - link "HUAWEI Developer Day" [ref=e1093] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/activity/hdd/
+            - listitem [ref=e1094]:
+              - link "HarmonyOS Tech Talk" [ref=e1095] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/training/study-path/401748584706136426
+            - listitem [ref=e1096]:
+              - link "2026 HarmonyOS 创新赛·极客赛道" [ref=e1097] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/activity/digixActivity/digixcmsdetail/101773710117484023
+            - listitem [ref=e1098]:
+              - link "华为开发者大会（HDC）" [ref=e1099] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/hdc/2026/
+            - listitem [ref=e1100]:
+              - link "鸿蒙应用开发者激励计划 2026" [ref=e1101] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/activity/harmonyos-incentive/2026?ha_source=yejiao&ha_sourceId=70000006
+            - listitem [ref=e1102]:
+              - link "鸿蒙高校创新赛" [ref=e1103] [cursor=pointer]:
+                - /url: https://developer.huawei.com/consumer/cn/activity/incentive/C4
+      - generic [ref=e1104]:
+        - generic [ref=e1106]:
+          - generic [ref=e1108]: 友情链接
+          - generic [ref=e1109]:
+            - link "华为官网" [ref=e1110] [cursor=pointer]:
+              - /url: https://www.huawei.com/cn/corporate-information
+            - link "消费者业务网站" [ref=e1111] [cursor=pointer]:
+              - /url: https://consumer.huawei.com/cn/
+            - link "华为商城" [ref=e1112] [cursor=pointer]:
+              - /url: https://www.vmall.com/
+            - link "HarmonyOS" [ref=e1113] [cursor=pointer]:
+              - /url: https://consumer.huawei.com/cn/harmonyos-7/
+            - link "华为终端云空间" [ref=e1114] [cursor=pointer]:
+              - /url: https://cloud.huawei.com/
+            - link "华为云" [ref=e1115] [cursor=pointer]:
+              - /url: https://www.huaweicloud.com/
+        - generic [ref=e1116]:
+          - generic [ref=e1119] [cursor=pointer]: 简体中文
+          - generic [ref=e1121]:
+            - img "img" [ref=e1123] [cursor=pointer]
+            - img "img" [ref=e1125] [cursor=pointer]
+            - img "img" [ref=e1127]
+            - img "img" [ref=e1129]
+            - img "img" [ref=e1131] [cursor=pointer]
+            - img "img" [ref=e1133] [cursor=pointer]
+    - generic [ref=e1135]:
+      - paragraph [ref=e1138]: 华为开发者联盟 版权所有 ©2026
+      - generic [ref=e1139]:
+        - generic [ref=e1140]:
+          - link "问题反馈" [ref=e1141] [cursor=pointer]:
+            - /url: https://developer.huawei.com/consumer/cn/support/feedback/#/
+          - text: "|"
+        - generic [ref=e1142]:
+          - link "使用条款" [ref=e1143] [cursor=pointer]:
+            - /url: https://developer.huawei.com/consumer/cn/devservice/use
+          - text: "|"
+        - generic [ref=e1144]:
+          - link "华为开发者联盟用户协议" [ref=e1145] [cursor=pointer]:
+            - /url: https://developer.huawei.com/consumer/cn/doc/start/useragreement-0000001494912825
+          - text: "|"
+        - generic [ref=e1146]:
+          - link "关于华为开发者联盟与隐私的声明" [ref=e1147] [cursor=pointer]:
+            - /url: https://developer.huawei.com/consumer/cn/devservice/term
+          - text: "|"
+        - generic [ref=e1148]:
+          - link "Cookies" [ref=e1149] [cursor=pointer]:
+            - /url: https://consumer.huawei.com/cn/legal/cookie-policy/
+          - text: "|"
+        - link "开源软件声明" [ref=e1151] [cursor=pointer]:
+          - /url: https://developer.huawei.com/consumer/cn/opensource/

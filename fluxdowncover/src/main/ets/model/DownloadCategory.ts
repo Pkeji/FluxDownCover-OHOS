@@ -1,3 +1,6 @@
+// ArkUI V2 状态装饰器：.ts 为独立模块、SDK 全局装饰器声明不注入，故在此做模块级类型声明（不污染全局）
+declare const ObservedV2: ClassDecorator;
+declare const Trace: PropertyDecorator;
 /**
  * User-defined download category (FluxDown "分类管理").
  * A category groups tasks by extension rules and can override the save directory.

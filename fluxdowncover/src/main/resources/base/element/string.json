@@ -25,6 +25,14 @@
       "value": "需要读取网络状态以管理下载任务"
     },
     {
+      "name": "perm_bundle_reason",
+      "value": "用于检测QQ、浏览器等应用是否安装，以便选择合适的方式打开加群链接或下载链接"
+    },
+    {
+      "name": "perm_imagevideo_reason",
+      "value": "用于将收款码图片保存到系统相册"
+    },
+    {
       "name": "perm_pasteboard_reason",
       "value": "需要读取剪贴板以自动检测下载链接"
     },

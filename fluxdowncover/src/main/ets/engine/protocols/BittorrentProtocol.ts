@@ -65,9 +65,14 @@ export async function downloadBittorrent(
     throw new Error('BitTorrent download failed: dirPath is empty. Ensure DownloadEngine sets a valid default directory.');
   }
   // Ensure the output directory exists.
-  // NOTE: fs.accessSync returns boolean (false if not exist) — it does NOT throw.
-  if (!fs.accessSync(task.dirPath)) {
-    fs.mkdirSync(task.dirPath);
+  // NOTE: fs.accessSync returns boolean (false if not exist); both it and mkdirSync are @throws,
+  // and mkdirSync may throw when the directory already exists, so the ensure step is non-fatal here.
+  try {
+    if (!fs.accessSync(task.dirPath)) {
+      fs.mkdirSync(task.dirPath);
+    }
+  } catch (_e) {
+    // 目录已存在或访问异常时忽略；若确实不可写，后续 openSync 会抛出真实错误
   }
   task.filePath = `${task.dirPath}/${task.fileName}`;
 
@@ -202,8 +207,15 @@ async function loadTorrentMeta(url: string): Promise<TorrentMeta> {
       });
       const data = new Uint8Array(resp.result as ArrayBuffer);
       return parseTorrentBytes(data);
+    } catch (e) {
+      // 种子下载/解析失败向上传播
+      throw e as Error;
     } finally {
-      req.destroy();
+      try {
+        req.destroy();
+      } catch (_e) {
+        // ignore destroy error
+      }
     }
   }
 
@@ -216,7 +228,13 @@ async function loadTorrentMeta(url: string): Promise<TorrentMeta> {
   if (url.startsWith('content://')) {
     return parseTorrentFile(url);
   }
-  if (!fs.accessSync(filePath)) {
+  let accessible = false;
+  try {
+    accessible = fs.accessSync(filePath);
+  } catch (_e) {
+    accessible = false;
+  }
+  if (!accessible) {
     throw new Error(`无法访问 .torrent 文件: ${filePath}（文件不存在或应用无权限访问）`);
   }
   return parseTorrentFile(filePath);

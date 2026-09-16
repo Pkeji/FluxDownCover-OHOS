@@ -1,0 +1,314 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e7]:
+        - generic [ref=e8]:
+          - img [ref=e10] [cursor=pointer]
+          - heading "L HarmonyOS_Samples / live-view-kit_-sample-code_-clientdemo_-arkts" [level=2] [ref=e13]:
+            - link "L" [ref=e14] [cursor=pointer]:
+              - /url: /HarmonyOS_Samples
+              - generic [ref=e16]: L
+            - generic [ref=e17]:
+              - generic [ref=e19]:
+                - link "HarmonyOS_Samples" [ref=e20] [cursor=pointer]:
+                  - /url: /HarmonyOS_Samples
+                - generic [ref=e21]: /
+              - link "live-view-kit_-sample-code_-clientdemo_-arkts" [ref=e23] [cursor=pointer]:
+                - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts
+        - generic [ref=e27]:
+          - img [ref=e30]
+          - generic:
+            - textbox
+        - generic [ref=e32]:
+          - link [ref=e33] [cursor=pointer]:
+            - /url: https://gitcode.com/notice?message_sate=countNotRead
+            - img [ref=e35]
+          - generic [ref=e40] [cursor=pointer]: G
+    - generic [ref=e41]:
+      - generic [ref=e43]:
+        - generic [ref=e45]:
+          - list [ref=e46]:
+            - listitem [ref=e47]:
+              - img [ref=e48]
+              - generic [ref=e50]: Others
+            - listitem [ref=e51]:
+              - img [ref=e52]
+              - generic [ref=e54]: ArkTS
+            - listitem [ref=e55]:
+              - img [ref=e56]
+              - generic [ref=e58]: 27 次提交
+          - generic [ref=e59]:
+            - generic [ref=e60]:
+              - button "分享" [ref=e61] [cursor=pointer]:
+                - img [ref=e62]
+              - button "0" [ref=e64] [cursor=pointer]:
+                - img [ref=e65]
+                - generic [ref=e68]: "0"
+              - generic [ref=e69]:
+                - generic [ref=e70] [cursor=pointer]:
+                  - img [ref=e72]
+                  - generic [ref=e75]: "2"
+                - button "加入合集" [ref=e76] [cursor=pointer]:
+                  - img [ref=e77]
+              - generic [ref=e79]:
+                - button [ref=e80] [cursor=pointer]:
+                  - img [ref=e81]
+                - link "2" [ref=e83] [cursor=pointer]:
+                  - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/forks
+                  - generic [ref=e84]: "2"
+                - button "已存在的fork项目" [ref=e85] [cursor=pointer]:
+                  - img [ref=e86]
+            - generic [ref=e88]:
+              - button "克隆到本地" [ref=e89] [cursor=pointer]:
+                - img [ref=e90]
+              - button "下载zip" [ref=e92] [cursor=pointer]:
+                - img [ref=e93]
+        - generic [ref=e100]:
+          - link "介绍" [ref=e101] [cursor=pointer]:
+            - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts
+            - generic [ref=e103]:
+              - img [ref=e105]
+              - generic [ref=e107]: 介绍
+          - link "代码" [ref=e108] [cursor=pointer]:
+            - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/tree/master
+            - generic [ref=e110]:
+              - img [ref=e112]
+              - generic [ref=e114]: 代码
+          - link "Issues" [ref=e115] [cursor=pointer]:
+            - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/issues
+            - generic [ref=e117]:
+              - img [ref=e119]
+              - generic [ref=e121]: Issues
+          - link "Pull Requests" [ref=e122] [cursor=pointer]:
+            - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/pulls
+            - generic [ref=e124]:
+              - img [ref=e126]
+              - generic [ref=e128]: Pull Requests
+          - link "项目讨论" [ref=e129] [cursor=pointer]:
+            - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/discussions
+            - generic [ref=e131]:
+              - img [ref=e133]
+              - generic [ref=e135]: 项目讨论
+          - link "Wiki" [ref=e136] [cursor=pointer]:
+            - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/wiki
+            - generic [ref=e138]:
+              - img [ref=e140]
+              - generic [ref=e142]: Wiki
+          - link "分析" [ref=e143] [cursor=pointer]:
+            - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/analysis
+            - generic [ref=e145]:
+              - img [ref=e147]
+              - generic [ref=e149]: 分析
+      - main [ref=e154]:
+        - generic [ref=e156]:
+          - generic [ref=e157]:
+            - generic [ref=e158]:
+              - paragraph [ref=e159]: 基于HarmonyOS实现了即时配送场景下实况窗的创建、更新和结束功能。
+              - generic [ref=e160]:
+                - generic [ref=e162]:
+                  - generic [ref=e163]:
+                    - button "目录" [ref=e164] [cursor=pointer]:
+                      - img [ref=e165]
+                    - generic [ref=e167]:
+                      - button "README" [ref=e168] [cursor=pointer]:
+                        - img [ref=e169]
+                        - generic [ref=e171]: README
+                      - button "Others" [ref=e172] [cursor=pointer]:
+                        - img [ref=e173]
+                        - generic [ref=e175]: Others
+                  - link "编辑 README" [ref=e177] [cursor=pointer]:
+                    - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/edit/master/README.md
+                    - img [ref=e178]
+                - generic [ref=e183]:
+                  - heading "实现多场景实况窗展示功能" [level=1] [ref=e184]:
+                    - link [ref=e185] [cursor=pointer]:
+                      - /url: "#实现多场景实况窗展示功能"
+                    - text: 实现多场景实况窗展示功能
+                  - heading "简介" [level=2] [ref=e186]:
+                    - link [ref=e187] [cursor=pointer]:
+                      - /url: "#简介"
+                    - text: 简介
+                  - paragraph [ref=e188]: 本示例基于Live View Kit（实况窗服务）实现即时配送场景、航班出行等场景下实况窗的创建、更新和结束功能。
+                  - heading "相关概念" [level=2] [ref=e189]:
+                    - link [ref=e190] [cursor=pointer]:
+                      - /url: "#相关概念"
+                    - text: 相关概念
+                  - list [ref=e191]:
+                    - listitem [ref=e192]: 实况窗：实况窗是一种帮助用户聚焦正在进行的任务，方便快速查看和即时处理的通知形态。实况窗具有时效性、时段性、变化性的特点。
+                    - listitem [ref=e193]: 组件：Demo中主要使用了Text、Image等组件。
+                    - listitem [ref=e194]: liveViewManager：本模块提供Live View Kit的基础能力，包括创建、更新和停止实况窗、获取实况窗和检查实况窗开关的功能。
+                  - heading "实际效果" [level=2] [ref=e195]:
+                    - link [ref=e196] [cursor=pointer]:
+                      - /url: "#实际效果"
+                    - text: 实际效果
+                  - heading "界面展示" [level=3] [ref=e197]:
+                    - link [ref=e198] [cursor=pointer]:
+                      - /url: "#界面展示"
+                    - text: 界面展示
+                  - paragraph [ref=e199]: 在应用主页面中有多个场景的卡片，点击对应卡片，即可跳转到该场景的页面。 通过场景页面中的各个按钮，可以进行实况窗的创建、更新与结束，查看该场景中实况窗更新的流程（流程仅供参考，用户可自行定义）。
+                  - table [ref=e200]:
+                    - rowgroup [ref=e201]:
+                      - row "应用主页面 场景页面(以即时配送为例) 实况窗样例(以即时配送为例)" [ref=e202]:
+                        - columnheader "应用主页面" [ref=e203]
+                        - columnheader "场景页面(以即时配送为例)" [ref=e204]
+                        - columnheader "实况窗样例(以即时配送为例)" [ref=e205]
+                    - rowgroup [ref=e206]:
+                      - row [ref=e207]:
+                        - cell [ref=e208]
+                        - cell [ref=e209]
+                        - cell [ref=e210]
+                  - paragraph [ref=e211]: 左右文本模板(适用于航班场景/高铁场景)：赏月/夕阳/雨雪天气等卡片背景效果展示
+                  - table [ref=e212]:
+                    - rowgroup [ref=e213]:
+                      - row "赏月卡片背景 夕阳卡片背景 雨雪天气卡片背景" [ref=e214]:
+                        - columnheader "赏月卡片背景" [ref=e215]
+                        - columnheader "夕阳卡片背景" [ref=e216]
+                        - columnheader "雨雪天气卡片背景" [ref=e217]
+                    - rowgroup [ref=e218]:
+                      - row [ref=e219]:
+                        - cell [ref=e220]
+                        - cell [ref=e221]
+                        - cell [ref=e222]
+                  - heading "场景与状态" [level=3] [ref=e223]:
+                    - link [ref=e224] [cursor=pointer]:
+                      - /url: "#场景与状态"
+                    - text: 场景与状态
+                  - list [ref=e225]:
+                    - listitem [ref=e226]: 即时配送：待支付、待商家接单、待骑手接单、骑手已接单、骑手已到店、商品配送中、商品放入取餐柜和商品已送达
+                    - listitem [ref=e227]: 打车出行：呼叫车辆中、行程即将开始、司机正在赶来、司机已到达上车点、正在去往目的地、行程结束、待支付
+                    - listitem [ref=e228]: 高铁旅行：计划出发、已安检、检票提醒、已检票、停止检票、已出发、列车运行中、已到达
+                    - listitem [ref=e229]: 排队叫号：取号、排队中、即将到号、叫号中、排队完成
+                    - listitem [ref=e230]: 赛事比分：第一节开始、更新进展（进展一/进展二/进展三）、暂停、暂停结束、中场休息、第二节开始、比赛结束
+                    - listitem [ref=e231]: 导航：导航开始、提供导向（导向一/导向二）、路线变更、导航结束
+                    - listitem [ref=e232]: 航旅出行：计划出发、待值机、已值机、已安检、开始登机、催促登机、已登机、结束登机、即将起飞、已起飞、已到达、提醒行李转盘、结束提醒、用户退票、航班取消、航班晚点、改签
+                    - listitem [ref=e233]: 计时：正计时、倒计时、暂停计时、继续计时、结束计时
+                    - listitem [ref=e234]: 共享租赁：提交订单、更新进展、结束订单、暂停租赁
+                    - listitem [ref=e235]: 取餐：待支付、等待商家确认、正在备餐、待取餐、已取餐、订单已完成、取消订单
+                    - listitem [ref=e236]: 运动锻炼：开始运动、更新进展（进展一/进展二/进展三）、运动结束、运动暂停
+                  - paragraph [ref=e237]:
+                    - text: 场景设计规范可查看
+                    - link "实况窗场景节点设计参考" [ref=e238] [cursor=pointer]:
+                      - /url: https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/liveview-design-formula#section596543013594
+                    - text: 。
+                  - heading "工程目录" [level=2] [ref=e239]:
+                    - link [ref=e240] [cursor=pointer]:
+                      - /url: "#工程目录"
+                    - text: 工程目录
+                  - generic [ref=e241]:
+                    - code [ref=e243]: ├─entry/src/main/ets // 代码区 │ ├─components // 存放UI组件目录 │ │ ├─BottomTip.ets // 底部提示组件 │ │ ├─InstantPageButton.ets // 页面按钮组件 │ │ └─InstantPageSplit.ets // 页面分割线组件 │ ├─entryability │ │ └─EntryAbility.ets // 程序入口类 │ ├─pages // 存放页面文件目录 │ │ ├─Index.ets // 应用主页面，选择实况窗应用场景 │ │ ├─InstantDelivery.ets // 即时配送页面 │ │ ├─TaxiHailing.ets // 打车出行页面 │ │ ├─TrainDeparture.ets // 高铁旅行页面 │ │ ├─QueueingUp.ets // 排队叫号页面 │ │ ├─MatchScore.ets // 赛事比分页面 │ │ ├─Navigation.ets // 导航页面 │ │ ├─FlightTravel.ets // 航旅出行页面 │ │ ├─Timer.ets // 计时页面 │ │ ├─RentShare.ets // 共享租赁页面 │ │ ├─PickUp.ets // 取餐页面 │ │ └─Workout.ets // 运动锻炼页面 │ ├─utils // 存放工具类文件目录 │ │ ├─CommonUtil.ets // 通用方法工具类 │ │ ├─ContextUtil.ets // 上下文工具类 │ │ ├─ImageUtil.ets // 图片工具类 │ │ ├─LogUtil.ets // 日志工具类 │ │ ├─DeliveryLiveViewUtil.ets // 即时配送实况窗工具类 │ │ ├─TaxiLiveViewUtil.ets // 打车出行实况窗工具类 │ │ ├─TrainLiveViewUtil.ets // 高铁旅行实况窗工具类 │ │ ├─QueueLiveViewUtil.ets // 排队叫号实况窗工具类 │ │ ├─ScoreLiveViewUtil.ets // 赛事比分实况窗工具类 │ │ ├─NavigationLiveViewUtil.ets // 导航实况窗工具类 │ │ ├─FlightLiveViewUtil.ets // 航旅出行实况窗工具类 │ │ ├─TimerUtil.ets // 计时实况窗工具类 │ │ ├─RentLiveViewUtil.ets // 共享租赁实况窗工具类 │ │ ├─PickLiveViewUtil.ets // 取餐实况窗工具类 │ │ └─WorkoutLiveViewUtil.ets // 运动锻炼工具类 └─entry/src/main/resources // 资源文件目录
+                    - button "copy code" [ref=e244] [cursor=pointer]:
+                      - img
+                  - heading "相关权限" [level=2] [ref=e245]:
+                    - link [ref=e246] [cursor=pointer]:
+                      - /url: "#相关权限"
+                    - text: 相关权限
+                  - list [ref=e247]:
+                    - listitem [ref=e248]:
+                      - paragraph [ref=e249]:
+                        - text: 若您需要使用本Demo，请替换AppScope/app.json5文件内的bundleName为您的包名。
+                        - img "img.png" [ref=e250]
+                    - listitem [ref=e251]:
+                      - paragraph [ref=e252]:
+                        - text: 若您自己的包名未申请权益，请参考
+                        - link "指导" [ref=e253] [cursor=pointer]:
+                          - /url: https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/liveview-preparations
+                        - text: ，先开通推送服务权益与实况窗权益。
+                    - listitem [ref=e254]:
+                      - paragraph [ref=e255]: "若您需要联网下载图片等，需在module.json5文件添加网络权限，requestPermissions节点内添加\"name\": \"ohos.permission.INTERNET\"权限，如下图所示"
+                      - paragraph [ref=e256]
+                  - heading "使用说明" [level=2] [ref=e257]:
+                    - link [ref=e258] [cursor=pointer]:
+                      - /url: "#使用说明"
+                    - text: 使用说明
+                  - list [ref=e259]:
+                    - listitem [ref=e260]:
+                      - text: 本Demo仅提供在本地创建、更新与结束实况窗的能力(不能后台更新，若要后台更新，请使用Push Kit)。若要使用Push Kit更新，可参考
+                      - link "推送实况窗消息服务" [ref=e261] [cursor=pointer]:
+                        - /url: https://link.gitcode.com/?target=https%3A%2F%2Fdeveloper.huawei.com%2Fconsumer%2Fcn%2Fdoc%2Fharmonyos-guides%2Fpush-update-liveview&from=https%3A%2F%2Fgitcode.com%2FHarmonyOS_Samples%2Flive-view-kit_-sample-code_-clientdemo_-arkts&lang=zh&theme=white
+                      - text: ，用已有服务器调用对应的REST API。
+                    - listitem [ref=e262]:
+                      - text: 在“实况窗体验”页面，点击
+                      - strong [ref=e263]: 即时配送
+                      - text: 按钮，跳转到“即时配送”页面。
+                    - listitem [ref=e264]:
+                      - text: 在“即时配送”页面，点击
+                      - strong [ref=e265]: 提交订单
+                      - text: 按钮将创建一个待支付状态的实况窗。
+                    - listitem [ref=e266]:
+                      - text: 创建实况窗后，点击
+                      - strong [ref=e267]: 更新进展
+                      - text: 按钮可刷新实况窗状态。默认情况下，每隔15秒实况窗状态会自动更新一次。
+                    - listitem [ref=e268]:
+                      - text: 点击
+                      - strong [ref=e269]: 结束订单
+                      - text: ，将终止当前实况窗生命周期，15秒留存期后可点击
+                      - strong [ref=e270]: 提交订单
+                      - text: 再次创建实况窗。
+                    - listitem [ref=e271]:
+                      - text: 其它场景流程同
+                      - strong [ref=e272]: 即时配送
+                      - text: 场景，本Demo旨在展示不同场景下的对应卡片样式与更新流程。
+                    - listitem [ref=e273]:
+                      - text: 通过设置
+                      - link "LiveView" [ref=e274] [cursor=pointer]:
+                        - /url: https://developer.huawei.com/consumer/cn/doc/harmonyos-references/liveview-liveviewmanager#section411410371767
+                      - text: 结构体的内容，可以自定义实况卡片/胶囊等形态的内容与样式，为方便开发者接入，我们提供了
+                      - link "“实况窗各场景参数与模板映射关系指导表”" [ref=e275] [cursor=pointer]:
+                        - /url: https://gitcode.com/HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/blob/master/%E5%AE%9E%E5%86%B5%E7%AA%97%E5%90%84%E5%9C%BA%E6%99%AF%E5%8F%82%E6%95%B0%E4%B8%8E%E6%A8%A1%E6%9D%BF%E6%98%A0%E5%B0%84%E5%85%B3%E7%B3%BB%E6%8C%87%E5%AF%BC.xlsx
+                      - text: 。
+                      - list [ref=e276]:
+                        - listitem [ref=e277]: 若使用Live View Kit在本地创建/更新/结束，可参考其中“参数（端）”条目的参数。
+                        - listitem [ref=e278]: 若使用Push Kit在云端创建/更新/结束，可参考其中“云侧”条目下的参数。
+                    - listitem [ref=e279]:
+                      - text: 我们提供了
+                      - link "实况窗可视化工具" [ref=e280] [cursor=pointer]:
+                        - /url: https://gitcode.com/HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/tree/master/LiveViewDevelopmentAssistantGuide
+                      - text: ，旨在帮助开发者快速熟悉实况窗、协助完成
+                      - link "实况窗接入方案和体验设计" [ref=e281] [cursor=pointer]:
+                        - /url: https://developer.huawei.com/consumer/cn/doc/design-guides/system-features-live-view-0000001955186861#section1181711415233
+                      - text: 、提升实况窗接入开发效率。
+                  - heading "约束与限制" [level=2] [ref=e282]:
+                    - link [ref=e283] [cursor=pointer]:
+                      - /url: "#约束与限制"
+                    - text: 约束与限制
+                  - list [ref=e284]:
+                    - listitem [ref=e285]: 支持设备：华为手机、华为平板。
+                    - listitem [ref=e286]: HarmonyOS系统：HarmonyOS 6.0.0 Release及以上。
+                    - listitem [ref=e287]: DevEco Studio版本：DevEco Studio 6.0.2 Release及以上。
+                    - listitem [ref=e288]: HarmonyOS SDK版本：HarmonyOS 6.0.2 Release SDK及以上。
+            - generic [ref=e289]:
+              - generic [ref=e290]:
+                - heading "下载使用量" [level=4] [ref=e291]:
+                  - img [ref=e292]
+                  - generic [ref=e294]: 下载使用量
+                - generic [ref=e295]:
+                  - generic [ref=e296]: 8,808
+                  - img [ref=e299]
+                - paragraph [ref=e302]: 项目总下载次数（含Clone、Pull、 zip 包及 release 下载），每日凌晨更新
+              - generic [ref=e303]:
+                - link "贡献者 1" [ref=e304] [cursor=pointer]:
+                  - /url: /HarmonyOS_Samples/live-view-kit_-sample-code_-clientdemo_-arkts/contributors
+                  - img [ref=e305]
+                  - strong [ref=e307]: 贡献者
+                  - generic [ref=e308]: "1"
+                - link "W" [ref=e310] [cursor=pointer]:
+                  - /url: /weitingting
+                  - generic [ref=e311]: W
+              - generic [ref=e312]:
+                - heading "语言类型" [level=3] [ref=e313]:
+                  - img [ref=e314]
+                  - generic [ref=e316]: 语言类型
+                - generic [ref=e317]:
+                  - generic "ArkTS 99.83%" [ref=e318]
+                  - generic "TypeScript 0.17%" [ref=e319]
+                - generic [ref=e320]:
+                  - generic [ref=e321]:
+                    - generic [ref=e323]: ArkTS
+                    - generic [ref=e324]: 99.83%
+                  - generic [ref=e325]:
+                    - generic [ref=e327]: TypeScript
+                    - generic [ref=e328]: 0.17%
+              - text: • • • • • • • • • •
+          - button "举报项目" [ref=e330] [cursor=pointer]
+  - region "Notifications (F8)":
+    - list

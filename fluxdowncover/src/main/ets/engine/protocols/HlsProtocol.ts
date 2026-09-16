@@ -175,8 +175,15 @@ async function fetchBytes(url: string, ignoreTls: boolean, proxy?: ProxyConfig):
     }
     const result = resp.result;
     return result instanceof ArrayBuffer ? result : new ArrayBuffer(0);
+  } catch (e) {
+    // 网络/HTTP 错误需向上传播以触发失败与重试
+    throw e as Error;
   } finally {
-    req.destroy();
+    try {
+      req.destroy();
+    } catch (_e) {
+      // ignore destroy error
+    }
   }
 }
 
@@ -275,15 +282,20 @@ async function aes128DecryptCbc(data: ArrayBuffer, key: Uint8Array, iv: Uint8Arr
   if (data.byteLength === 0) {
     return new ArrayBuffer(0);
   }
-  const generator = cryptoFramework.createSymKeyGenerator('AES128');
-  const symKey = await generator.convertKey({ data: key });
-  const aligned = Math.floor(data.byteLength / 16) * 16;
-  const padding = aligned === data.byteLength ? 'PKCS7' : 'NOPADDING';
-  const cipher = cryptoFramework.createCipher(`AES128|CBC|${padding}`);
-  const params: cryptoFramework.IvParamsSpec = { algName: 'IvParamsSpec', iv: { data: iv } };
-  await cipher.init(cryptoFramework.CryptoMode.DECRYPT_MODE, symKey, params);
-  const out = await cipher.doFinal({ data: new Uint8Array(data.slice(0, aligned)) });
-  return out.data.slice(0, out.data.byteLength).buffer as ArrayBuffer;
+  try {
+    const generator = cryptoFramework.createSymKeyGenerator('AES128');
+    const symKey = await generator.convertKey({ data: key });
+    const aligned = Math.floor(data.byteLength / 16) * 16;
+    const padding = aligned === data.byteLength ? 'PKCS7' : 'NOPADDING';
+    const cipher = cryptoFramework.createCipher(`AES128|CBC|${padding}`);
+    const params: cryptoFramework.IvParamsSpec = { algName: 'IvParamsSpec', iv: { data: iv } };
+    await cipher.init(cryptoFramework.CryptoMode.DECRYPT_MODE, symKey, params);
+    const out = await cipher.doFinal({ data: new Uint8Array(data.slice(0, aligned)) });
+    return out.data.slice(0, out.data.byteLength).buffer as ArrayBuffer;
+  } catch (e) {
+    // 解密失败需向上传播以中止该分片下载
+    throw e as Error;
+  }
 }
 
 /** Fetch a media segment (optionally a byte sub-range); returns its raw body. */
@@ -323,8 +335,15 @@ async function fetchSegmentBytes(url: string, byteRange: string | undefined, hoo
       }
     }
     return body;
+  } catch (e) {
+    // 分片获取失败需向上传播以触发重试/失败态
+    throw e as Error;
   } finally {
-    req.destroy();
+    try {
+      req.destroy();
+    } catch (_e) {
+      // ignore destroy error
+    }
   }
 }
 
@@ -335,9 +354,10 @@ async function fetchSegmentBytes(url: string, byteRange: string | undefined, hoo
  * guarantees it is also re-fetched on resume after an interrupted init fetch).
  */
 export async function downloadHls(task: DownloadTask, ctrl: Ctrl, hooks: EngineHooks): Promise<void> {
-  const file = fs.openSync(task.filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
+  let file: fs.File | null = null;
   const keyCache: Map<string, Uint8Array> = new Map();
   try {
+    file = fs.openSync(task.filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
     let writeOffset = fs.statSync(task.filePath).size;
     // fMP4/CMAF 初始化段（EXT-X-MAP）：先写 init，媒体分片才能解码。
     if (task.manifestInitUrl && writeOffset === 0) {
@@ -374,7 +394,16 @@ export async function downloadHls(task: DownloadTask, ctrl: Ctrl, hooks: EngineH
     if (!ctrl.aborted) {
       fs.fsyncSync(file.fd);
     }
+  } catch (e) {
+    // 下载/写入失败向上传播，由引擎进入错误/重试态
+    throw e as Error;
   } finally {
-    fs.closeSync(file);
+    if (file) {
+      try {
+        fs.closeSync(file);
+      } catch (_e) {
+        // ignore close error
+      }
+    }
   }
 }
