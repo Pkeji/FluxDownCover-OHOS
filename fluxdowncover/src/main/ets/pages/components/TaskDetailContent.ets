@@ -309,6 +309,7 @@ struct TaskDetailContent {
       .scrollBar(BarState.Off)
       .width('100%')
       .layoutWeight(1)
+      .padding({ bottom: 24 })
     }
     .width('100%')
     .height('100%')
