@@ -204,7 +204,7 @@ export function palette(theme: 'light' | 'dark', colorSchemeId: string = 'cyan')
     surfaceHighlight: '#F7F7F9',
     materialBg: withAlpha(scheme.primary, 0.06),
     text: '#1F1F23',
-    textSecondary: '#6B7280',
+    textSecondary: '#4B5563',
     primary: scheme.primary,
     primarySolid: ensureBgForOnWhite(scheme.primary),
     primaryDark: darkenHex(scheme.primary, 0.12),

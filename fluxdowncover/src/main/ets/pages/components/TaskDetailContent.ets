@@ -306,6 +306,7 @@ struct TaskDetailContent {
         .width('100%')
         .padding({ bottom: 60 })
       }
+      .edgeEffect(EdgeEffect.Spring)
       .scrollBar(BarState.Off)
       .width('100%')
       .layoutWeight(1)

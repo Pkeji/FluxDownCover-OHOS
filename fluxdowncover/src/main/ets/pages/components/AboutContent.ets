@@ -7,6 +7,7 @@ import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { fileIo as fs } from '@kit.CoreFileKit';
 import { common, Want } from '@kit.AbilityKit';
 import { promptAction } from '@kit.ArkUI';
+import router from '@ohos.router';
 import { resourceManager } from '@kit.LocalizationKit';
 import { fileUri } from '@kit.CoreFileKit';
 import { bundleManager } from '@kit.AbilityKit';
@@ -20,6 +21,11 @@ interface OssAttribution {
   license: string;
   repoUrl: string;
   avatarUrl: string;
+}
+
+interface DonorItem {
+  name: string;
+  amount: number;
 }
 
 const OSS_ATTRIBUTIONS: OssAttribution[] = [
@@ -437,6 +443,7 @@ struct AboutContent {
           }
         })
       }
+      .edgeEffect(EdgeEffect.Spring)
       .width('100%')
       .layoutWeight(1)
     }
@@ -494,7 +501,7 @@ struct AboutContent {
       Text('如果这个下载器帮到了你，欢迎请作者喝杯咖啡')
         .fontSize(13).fontColor(this.p.textSecondary)
         .width('100%')
-        .padding({ left: 16, right: 16, bottom: 12 })
+        .padding({ left: 16, right: 16, bottom: 8 })
 
       Image($rawfile('donate.jpg'))
         .width(280)

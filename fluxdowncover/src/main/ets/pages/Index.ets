@@ -1325,6 +1325,7 @@ struct IndexPage {
               .width('100%')
             }
             .layoutWeight(1)
+            .edgeEffect(EdgeEffect.Spring)
             .scrollBar(BarState.Off)
           }
           .width(this.winWidth < 600 ? '88%' : Math.min(480, this.winWidth * 0.7))
@@ -1368,6 +1369,7 @@ struct IndexPage {
           Text(PRIVACY_SUMMARY + '\n\n点击“同意并继续”表示您已阅读并同意《' + PRIVACY_APP_NAME + '隐私政策》，您可点击下方文字查看完整内容。')
             .fontSize(14).fontColor(this.p.textSecondary).lineHeight(22).width('100%')
         }
+        .edgeEffect(EdgeEffect.Spring)
         .layoutWeight(1).width('100%').scrollBar(BarState.Auto)
 
         Text('查看完整《隐私政策》')
@@ -1442,7 +1444,7 @@ struct IndexPage {
           Text('').height(24)
         }.width('100%').padding({ left: 18, right: 18 })
       }
-      .layoutWeight(1).width('100%').scrollBar(BarState.Auto).align(Alignment.Top)
+      .layoutWeight(1).width('100%').edgeEffect(EdgeEffect.Spring).scrollBar(BarState.Auto).align(Alignment.Top)
 
       if (this.showPrivacyDialog) {
         Button('已阅读并同意').width('90%').height(44)
