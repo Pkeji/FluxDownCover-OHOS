@@ -151,7 +151,7 @@ struct AboutContent {
     .height('100%')
     .backgroundColor(this.p.bg)
     .bindSheet(this.sheetVisible, this.SheetContent(), {
-      detents: [SheetSize.LARGE],
+      detents: [SheetSize.MEDIUM],
       backgroundColor: this.p.surface,
       showClose: false,
       onDisappear: () => {
