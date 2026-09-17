@@ -12,6 +12,7 @@ import { pasteboard } from '@kit.BasicServicesKit';
 import fs from '@ohos.file.fs';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
 
+import { userAuth } from "@kit.UserAuthenticationKit";
 import { DownloadViewModel } from '../viewmodel/DownloadViewModel';
 import { DownloadTask, Segment } from '../model/DownloadTask';
 import { TaskStatus } from '../model/TaskStatus';
@@ -33,7 +34,7 @@ import { PRIVACY_SUMMARY, PRIVACY_SECTIONS, PRIVACY_APP_NAME, PRIVACY_UPDATE_DAT
 import { Palette, palette, iconRes, safeToast, ActionButtonModifier, ImmersionButtonModifier,
   materialBorder, buildMaterialEffect, statusText, protocolIcon, protocolLabelIcon, statusIcon,
   withAlpha, softShadow, PRESS_SCALE, PRESS_SCALE_STRONG, PRESS_DURATION,
-  RADIUS_CARD, RADIUS_SHEET, MATERIAL_BORDER_WIDTH, MATERIAL_BLUR,
+  RADIUS_CARD, RADIUS_SHEET, MATERIAL_BORDER_WIDTH, materialBlur,
   SHEET_OPEN_DURATION, SHEET_CLOSE_DURATION, hapticFeedback } from './components/SharedUI';
 
 // 提取到 components/ 的独立组件
@@ -102,6 +103,9 @@ struct IndexPage {
   @Local currentTab: number = 0;
   /** 底部主导航当前页：0=下载（任务列表），1=我的（设置） */
   @Local currentMainTab: number = 0;
+  @Local tabAnim0: number = 1;
+  @Local tabAnim1: number = 1;
+  @Local tabAnim2: number = 1;
   @Local winWidth: number = 0; // current window width (vp) for responsive layout
   /** 底部导航指示器（安全区域）高度，由 EntryAbility 发布到 AppStorage */
   @Local naviIndicatorHeight: number = 0;
@@ -129,6 +133,8 @@ struct IndexPage {
   private tabsController: HdsTabsController = new HdsTabsController();
   // 首次启动等 vm.init 完成后再渲染主界面（避免白屏）
   @Local pageReady: boolean = false;
+  @Local appLockVerified: boolean = false;
+  @Local isLocked: boolean = false;
   // 新建下载弹窗拖动偏移（按住垂直拖动，松手回弹）
   @Local addSheetDragY: number = 0;
   // 当前被按下的可点卡片 key（统一物理按压反馈），空串表示无
@@ -410,6 +416,50 @@ struct IndexPage {
     this.rotateTimer = setInterval(() => {
       this.rotateAngle = (this.rotateAngle + 15) % 360;
     }, 80) as number;
+  }
+
+  private authInstance: userAuth.UserAuthInstance | null = null;
+
+  private startAppLockAuth(): void {
+    if (this.authInstance) {
+      try { this.authInstance.off('result'); this.authInstance.cancel(); } catch (e) {}
+      this.authInstance = null;
+    }
+    const authParam: userAuth.AuthParam = {
+      challenge: new Uint8Array([49, 49, 49, 49, 49, 49]),
+      authType: [userAuth.UserAuthType.PIN, userAuth.UserAuthType.FACE, userAuth.UserAuthType.FINGERPRINT],
+      authTrustLevel: userAuth.AuthTrustLevel.ATL1,
+    };
+    const widgetParam: userAuth.WidgetParam = { title: "验证以继续" };
+    try {
+      this.authInstance = userAuth.getUserAuthInstance(authParam, widgetParam);
+      this.authInstance.on('result', {
+        onResult: (result: userAuth.UserAuthResult): void => {
+          if (result.result === userAuth.UserAuthResultCode.SUCCESS) {
+            this.authInstance = null;
+            this.isLocked = false;
+          } else {
+            this.authInstance = null;
+          }
+        }
+      });
+      this.authInstance.start();
+    } catch (e) {
+      this.authInstance = null;
+      this.isLocked = false;
+    }
+  }
+
+  onPageShow(): void {
+    const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    dataPreferences.getPreferences(ctx, 'fluxdown_settings').then((prefs) => {
+      prefs.get('app_lock_enabled', false).then((v) => {
+        if (v === true && !this.isLocked) {
+          this.isLocked = true;
+          this.startAppLockAuth();
+        }
+      });
+    });
   }
 
   aboutToDisappear(): void {
@@ -748,7 +798,7 @@ struct IndexPage {
         .margin({ left: 16, right: 12 })
         .clip(false)
         Text('取消')
-          .fontSize(15).fontColor(this.p.primary)
+          .fontSize(15).fontColor(this.p.text)
           .margin({ right: 16 })
           .onClick(() => {
             this.searchMode = false;
@@ -856,7 +906,7 @@ struct IndexPage {
         .width(44).height(44)
         .borderRadius(22)
         .backgroundColor(withAlpha(this.p.surface, 0.7))
-        .backgroundBlurStyle(MATERIAL_BLUR)
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
         .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
         .margin({ right: 12 })
         .clip(false)
@@ -874,7 +924,7 @@ struct IndexPage {
         .width(44).height(44)
         .borderRadius(22)
         .backgroundColor(withAlpha(this.p.surface, 0.7))
-        .backgroundBlurStyle(MATERIAL_BLUR)
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
         .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
         .margin({ right: 12 })
         .clip(false)
@@ -898,7 +948,7 @@ struct IndexPage {
         .width(44).height(44)
         .borderRadius(22)
         .backgroundColor(withAlpha(this.p.surface, 0.7))
-        .backgroundBlurStyle(MATERIAL_BLUR)
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
         .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
         .clip(false)
       }
@@ -958,10 +1008,11 @@ struct IndexPage {
       Image(iconRes('download'))
         .width(22).height(22)
         .fillColor(this.currentMainTab === 0 ? this.tintColor : this.p.textSecondary)
+        .scale({ x: this.tabAnim0, y: this.tabAnim0 })
       Text('下载')
         .fontSize(11)
         .margin({ top: 2 })
-        .fontColor(this.currentMainTab === 0 ? this.tintColor : this.p.textSecondary)
+        .fontColor(this.p.textSecondary)
     }
     .width('100%')
     .height('100%')
@@ -979,7 +1030,7 @@ struct IndexPage {
       Text('设置')
         .fontSize(11)
         .margin({ top: 2 })
-        .fontColor(this.currentMainTab === 1 ? this.tintColor : this.p.textSecondary)
+        .fontColor(this.p.textSecondary)
     }
     .width('100%')
     .height('100%')
@@ -997,7 +1048,7 @@ struct IndexPage {
       Text('关于')
         .fontSize(11)
         .margin({ top: 2 })
-        .fontColor(this.currentMainTab === 2 ? this.tintColor : this.p.textSecondary)
+        .fontColor(this.p.textSecondary)
     }
     .width('100%')
     .onTouch((e: TouchEvent) => { if (e.type === TouchType.Down) hapticFeedback(); })
@@ -1048,6 +1099,37 @@ struct IndexPage {
 
   build() {
     Stack({ alignContent: Alignment.Center }) {
+      // 应用锁覆盖层
+      if (this.isLocked) {
+        Column() {
+          Text('应用已锁定')
+            .fontSize(22)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.p.text)
+          Text('请完成身份验证后使用')
+            .fontSize(14)
+            .fontColor(this.p.textSecondary)
+            .margin({ top: 8 })
+          ImmersionButton({
+            text: '验证身份',
+            buttonModify: {
+              applyNormalAttribute(instance: ButtonModifier): void {
+                instance.width(160).height(44)
+              }
+            },
+            click: (): void => { this.startAppLockAuth(); }
+          })
+            .margin({ top: 24 })
+            .width(160)
+            .height(44)
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+        .backgroundColor(this.p.bg)
+        .zIndex(100)
+      }
       // 独立页面背景层（参考原项目 PageBackground，确保延伸到导航栏上下安全区域）
       Stack({ alignContent: Alignment.TopStart }) {
         Column()
@@ -1122,20 +1204,11 @@ struct IndexPage {
           .width('100%')
           .height('100%')
         } else {
-          // 启动占位页（等 vm.init 完成后再渲染主界面，避免首次启动白屏）
-          Column() {
-            Image(iconRes('download'))
-              .width(48).height(48)
-              .fillColor(this.tintColor)
-            Text('FluxDown Cover')
-              .fontSize(16)
-              .fontColor(this.p.textSecondary)
-              .margin({ top: 12 })
-          }
-          .width('100%')
-          .height('100%')
-          .backgroundColor(this.p.bg)
-          .justifyContent(FlexAlign.Center)
+          Column()
+            .width('100%')
+            .height('100%')
+            .backgroundColor(this.p.bg)
+            .justifyContent(FlexAlign.Center)
         }
       }
       .mode(NavigationMode.Stack)
@@ -1228,7 +1301,7 @@ struct IndexPage {
             .height(44)
             .padding({ left: 16, right: 12 })
             Scroll() {
-              AddContent({ vm: this.vm, onDownloadStart: () => { this.closeAddSheet(); this.currentTab = 0; } })
+              AddContent({ vm: this.vm, onDownloadStart: () => { this.closeAddSheet(); this.currentTab = 0; this.vm.setStatusFilter(""); } })
             }
             .layoutWeight(1)
             .scrollBar(BarState.Off)
@@ -1372,7 +1445,7 @@ struct IndexPage {
           // 与新建下载弹窗一致：折叠屏展开态物理高度封顶，避免大屏膨胀（云测 UX 标准）
           .constraintSize({ maxHeight: 620 })
           .backgroundColor(this.p.surface)
-          .backgroundBlurStyle(MATERIAL_BLUR)
+          .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
           .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
           .borderRadius(RADIUS_SHEET)
           .clip(true)
@@ -1412,7 +1485,7 @@ struct IndexPage {
         .layoutWeight(1).width('100%').scrollBar(BarState.Auto)
 
         Text('查看完整《隐私政策》')
-          .fontSize(13).fontColor(this.p.primary).margin({ top: 10, bottom: 12 })
+          .fontSize(13).fontColor(this.p.text).margin({ top: 10, bottom: 12 })
           .onClick(() => { this.showPrivacyPage = true; })
 
         Row() {
@@ -1657,7 +1730,7 @@ struct IndexPage {
     const map: Record<string, string> = {
       'appearance': '外观', 'download': '下载设置', 'bt': 'BT 下载',
       'mcp': 'MCP 服务', 'ext': '浏览器扩展', 'queue': '下载队列',
-      'cat': '自定义分类', 'rss': 'RSS 订阅', 'huawei_account': '华为账号', 'haptic': '界面显示'
+      'cat': '自定义分类', 'rss': 'RSS 订阅', 'huawei_account': '华为账号', 'haptic': '触感反馈'
     };
     return map[mode] ?? '设置';
   }
@@ -1727,12 +1800,13 @@ struct IndexPage {
               Image(iconRes(this.selectMode ? 'x' : 'check')).width(16).height(16).fillColor(this.p.primary)
               Text(this.selectMode ? '取消' : '选择')
                 .fontSize(14)
-                .fontColor(this.p.primary)
+                .fontColor(this.p.text)
                 .margin({ left: 4 })
             }
             .padding({ left: 12, right: 12, top: 4, bottom: 4 })
             .borderRadius(20)
-            .border({ width: 1, color: this.p.primary })
+            .backgroundColor(this.p.surfaceHighlight)
+            .border({ width: 1, color: this.p.border })
             .onClick(() => {
               this.selectMode = !this.selectMode;
               if (!this.selectMode) {
@@ -1794,7 +1868,7 @@ struct IndexPage {
               .height(44)
               .type(ButtonType.Capsule)
               .backgroundColor(this.p.dark ? '#1FFFFFFF' : '#14000000')
-              .backgroundBlurStyle(MATERIAL_BLUR)
+              .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
               .shadow(softShadow(this.p.dark))
               .fontColor(this.p.text)
               .fontSize(15)
@@ -1867,10 +1941,9 @@ struct IndexPage {
           Button(this.selectedTaskIds.size === this.vm.visibleTasks.length ? '取消全选' : '全选')
             .type(ButtonType.Capsule)
             .fontSize(13)
-            .backgroundColor(Color.Transparent)
-            .backgroundBlurStyle(MATERIAL_BLUR)
-            .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
-            .fontColor(this.p.primary)
+            .backgroundColor(this.p.surfaceHighlight)
+            .border({ width: 1, color: this.p.border })
+            .fontColor(this.p.text)
             .height(32)
             .margin({ right: 8 })
             .clip(false)
@@ -1900,7 +1973,7 @@ struct IndexPage {
         }
         .padding({ left: 16, right: 16, top: 8, bottom: 8 })
         .backgroundColor(this.p.surface)
-        .backgroundBlurStyle(MATERIAL_BLUR)
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
         .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
         .borderRadius(24)
         .shadow(softShadow(this.p.dark))
@@ -1922,7 +1995,7 @@ struct IndexPage {
       .width(56).height(56)
       .borderRadius(28)
       .backgroundColor(this.p.dark ? '#1FFFFFFF' : '#14000000')
-      .backgroundBlurStyle(MATERIAL_BLUR)
+      .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
       .shadow(softShadow(this.p.dark, true))
       .margin({ right: 20, bottom: this.naviIndicatorHeight + 64 })
       .alignSelf(ItemAlign.End)
@@ -1999,7 +2072,7 @@ struct IndexPage {
       .padding(20)
       .width('86%')
       .backgroundColor(this.p.materialBg)
-      .backgroundBlurStyle(MATERIAL_BLUR)
+      .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
       .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
       .borderRadius(RADIUS_SHEET)
       .shadow(softShadow(this.p.dark, true))
@@ -2048,7 +2121,7 @@ struct IndexPage {
   StatusChip(label: string, key: string) {
     Text(label)
       .fontSize(11)
-      .fontColor(this.vm.statusFilter === key ? this.p.onPrimary : this.p.textSecondary)
+      .fontColor(this.vm.statusFilter === key ? this.p.text : this.p.textSecondary)
       .padding({ left: 10, right: 10, top: 5, bottom: 5 })
       .borderRadius(12)
       .backgroundColor(this.vm.statusFilter === key ? this.p.primarySolid : this.p.surface)
@@ -2069,16 +2142,15 @@ struct IndexPage {
       Text(`${label} ${this.countForStatus(key)}`)
         .fontSize(this.is2in1 ? 13 : (this.winWidth < 360 ? 11 : 12))
         .fontWeight(this.vm.statusFilter === key ? FontWeight.Medium : FontWeight.Normal)
-        .fontColor(this.vm.statusFilter === key ? this.p.primary : this.p.textSecondary)
+        .fontColor(this.vm.statusFilter === key ? this.p.text : this.p.textSecondary)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .padding({ left: this.is2in1 ? 8 : 4, right: this.is2in1 ? 8 : 4 })
     }
     .height(this.is2in1 ? 38 : 32)
     .borderRadius(this.is2in1 ? 19 : 16)
-    .backgroundColor(Color.Transparent)
-    .backgroundBlurStyle(MATERIAL_BLUR)
-    .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+    .backgroundColor(this.vm.statusFilter === key ? this.p.surfaceHighlight : Color.Transparent)
+    .border({ width: 1, color: this.vm.statusFilter === key ? this.p.border : Color.Transparent })
     .layoutWeight(1)
     .margin({ right: this.is2in1 ? 10 : 4 })
     .clip(false)
@@ -2998,8 +3070,8 @@ struct AddContent {
         .width('100%')
         .height(44)
         .backgroundColor(this.p.primarySolid)
-        .fontColor(this.p.onPrimary)
         .borderRadius(22)
+        .fontColor(this.p.onPrimary)
         .margin({ top: 24 })
         .enabled(this.url.trim().length > 0)
         .onClick(() => {
@@ -3044,7 +3116,7 @@ struct AddContent {
       // ── 批量下载 ──
 
       Text('批量下载').fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.p.text)
-        .margin({ bottom: 8 })
+        .margin({ top: 24, bottom: 8 })
       Text('每行一个 URL（仅支持 http/https）').fontSize(12).fontColor(this.p.textSecondary)
         .margin({ bottom: 8 })
 
@@ -3167,6 +3239,7 @@ struct SettingsContent {
   @Param mode: string = '';
   @Local rssUrl: string = '';
   @Local rssName: string = '';
+  @Local appLockEnabled: boolean = false;
   @Local rssFilter: string = '';
   @Local rssExclude: string = '';
   // RSS editor state
@@ -3223,6 +3296,11 @@ struct SettingsContent {
   @Local naviIndicatorHeight: number = 0;
 
   aboutToAppear(): void {
+    // 读应用锁状态
+    const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    dataPreferences.getPreferences(ctx, 'fluxdown_settings').then((prefs) => {
+      prefs.get('app_lock_enabled', false).then((v) => { this.appLockEnabled = v === true; });
+    });
     this.fileExistsBehaviorLocal = this.vm.fileExistsBehavior;
     this.fileMissingActionLocal = this.vm.fileMissingAction;
     if (this.vm.btSettings) {
@@ -3522,7 +3600,7 @@ struct SettingsContent {
 
           // ── 材质浓度（模糊/光感的强弱档位）──
           Row() {
-            Image(iconRes('gauge')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+            Image(iconRes('droplet')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('材质浓度').fontColor(this.p.text).fontSize(15)
           }
           .width('100%')
@@ -3531,32 +3609,36 @@ struct SettingsContent {
           Row() {
             Text('自动')
               .fontSize(12)
-              .fontColor(this.glassLevelLocal === 'auto' ? this.p.onPrimary : this.p.textSecondary)
-              .backgroundColor(this.glassLevelLocal === 'auto' ? this.p.primarySolid : this.p.surfaceHighlight)
+              .fontColor(this.glassLevelLocal === 'auto' ? this.p.text : this.p.textSecondary)
+              .backgroundColor(this.glassLevelLocal === 'auto' ? this.p.surfaceHighlight : Color.Transparent)
+      .border({ width: 1, color: this.glassLevelLocal === 'auto' ? this.p.border : Color.Transparent })
               .borderRadius(14)
               .padding({ left: 12, right: 12, top: 5, bottom: 5 })
               .margin({ right: 8 })
               .onClick(() => { this.glassLevelLocal = 'auto'; this.vm.setGlassLevel('auto'); })
             Text('浓郁')
               .fontSize(12)
-              .fontColor(this.glassLevelLocal === 'high' ? this.p.onPrimary : this.p.textSecondary)
-              .backgroundColor(this.glassLevelLocal === 'high' ? this.p.primarySolid : this.p.surfaceHighlight)
+              .fontColor(this.glassLevelLocal === 'high' ? this.p.text : this.p.textSecondary)
+              .backgroundColor(this.glassLevelLocal === 'high' ? this.p.surfaceHighlight : Color.Transparent)
+      .border({ width: 1, color: this.glassLevelLocal === 'high' ? this.p.border : Color.Transparent })
               .borderRadius(14)
               .padding({ left: 12, right: 12, top: 5, bottom: 5 })
               .margin({ right: 8 })
               .onClick(() => { this.glassLevelLocal = 'high'; this.vm.setGlassLevel('high'); })
             Text('适中')
               .fontSize(12)
-              .fontColor(this.glassLevelLocal === 'medium' ? this.p.onPrimary : this.p.textSecondary)
-              .backgroundColor(this.glassLevelLocal === 'medium' ? this.p.primarySolid : this.p.surfaceHighlight)
+              .fontColor(this.glassLevelLocal === 'medium' ? this.p.text : this.p.textSecondary)
+              .backgroundColor(this.glassLevelLocal === 'medium' ? this.p.surfaceHighlight : Color.Transparent)
+      .border({ width: 1, color: this.glassLevelLocal === 'medium' ? this.p.border : Color.Transparent })
               .borderRadius(14)
               .padding({ left: 12, right: 12, top: 5, bottom: 5 })
               .margin({ right: 8 })
               .onClick(() => { this.glassLevelLocal = 'medium'; this.vm.setGlassLevel('medium'); })
             Text('清淡')
               .fontSize(12)
-              .fontColor(this.glassLevelLocal === 'low' ? this.p.onPrimary : this.p.textSecondary)
-              .backgroundColor(this.glassLevelLocal === 'low' ? this.p.primarySolid : this.p.surfaceHighlight)
+              .fontColor(this.glassLevelLocal === 'low' ? this.p.text : this.p.textSecondary)
+              .backgroundColor(this.glassLevelLocal === 'low' ? this.p.surfaceHighlight : Color.Transparent)
+      .border({ width: 1, color: this.glassLevelLocal === 'low' ? this.p.border : Color.Transparent })
               .borderRadius(14)
               .padding({ left: 12, right: 12, top: 5, bottom: 5 })
               .margin({ right: 8 })
@@ -3577,16 +3659,18 @@ struct SettingsContent {
           Row() {
             Text('主题色')
               .fontSize(12)
-              .fontColor(this.iconTintLocal === 'accent' ? this.p.onPrimary : this.p.textSecondary)
-              .backgroundColor(this.iconTintLocal === 'accent' ? this.p.primarySolid : this.p.surfaceHighlight)
+              .fontColor(this.iconTintLocal === 'accent' ? this.p.text : this.p.textSecondary)
+              .backgroundColor(this.iconTintLocal === 'accent' ? this.p.surfaceHighlight : Color.Transparent)
+      .border({ width: 1, color: this.iconTintLocal === 'accent' ? this.p.border : Color.Transparent })
               .borderRadius(14)
               .padding({ left: 12, right: 12, top: 5, bottom: 5 })
               .margin({ right: 8 })
               .onClick(() => { this.iconTintLocal = 'accent'; this.vm.setIconTint('accent'); })
             Text('单色')
               .fontSize(12)
-              .fontColor(this.iconTintLocal === 'mono' ? this.p.onPrimary : this.p.textSecondary)
-              .backgroundColor(this.iconTintLocal === 'mono' ? this.p.primarySolid : this.p.surfaceHighlight)
+              .fontColor(this.iconTintLocal === 'mono' ? this.p.text : this.p.textSecondary)
+              .backgroundColor(this.iconTintLocal === 'mono' ? this.p.surfaceHighlight : Color.Transparent)
+      .border({ width: 1, color: this.iconTintLocal === 'mono' ? this.p.border : Color.Transparent })
               .borderRadius(14)
               .padding({ left: 12, right: 12, top: 5, bottom: 5 })
               .margin({ right: 8 })
@@ -3599,6 +3683,7 @@ struct SettingsContent {
         }
         .backgroundColor(this.p.surface)
         .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
         .borderRadius(RADIUS_CARD)
         .margin({ left: 16, right: 16, top: 12 })
         }
@@ -3626,9 +3711,8 @@ struct SettingsContent {
           })
           // 触感反馈入口
           Row() {
-            Image(iconRes("zap")).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
-            Text('触感反馈').fontColor(this.p.text).layoutWeight(1).fontSize(15)
-            Text(this.vm.hapticEnabled ? '已开启' : '已关闭').fontSize(13).fontColor(this.p.textSecondary).margin({ right: 4 })
+            Image(iconRes("shield")).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+            Text('功能与安全').fontColor(this.p.text).layoutWeight(1).fontSize(15)
             Image(iconRes('chevron_right')).width(16).height(16).fillColor(this.p.textSecondary)
           }
           .width('100%')
@@ -3639,6 +3723,7 @@ struct SettingsContent {
         }
         .backgroundColor(this.p.surface)
         .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
         .borderRadius(RADIUS_CARD)
         .margin({ left: 16, right: 16, top: 12 })
         }
@@ -3718,6 +3803,7 @@ struct SettingsContent {
         }
         .backgroundColor(this.p.surface)
         .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
         .borderRadius(RADIUS_CARD)
         .margin({ left: 16, right: 16, top: 12 })
         }
@@ -3782,7 +3868,7 @@ struct SettingsContent {
 
           // 全局限速
           Row() {
-            Image(iconRes('gauge')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+            Image(iconRes('droplet')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('全局限速').fontColor(this.p.text).layoutWeight(1).fontSize(15)
             Text(this.vm.globalSpeedLimit > 0 ? formatSpeed(this.vm.globalSpeedLimit) : '不限')
               .fontColor(this.p.primaryDark).fontSize(15)
@@ -3848,7 +3934,7 @@ struct SettingsContent {
           .padding({ left: 16, right: 16, bottom: 6 })
 
           Row() {
-            Text('保存').fontSize(13).fontColor(this.p.primary)
+            Text('保存').fontSize(13).fontColor(this.p.text)
               .onClick(() => {
                 const c = parseInt(this.retryCountDraft, 10);
                 const d = parseInt(this.retryDelayDraft, 10);
@@ -3875,24 +3961,27 @@ struct SettingsContent {
           Row() {
             Text('覆盖')
               .fontSize(12)
-              .fontColor(this.fileExistsBehaviorLocal === 'overwrite' ? this.p.onPrimary : this.p.textSecondary)
-              .backgroundColor(this.fileExistsBehaviorLocal === 'overwrite' ? this.p.primarySolid : this.p.surfaceHighlight)
+              .fontColor(this.fileExistsBehaviorLocal === 'overwrite' ? this.p.text : this.p.textSecondary)
+              .backgroundColor(this.fileExistsBehaviorLocal === 'overwrite' ? this.p.surfaceHighlight : Color.Transparent)
+      .border({ width: 1, color: this.fileExistsBehaviorLocal === 'overwrite' ? this.p.border : Color.Transparent })
               .borderRadius(14)
               .padding({ left: 12, right: 12, top: 5, bottom: 5 })
               .margin({ right: 8 })
               .onClick(() => { this.fileExistsBehaviorLocal = 'overwrite'; this.vm.setFileExistsBehavior('overwrite'); })
             Text('重命名')
               .fontSize(12)
-              .fontColor(this.fileExistsBehaviorLocal === 'rename' ? this.p.onPrimary : this.p.textSecondary)
-              .backgroundColor(this.fileExistsBehaviorLocal === 'rename' ? this.p.primarySolid : this.p.surfaceHighlight)
+              .fontColor(this.fileExistsBehaviorLocal === 'rename' ? this.p.text : this.p.textSecondary)
+              .backgroundColor(this.fileExistsBehaviorLocal === 'rename' ? this.p.surfaceHighlight : Color.Transparent)
+      .border({ width: 1, color: this.fileExistsBehaviorLocal === 'rename' ? this.p.border : Color.Transparent })
               .borderRadius(14)
               .padding({ left: 12, right: 12, top: 5, bottom: 5 })
               .margin({ right: 8 })
               .onClick(() => { this.fileExistsBehaviorLocal = 'rename'; this.vm.setFileExistsBehavior('rename'); })
             Text('跳过')
               .fontSize(12)
-              .fontColor(this.fileExistsBehaviorLocal === 'skip' ? this.p.onPrimary : this.p.textSecondary)
-              .backgroundColor(this.fileExistsBehaviorLocal === 'skip' ? this.p.primarySolid : this.p.surfaceHighlight)
+              .fontColor(this.fileExistsBehaviorLocal === 'skip' ? this.p.text : this.p.textSecondary)
+              .backgroundColor(this.fileExistsBehaviorLocal === 'skip' ? this.p.surfaceHighlight : Color.Transparent)
+      .border({ width: 1, color: this.fileExistsBehaviorLocal === 'skip' ? this.p.border : Color.Transparent })
               .borderRadius(14)
               .padding({ left: 12, right: 12, top: 5, bottom: 5 })
               .margin({ right: 8 })
@@ -3912,16 +4001,18 @@ struct SettingsContent {
           Row() {
             Text('保留记录')
               .fontSize(12)
-              .fontColor(this.fileMissingActionLocal === 'keep' ? this.p.onPrimary : this.p.textSecondary)
-              .backgroundColor(this.fileMissingActionLocal === 'keep' ? this.p.primarySolid : this.p.surfaceHighlight)
+              .fontColor(this.fileMissingActionLocal === 'keep' ? this.p.text : this.p.textSecondary)
+              .backgroundColor(this.fileMissingActionLocal === 'keep' ? this.p.surfaceHighlight : Color.Transparent)
+      .border({ width: 1, color: this.fileMissingActionLocal === 'keep' ? this.p.border : Color.Transparent })
               .borderRadius(14)
               .padding({ left: 12, right: 12, top: 5, bottom: 5 })
               .margin({ right: 8 })
               .onClick(() => { this.fileMissingActionLocal = 'keep'; this.vm.setFileMissingAction('keep'); })
             Text('移除任务')
               .fontSize(12)
-              .fontColor(this.fileMissingActionLocal === 'remove' ? this.p.onPrimary : this.p.textSecondary)
-              .backgroundColor(this.fileMissingActionLocal === 'remove' ? this.p.primarySolid : this.p.surfaceHighlight)
+              .fontColor(this.fileMissingActionLocal === 'remove' ? this.p.text : this.p.textSecondary)
+              .backgroundColor(this.fileMissingActionLocal === 'remove' ? this.p.surfaceHighlight : Color.Transparent)
+      .border({ width: 1, color: this.fileMissingActionLocal === 'remove' ? this.p.border : Color.Transparent })
               .borderRadius(14)
               .padding({ left: 12, right: 12, top: 5, bottom: 5 })
               .margin({ right: 8 })
@@ -4080,6 +4171,7 @@ struct SettingsContent {
         }
         .backgroundColor(this.p.surface)
         .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
         .borderRadius(RADIUS_CARD)
         .margin({ left: 16, right: 16, top: 12 })
         }
@@ -4107,6 +4199,39 @@ struct SettingsContent {
         }
         .backgroundColor(this.p.surface)
         .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
+        .borderRadius(RADIUS_CARD)
+        .margin({ left: 16, right: 16, top: 12 })
+        }
+
+        // ── 应用锁 ──
+        if (this.mode === "haptic") {
+        Column() {
+          Row() {
+            Text("应用锁").fontColor(this.p.text).fontSize(15).layoutWeight(1)
+            Toggle({ type: ToggleType.Switch, isOn: this.appLockEnabled })
+              .selectedColor(this.p.primary)
+              .onChange((on: boolean) => {
+                this.appLockEnabled = on;
+                AppStorage.setOrCreate<boolean>('fluxdown_app_lock_enabled', on);
+                const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+                dataPreferences.getPreferences(ctx, 'fluxdown_settings').then((prefs) => {
+                  prefs.put('app_lock_enabled', on);
+                  prefs.flush();
+                });
+              })
+          }
+          .width("100%")
+          .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+          Text("开启后，进入应用时需要验证密码或指纹")
+            .fontSize(12)
+            .fontColor(this.p.textSecondary)
+            .width("100%")
+            .padding({ left: 16, right: 16, bottom: 12 })
+        }
+        .backgroundColor(this.p.surface)
+        .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
         .borderRadius(RADIUS_CARD)
         .margin({ left: 16, right: 16, top: 12 })
         }
@@ -4264,8 +4389,9 @@ struct SettingsContent {
               Blank()
               Text('满足任一')
                 .fontSize(12)
-                .fontColor(this.btOperatorLocal === 'or' ? this.p.onPrimary : this.p.textSecondary)
-                .backgroundColor(this.btOperatorLocal === 'or' ? this.p.primarySolid : this.p.surfaceHighlight)
+                .fontColor(this.btOperatorLocal === 'or' ? this.p.text : this.p.textSecondary)
+                .backgroundColor(this.btOperatorLocal === 'or' ? this.p.surfaceHighlight : Color.Transparent)
+      .border({ width: 1, color: this.btOperatorLocal === 'or' ? this.p.border : Color.Transparent })
                 .borderRadius(14)
                 .padding({ left: 12, right: 12, top: 5, bottom: 5 })
                 .margin({ right: 8 })
@@ -4278,8 +4404,9 @@ struct SettingsContent {
                 })
               Text('全部满足')
                 .fontSize(12)
-                .fontColor(this.btOperatorLocal === 'and' ? this.p.onPrimary : this.p.textSecondary)
-                .backgroundColor(this.btOperatorLocal === 'and' ? this.p.primarySolid : this.p.surfaceHighlight)
+                .fontColor(this.btOperatorLocal === 'and' ? this.p.text : this.p.textSecondary)
+                .backgroundColor(this.btOperatorLocal === 'and' ? this.p.surfaceHighlight : Color.Transparent)
+      .border({ width: 1, color: this.btOperatorLocal === 'and' ? this.p.border : Color.Transparent })
                 .borderRadius(14)
                 .padding({ left: 12, right: 12, top: 5, bottom: 5 })
                 .margin({ right: 8 })
@@ -4332,6 +4459,7 @@ struct SettingsContent {
           }
           .backgroundColor(this.p.surface)
           .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
           .borderRadius(RADIUS_CARD)
           .margin({ left: 16, right: 16, top: 12 })
         }
@@ -4391,6 +4519,7 @@ struct SettingsContent {
         }
         .backgroundColor(this.p.surface)
         .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
         .borderRadius(RADIUS_CARD)
         .margin({ left: 16, right: 16, top: 12 })
         }
@@ -4447,6 +4576,7 @@ struct SettingsContent {
         }
         .backgroundColor(this.p.surface)
         .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
         .borderRadius(RADIUS_CARD)
         .margin({ left: 16, right: 16, top: 12 })
         }
@@ -4465,7 +4595,7 @@ struct SettingsContent {
           Row() {
             Image(iconRes('link')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('深度链接协议').fontColor(this.p.textSecondary).fontSize(13).layoutWeight(1)
-            Text('fluxdown://').fontColor(this.p.primary).fontSize(13).fontFamily('monospace')
+            Text('fluxdown://').fontColor(this.p.text).fontSize(13).fontFamily('monospace')
           }
           .width('100%')
           .padding({ left: 16, top: 14, bottom: 8 })
@@ -4484,6 +4614,7 @@ struct SettingsContent {
         }
         .backgroundColor(this.p.surface)
         .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
         .borderRadius(RADIUS_CARD)
         .margin({ left: 16, right: 16, top: 12 })
         }
@@ -4562,7 +4693,7 @@ struct SettingsContent {
               }
 
               Row() {
-                Image(iconRes('gauge')).width(14).height(14).fillColor(this.tintColor).margin({ right: 12 })
+                Image(iconRes('droplet')).width(14).height(14).fillColor(this.tintColor).margin({ right: 12 })
                 Text('队列限速').fontSize(13).fontColor(this.p.textSecondary).layoutWeight(1)
                 Text(q.speedLimit > 0 ? formatSpeed(q.speedLimit) : '不限')
                   .fontSize(13).fontColor(this.p.primaryDark)
@@ -4591,7 +4722,7 @@ struct SettingsContent {
                   .margin({ right: 6 })
                   .onClick(() => { this.vm.pauseQueue(q.id); })
                 Button('高级')
-                  .fontSize(12).backgroundColor(this.p.surfaceHighlight).fontColor(this.p.primary).height(30)
+                  .fontSize(12).backgroundColor(this.p.surfaceHighlight).fontColor(this.p.text).height(30)
                   .margin({ right: 6 })
                   .onClick(() => {
                     if (this.queueAdvId === q.id) {
@@ -4605,11 +4736,11 @@ struct SettingsContent {
                   })
                 Blank()
                 Button('↑')
-                  .fontSize(13).backgroundColor(this.p.surfaceHighlight).fontColor(this.p.primary).height(30)
+                  .fontSize(13).backgroundColor(this.p.surfaceHighlight).fontColor(this.p.text).height(30)
                   .width(36).margin({ right: 6 })
                   .onClick(() => { this.vm.moveQueue(q.id, -1); })
                 Button('↓')
-                  .fontSize(13).backgroundColor(this.p.surfaceHighlight).fontColor(this.p.primary).height(30)
+                  .fontSize(13).backgroundColor(this.p.surfaceHighlight).fontColor(this.p.text).height(30)
                   .width(36).margin({ right: 6 })
                   .onClick(() => { this.vm.moveQueue(q.id, 1); })
                 Button('删除')
@@ -4691,6 +4822,7 @@ struct SettingsContent {
             .width('100%')
             .backgroundColor(this.p.surface)
             .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
             .borderRadius(RADIUS_CARD)
             .padding({ top: 2, bottom: 2 })
             .margin({ top: 6 })
@@ -4731,6 +4863,7 @@ struct SettingsContent {
         }
         .backgroundColor(this.p.surface)
         .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
         .borderRadius(RADIUS_CARD)
         .margin({ left: 16, right: 16, top: 12 })
         }
@@ -4786,7 +4919,7 @@ struct SettingsContent {
                 Button('编辑')
                   .fontSize(12)
                   .backgroundColor(this.p.surfaceSolid)
-                  .fontColor(this.p.primary)
+                  .fontColor(this.p.text)
                   .height(30)
                   .onClick(() => {
                     this.catEditId = cat.id;
@@ -4831,6 +4964,7 @@ struct SettingsContent {
             .width('100%')
             .backgroundColor(this.p.surface)
             .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
             .borderRadius(RADIUS_CARD)
             .padding({ top: 2, bottom: 2 })
             .margin({ top: 6 })
@@ -4838,6 +4972,7 @@ struct SettingsContent {
         }
         .backgroundColor(this.p.surface)
         .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
         .borderRadius(RADIUS_CARD)
         .margin({ left: 16, right: 16, top: 12 })
         }
@@ -4945,7 +5080,7 @@ struct SettingsContent {
                 Button('编辑')
                   .fontSize(12)
                   .backgroundColor(this.p.surfaceHighlight)
-                  .fontColor(this.p.primary)
+                  .fontColor(this.p.text)
                   .layoutWeight(1)
                   .height(32)
                   .onClick(() => {
@@ -4973,6 +5108,7 @@ struct SettingsContent {
             .width('100%')
             .backgroundColor(this.p.surface)
             .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
             .borderRadius(RADIUS_CARD)
             .padding({ top: 2, bottom: 2 })
             .margin({ top: 8 })
@@ -4980,6 +5116,7 @@ struct SettingsContent {
         }
         .backgroundColor(this.p.surface)
         .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+        .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
         .borderRadius(RADIUS_CARD)
         .margin({ left: 16, right: 16, top: 12 })
         }
@@ -5176,8 +5313,9 @@ struct SettingsContent {
   QueueChip(label: string, id: string) {
     Text(label)
       .fontSize(12)
-      .fontColor(this.rssEditQueueId === id ? this.p.onPrimary : this.p.textSecondary)
-      .backgroundColor(this.rssEditQueueId === id ? this.p.primarySolid : this.p.surfaceHighlight)
+      .fontColor(this.rssEditQueueId === id ? this.p.text : this.p.textSecondary)
+      .backgroundColor(this.rssEditQueueId === id ? this.p.surfaceHighlight : Color.Transparent)
+      .border({ width: 1, color: this.rssEditQueueId === id ? this.p.border : Color.Transparent })
       .borderRadius(14)
       .padding({ left: 12, right: 12, top: 5, bottom: 5 })
       .margin({ right: 6 })
@@ -5188,8 +5326,9 @@ struct SettingsContent {
   ThemeChip(label: string, mode: 'light' | 'dark' | 'system') {
     Text(label)
       .fontSize(12)
-      .fontColor(this.vm.themeMode === mode ? this.p.onPrimary : this.p.textSecondary)
-      .backgroundColor(this.vm.themeMode === mode ? this.p.primarySolid : this.p.surfaceHighlight)
+      .fontColor(this.vm.themeMode === mode ? this.p.text : this.p.textSecondary)
+      .backgroundColor(this.vm.themeMode === mode ? this.p.surfaceHighlight : Color.Transparent)
+      .border({ width: 1, color: this.vm.themeMode === mode ? this.p.border : Color.Transparent })
       .borderRadius(14)
       .padding({ left: 12, right: 12, top: 5, bottom: 5 })
       .margin({ right: 8 })
@@ -5210,8 +5349,9 @@ struct SettingsContent {
   PolicyChip(label: string, value: string, current: string, onPick: (v: string) => void) {
     Text(label)
       .fontSize(12)
-      .fontColor(current === value ? this.p.onPrimary : this.p.textSecondary)
-      .backgroundColor(current === value ? this.p.primarySolid : this.p.surfaceHighlight)
+      .fontColor(current === value ? this.p.text : this.p.textSecondary)
+      .backgroundColor(current === value ? this.p.surfaceHighlight : Color.Transparent)
+      .border({ width: 1, color: current === value ? this.p.border : Color.Transparent })
       .borderRadius(14)
       .padding({ left: 12, right: 12, top: 5, bottom: 5 })
       .margin({ right: 8 })

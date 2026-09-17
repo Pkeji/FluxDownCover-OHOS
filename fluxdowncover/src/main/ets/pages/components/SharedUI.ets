@@ -24,6 +24,15 @@ export const SHEET_OPEN_DURATION: number = 300;
 export const SHEET_CLOSE_DURATION: number = 200;
 // P1 材质：毛玻璃模糊档位与 0.5px 描边
 export const MATERIAL_BLUR: BlurStyle = BlurStyle.COMPONENT_THIN;
+
+export function materialBlur(level: string = 'auto'): BlurStyle {
+  switch (level) {
+    case 'high': return BlurStyle.COMPONENT_REGULAR;
+    case 'medium': return BlurStyle.COMPONENT_THIN;
+    case 'low': return BlurStyle.COMPONENT_ULTRA_THIN;
+    default: return BlurStyle.COMPONENT_THIN;
+  }
+}
 export const MATERIAL_BORDER_WIDTH: number = 0.5;
 
 /** 毛玻璃描边色 */
@@ -451,6 +460,8 @@ const ICON: Map<string, Resource> = new Map([
   ['cpu', $r('app.media.ic_cpu')],
   ['database', $r('app.media.ic_database')],
   ['shield', $r('app.media.ic_shield')],
+  ['shield_user', $r('app.media.ic_shield_user')],
+  ['shield_check', $r('app.media.ic_shield_alert')],
   ['list', $r('app.media.ic_list')],
   ['palette', $r('app.media.ic_palette')],
   ['sun', $r('app.media.ic_sun')],

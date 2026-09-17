@@ -1,4 +1,4 @@
-import { Palette, palette, iconRes, safeToast, RADIUS_CARD, RADIUS_SHEET, MATERIAL_BORDER_WIDTH, materialBorder, hapticFeedback } from './SharedUI';
+import { Palette, palette, iconRes, safeToast, RADIUS_CARD, RADIUS_SHEET, MATERIAL_BORDER_WIDTH, materialBorder, hapticFeedback, materialBlur } from './SharedUI';
 import { DownloadViewModel } from '../../viewmodel/DownloadViewModel';
 import { formatBytes, formatDateTime } from '../../utils/common';
 import { PRIVACY_APP_NAME, PRIVACY_SUMMARY, PRIVACY_SECTIONS, PRIVACY_UPDATE_DATE } from '../../utils/PrivacyPolicy';
@@ -131,11 +131,12 @@ struct AboutContent {
               .width('100%')
           }
           .width('100%')
-          .padding(20)
+          .padding({ left: 16, right: 16, top: 20, bottom: 20 })
           .backgroundColor(this.p.surface)
           .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+          .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
           .borderRadius(RADIUS_CARD)
-          .margin({ left: 16, right: 16, bottom: 12 })
+          .margin({ bottom: 12 })
 
           // ── 功能入口：每张独立卡片，图标随主题色 ──
           // ── 功能入口：合并为一个卡片 ──
@@ -145,20 +146,22 @@ struct AboutContent {
             this.SettingRow('heart', '开源致谢', 'aboutOss')
             this.SettingRow('donate', '投喂开发者', 'aboutDonate')
             this.SettingRow('qq', '官方交流群', 'aboutQq')
-            this.SettingRow('shield', '隐私政策', 'aboutPrivacy')
+            this.SettingRow('shield_user', '隐私政策', 'aboutPrivacy')
           }
           .width('100%')
           .backgroundColor(this.p.surface)
           .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+          .backgroundBlurStyle(materialBlur(this.vm.glassLevel))
           .borderRadius(RADIUS_CARD)
-          .margin({ left: 16, right: 16, bottom: 12 })
+          .margin({ bottom: 12 })
 
           // ── 版权 ──
           Text('© 2026 FluxDown Cover for HarmonyOS')
             .fontSize(12).fontColor(this.p.textSecondary)
             .width('100%').textAlign(TextAlign.Center).margin({ top: 16, bottom: 8 })
         }
-        .width('100%')
+        .width("100%")
+          .padding({ left: 16, right: 16 })
       }
       .scrollBar(BarState.Off)
       .layoutWeight(1)
@@ -199,7 +202,7 @@ struct AboutContent {
   @Builder
   SettingRow(icon: string, label: string, key: string) {
     Row() {
-      Image(iconRes(icon)).width(18).height(18).objectFit(ImageFit.Contain).fillColor(this.tintColor)
+      Image(iconRes(icon)).width(20).height(20).objectFit(ImageFit.Contain).fillColor(this.tintColor)
         .margin({ right: 10 })
       Text(label).fontSize(16).fontColor(this.p.text).layoutWeight(1)
       Image(iconRes('chevron_right')).width(16).height(16).fillColor(this.p.textSecondary)
@@ -409,7 +412,7 @@ struct AboutContent {
 
       // 操作按钮：复制群号 / 加入QQ群
       Row({ space: 12 }) {
-        Button('复制群号').fontSize(14).fontColor(this.p.primary)
+        Button('复制群号').fontSize(14).fontColor(this.p.text)
           .backgroundColor(this.p.surface)
           .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
           .borderRadius(22).height(42)
@@ -475,7 +478,7 @@ struct AboutContent {
       Column() {
         Text(attribution.name).fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.p.text)
         Row() {
-          Text(attribution.license).fontSize(11).fontColor(this.p.primary)
+          Text(attribution.license).fontSize(11).fontColor(this.p.text)
             .margin({ right: 6 })
           Text(attribution.version).fontSize(11).fontColor(this.p.textSecondary)
         }
@@ -483,7 +486,7 @@ struct AboutContent {
         Text(attribution.role).fontSize(12).fontColor(this.p.textSecondary).margin({ top: 2 }).lineHeight(16)
         Text(attribution.author).fontSize(11).fontColor(this.p.textSecondary).margin({ top: 2 })
         if (attribution.repoUrl) {
-          Text(attribution.repoUrl).fontSize(11).fontColor(this.p.primary).margin({ top: 2 })
+          Text(attribution.repoUrl).fontSize(11).fontColor(this.p.text).margin({ top: 2 })
             .onClick(() => { this.vm.openUrl(attribution.repoUrl); })
         }
       }

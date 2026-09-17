@@ -33,6 +33,10 @@
       "value": "用于在您点击按钮时提供震动反馈"
     },
     {
+      "name": "perm_biometric_reason",
+      "value": "用于应用锁指纹验证"
+    },
+    {
       "name": "perm_imagevideo_reason",
       "value": "用于将收款码图片保存到系统相册"
     },
