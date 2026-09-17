@@ -184,7 +184,7 @@ export function palette(theme: 'light' | 'dark', colorSchemeId: string = 'cyan')
   if (dark) {
     return {
       dark: true,
-      bg: '#0D0D0D',
+      bg: '#000000',
       surface: '#161618',
       surfaceSolid: '#1C1C1E',
       surfaceHighlight: '#242428',

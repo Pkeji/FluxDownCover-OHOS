@@ -499,10 +499,10 @@ struct IndexPage {
     try {
       const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
       window.getLastWindow(ctx).then((win: window.Window) => {
-        win.setWindowBackgroundColor(isDark ? '#FF000000' : '#FFE8EBF0');
+        win.setWindowBackgroundColor(isDark ? '#FF000000' : '#FFF2F3F5');
         win.setWindowSystemBarProperties({
           statusBarColor: '#00000000',
-          navigationBarColor: isDark ? '#FF000000' : '#FFE8EBF0',
+          navigationBarColor: '#00000000',
           isStatusBarLightIcon: isDark,
           isNavigationBarLightIcon: isDark,
           navigationBarContentColor: isDark ? '#FFEEEEEE' : '#FF1A1A1A',
@@ -1258,7 +1258,7 @@ struct IndexPage {
       .navDestination(this.NavDest)
       .hideBackButton(true)
       .titleMode(HdsNavigationTitleMode.MINI)
-      .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP, LayoutSafeAreaEdge.BOTTOM])
+      .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP])
       .onAreaChange((_oldArea: Area, newArea: Area) => {
         const w = Math.round(newArea.width as number);
         if (Math.abs(w - this.winWidth) > 2) {
@@ -1525,7 +1525,7 @@ struct IndexPage {
         }
         .width(42).height(42)
         .justifyContent(FlexAlign.Center)
-        .onClick(() => { this.showPrivacyPage = false; })
+        .onClick(() => { hapticFeedback(); this.showPrivacyPage = false; })
 
         Text('隐私政策').fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.p.text)
           .layoutWeight(1).textAlign(TextAlign.Center)
@@ -1562,7 +1562,7 @@ struct IndexPage {
         Button('已阅读并同意').width('90%').height(44)
           .backgroundColor(this.p.primarySolid).fontColor(Color.White).borderRadius(10)
           .margin({ bottom: 18 })
-          .onClick(() => { this.showPrivacyPage = false; })
+          .onClick(() => { hapticFeedback(); this.showPrivacyPage = false; })
       }
     }
     .width('100%').height('100%').backgroundColor(this.p.bg)
@@ -3327,10 +3327,10 @@ struct SettingsContent {
     try {
       const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
       window.getLastWindow(ctx).then((win: window.Window) => {
-        win.setWindowBackgroundColor(isDark ? '#FF000000' : '#FFE8EBF0');
+        win.setWindowBackgroundColor(isDark ? '#FF000000' : '#FFF2F3F5');
         win.setWindowSystemBarProperties({
           statusBarColor: '#00000000',
-          navigationBarColor: isDark ? '#FF000000' : '#FFE8EBF0',
+          navigationBarColor: '#00000000',
           isStatusBarLightIcon: isDark,
           isNavigationBarLightIcon: isDark,
           navigationBarContentColor: isDark ? '#FFEEEEEE' : '#FF1A1A1A',

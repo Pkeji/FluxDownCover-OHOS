@@ -55,6 +55,14 @@
     {
       "name": "accent_amber",
       "value": "#F59E0B"
+    },
+    {
+      "name": "app_bg",
+      "value": "#F2F3F5"
+    },
+    {
+      "name": "app_surface",
+      "value": "#FFFFFF"
     }
   ]
 }
