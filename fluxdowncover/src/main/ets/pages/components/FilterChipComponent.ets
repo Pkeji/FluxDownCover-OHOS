@@ -13,7 +13,7 @@ struct FilterChipComponent {
       .fontColor(this.selected ? this.p.onPrimary : this.p.text)
       .padding({ left: 14, right: 14, top: 8, bottom: 8 })
       .borderRadius(14)
-      .backgroundColor(this.selected ? this.p.primarySolid : this.p.surface)
+      .backgroundColor(this.selected ? this.p.primarySolid : this.p.surfaceHighlight)
       .margin({ right: 8, bottom: 8 })
       .onClick(this.onTap)
   }

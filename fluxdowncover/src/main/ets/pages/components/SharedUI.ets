@@ -6,6 +6,7 @@
 
 import { hdsMaterial, SystemMaterialParams } from '@kit.UIDesignKit';
 import { ButtonModifier, UIContext } from '@kit.ArkUI';
+import vibrator from '@ohos.vibrator';
 import { getScheme } from '../../utils/ColorSchemes';
 import { TaskStatus } from '../../model/TaskStatus';
 import { ProtocolType } from '../../model/ProtocolType';
@@ -180,7 +181,7 @@ export function palette(theme: 'light' | 'dark', colorSchemeId: string = 'cyan')
       surfaceHighlight: '#242428',
       materialBg: withAlpha(scheme.primary, 0.08),
       text: '#F2F3F5',
-      textSecondary: '#9A9CA0',
+      textSecondary: '#B8BABD',
       primary: scheme.primary,
       primarySolid: ensureBgForOnWhite(scheme.primary),
       primaryDark: darkenHex(scheme.primary, 0.15),
@@ -382,6 +383,7 @@ const ICON: Map<string, Resource> = new Map([
   ['folder', $r('app.media.ic_folder')],
   ['folder_open', $r('app.media.ic_folder_open')],
   ['rename', $r('app.media.ic_square_pen')],
+  ['move', $r('app.media.ic_folder')],
   ['recheck', $r('app.media.ic_refresh_cw')],
   ['retry', $r('app.media.ic_rotate_ccw')],
   ['file_check', $r('app.media.ic_file_check')],
@@ -462,6 +464,8 @@ const ICON: Map<string, Resource> = new Map([
   ['radio_selected', $r('app.media.ic_circle_dot')],
   ['checkbox', $r('app.media.ic_toggle_left')],
   ['checkbox_selected', $r('app.media.ic_check_square')],
+  ['phone', $r('app.media.ic_phone')],
+  ['vibrate', $r('app.media.ic_vibrate')],
 ]);
 
 /** 图标名 → Resource 映射 */
@@ -476,6 +480,16 @@ export function safeToast(ui: UIContext, message: string): void {
     ui.getPromptAction().showToast({ message });
   } catch (e) {
     console.warn(`[UI] showToast failed: ${(e as Error)?.message ?? e}`);
+  }
+}
+
+/** 触感反馈：轻震动 */
+export function hapticFeedback(): void {
+  try {
+    if (!(AppStorage.get<boolean>('fluxdown_haptic_enabled') ?? true)) return;
+    vibrator.startVibration({ type: "time", duration: 20 }, { id: 0, usage: "unknown" }).catch((e: Error) => console.warn("[Haptic] err:", e.message));
+  } catch (e) {
+    console.warn(`[Haptic] failed: ${(e as Error)?.message ?? e}`);
   }
 }
 

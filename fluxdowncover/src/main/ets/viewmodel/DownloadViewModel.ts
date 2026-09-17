@@ -62,6 +62,8 @@ export class DownloadViewModel implements EngineListener, McpBackend {
   @Trace clipboardMonitor: boolean = false; // auto-detect URLs from clipboard
   @Trace notifyOnComplete: boolean = true; // system notification when a task finishes
   @Trace liveViewEnabled: boolean = true; // live window capsule for download progress
+  @Trace followOrientation: boolean = AppStorage.get<boolean>('fluxdown_follow_orientation') ?? false;
+  @Trace hapticEnabled: boolean = AppStorage.get<boolean>('fluxdown_haptic_enabled') ?? true;
   private lastProgressNotify: Map<string, number> = new Map(); // 进度通知节流
   @Trace autoRetryCount: number = 3; // failed-download auto retry count (0 = disabled); official default 3
   @Trace autoRetryDelaySec: number = 5; // seconds between retries
@@ -1429,10 +1431,7 @@ export class DownloadViewModel implements EngineListener, McpBackend {
     const ctx = this?.['context'];
     if (!ctx) return;
     try {
-      const logCollector = (globalThis as any)['__fluxdown_logCollector'];
-      if (logCollector) {
-        logCollector.copyToClipboard(ctx);
-      }
+      logCollector.copyToClipboard(ctx);
     } catch (_e) {}
   }
 

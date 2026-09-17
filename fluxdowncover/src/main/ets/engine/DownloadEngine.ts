@@ -506,6 +506,7 @@ export class DownloadEngine implements EngineHooks {
     this.active.add(task);
     this.ensureTicker();
     this.listener?.onTaskUpdated(task);
+    console.log(`[engine.start] id=${task.id} filePath=${task.filePath} totalBytes=${task.totalBytes} downloadedBytes=${task.downloadedBytes} segments=${task.segments.length} willProbe=${task.totalBytes === 0 && task.segments.length === 0}`);
 
     // 在网络 I/O 前检查连通性，避免无网络时长时间卡在"分析中"状态
     await this.checkNetwork(task);
@@ -704,6 +705,10 @@ export class DownloadEngine implements EngineHooks {
     }
     const oldPath = task.filePath;
     const newPath = `${task.dirPath}/${name}`;
+    // 日志：记录重命名前后的关键状态
+    let oldSize = 0;
+    try { if (oldPath && fs.accessSync(oldPath)) oldSize = fs.statSync(oldPath).size; } catch (_e) {}
+    console.log(`[renameTask] id=${task.id} oldName=${task.fileName} newName=${name} oldPath=${oldPath} newPath=${newPath} oldSize=${oldSize} totalBytes=${task.totalBytes} downloadedBytes=${task.downloadedBytes} segments=${task.segments.length}`);
     if (oldPath && this.fileExists(oldPath)) {
       if (this.fileExists(newPath)) {
         throw new Error('目标文件名已存在');
@@ -807,7 +812,24 @@ export class DownloadEngine implements EngineHooks {
         throw e as Error;
       }
     }
-    // Paused / error / queued: reset and re-download from scratch.
+    // Paused / error / queued: verify partial file, keep progress if file size matches.
+    try {
+      if (task.filePath && fs.accessSync(task.filePath)) {
+        const st = fs.statSync(task.filePath);
+        // File exists and size >= current progress → keep progress, reset segments for fresh reconnect.
+        if (st.size > 0 && st.size >= task.downloadedBytes) {
+          task.downloadedBytes = st.size;
+          task.liveBytes = st.size;
+          task.errorMessage = '';
+          task.segments = [];
+          task.status = TaskStatus.Paused;
+          await this.repo.update(task);
+          return;
+        }
+      }
+    } catch (_e) {
+      // file missing or unreadable → fall through to full reset
+    }
     task.status = TaskStatus.Paused;
     task.downloadedBytes = 0;
     task.liveBytes = 0;
@@ -921,6 +943,9 @@ export class DownloadEngine implements EngineHooks {
     task.speed = 0;
     task.status = TaskStatus.Completed;
     task.finishedAt = Date.now();
+    let finalSize = 0;
+    try { if (task.filePath && fs.accessSync(task.filePath)) finalSize = fs.statSync(task.filePath).size; } catch (_e) {}
+    console.log(`[finalizeCompleted] id=${task.id} filePath=${task.filePath} totalBytes=${task.totalBytes} downloadedBytes=${task.downloadedBytes} liveBytes=${task.liveBytes} actualFileSize=${finalSize}`);
     // Use server-provided Last-Modified as the file's mtime when enabled.
     if (this.useServerTime && task.serverMtime > 0 && task.filePath) {
       try {

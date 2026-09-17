@@ -29,6 +29,10 @@
       "value": "用于检测QQ、浏览器等应用是否安装，以便选择合适的方式打开加群链接或下载链接"
     },
     {
+      "name": "perm_vibrate_reason",
+      "value": "用于在您点击按钮时提供震动反馈"
+    },
+    {
       "name": "perm_imagevideo_reason",
       "value": "用于将收款码图片保存到系统相册"
     },

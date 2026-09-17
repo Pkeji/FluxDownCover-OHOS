@@ -34,7 +34,7 @@ import { Palette, palette, iconRes, safeToast, ActionButtonModifier, ImmersionBu
   materialBorder, buildMaterialEffect, statusText, protocolIcon, protocolLabelIcon, statusIcon,
   withAlpha, softShadow, PRESS_SCALE, PRESS_SCALE_STRONG, PRESS_DURATION,
   RADIUS_CARD, RADIUS_SHEET, MATERIAL_BORDER_WIDTH, MATERIAL_BLUR,
-  SHEET_OPEN_DURATION, SHEET_CLOSE_DURATION } from './components/SharedUI';
+  SHEET_OPEN_DURATION, SHEET_CLOSE_DURATION, hapticFeedback } from './components/SharedUI';
 
 // 提取到 components/ 的独立组件
 import FilterChipComponent from './components/FilterChipComponent';
@@ -113,6 +113,9 @@ struct IndexPage {
   @Local sheetScale: number = 1;
   @Local sheetOpacity: number = 1;
   @Local showFilterSheet: boolean = false;
+  @Local showDeleteConfirm: boolean = false;
+  @Local deleteDialogTasks: DownloadTask[] = [];
+  @Local deleteDialogIsBatch: boolean = false;
   @Local filterSheetScale: number = 1;
   @Local filterSheetOpacity: number = 1;
   @Local searchMode: boolean = false;
@@ -271,6 +274,7 @@ struct IndexPage {
   }
 
   closeAddSheet(): void {
+    hapticFeedback();
     this.getUIContext().animateTo({
       duration: SHEET_CLOSE_DURATION,
       curve: Curve.EaseIn,
@@ -302,6 +306,7 @@ struct IndexPage {
   }
 
   closeFilterSheet(): void {
+    hapticFeedback();
     this.getUIContext().animateTo({
       duration: SHEET_CLOSE_DURATION,
       curve: Curve.EaseIn,
@@ -813,12 +818,12 @@ struct IndexPage {
           .width(26).height(26).fillColor(this.p.text)
           .rotate({ angle: 180 })
           .margin({ left: 8, right: 8 })
-          .onClick(() => { this.navPathStack.pop(); })
+          .onClick(() => { hapticFeedback(); this.navPathStack.pop(); })
       } else {
         Image(iconRes(icon))
           .width(26).height(26).fillColor(this.p.text)
           .margin({ left: 8, right: 8 })
-          .onClick(() => { this.navPathStack.pop(); })
+          .onClick(() => { hapticFeedback(); this.navPathStack.pop(); })
       }
       Text(title)
         .fontSize(18)
@@ -936,6 +941,7 @@ struct IndexPage {
     .onClick(() => {
       if (this.currentMainTab !== index) {
         this.currentMainTab = index;
+        hapticFeedback();
         if (index !== 0) {
           this.selectMode = false;
           this.selectedTaskIds = new Set();
@@ -960,6 +966,7 @@ struct IndexPage {
     .width('100%')
     .height('100%')
     .justifyContent(FlexAlign.Center)
+    .onTouch((e: TouchEvent) => { if (e.type === TouchType.Down) hapticFeedback(); })
   }
 
   /** HdsTabs 设置 Tab（自定义，去掉系统矩形点击高亮） */
@@ -976,6 +983,7 @@ struct IndexPage {
     }
     .width('100%')
     .height('100%')
+    .onTouch((e: TouchEvent) => { if (e.type === TouchType.Down) hapticFeedback(); })
     .justifyContent(FlexAlign.Center)
   }
 
@@ -992,6 +1000,7 @@ struct IndexPage {
         .fontColor(this.currentMainTab === 2 ? this.tintColor : this.p.textSecondary)
     }
     .width('100%')
+    .onTouch((e: TouchEvent) => { if (e.type === TouchType.Down) hapticFeedback(); })
     .height('100%')
     .justifyContent(FlexAlign.Center)
   }
@@ -1262,6 +1271,36 @@ struct IndexPage {
         .height('100%')
         .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
       }
+      // ── 自定义删除确认弹窗 ──
+      if (this.showDeleteConfirm) {
+        Column()
+          .width('100%').height('100%')
+          .backgroundColor('rgba(0,0,0,0.4)')
+          .onClick(() => { this.showDeleteConfirm = false; })
+        Column() {
+          Text(this.deleteDialogIsBatch ? '批量删除' : '删除任务')
+            .fontSize(16).fontWeight(FontWeight.Bold).fontColor(this.p.text).width('100%')
+          Text(this.deleteDialogIsBatch
+            ? `确定要删除选中的 ${this.deleteDialogTasks.length} 个下载任务吗？`
+            : '确定要删除此下载任务吗？')
+            .fontSize(14).fontColor(this.p.textSecondary).width('100%').margin({ top: 12, bottom: 20 })
+          Row() {
+            Button('取消').fontSize(14).fontColor(this.p.text)
+              .type(ButtonType.Capsule).backgroundColor(this.p.surfaceHighlight).borderRadius(20).height(40).layoutWeight(1).margin({ right: 8 })
+              .onClick(() => { this.showDeleteConfirm = false; })
+            Button('仅删任务').fontSize(14).fontColor(this.p.onPrimary)
+              .type(ButtonType.Capsule).backgroundColor(this.p.primarySolid).borderRadius(20).height(40).layoutWeight(1).margin({ right: 8 })
+              .onClick(() => { this.doDeleteTask(true); })
+            Button('删文件').fontSize(14).fontColor('#FFFFFF')
+              .type(ButtonType.Capsule).backgroundColor('#E8504F').borderRadius(20).height(40).layoutWeight(1)
+              .onClick(() => { this.doDeleteTask(false); })
+          }.width('100%')
+        }
+        .width('80%').padding(20)
+        .backgroundColor(this.p.surface)
+        .borderRadius(16)
+        .onClick(() => {})
+      }
       // ── 自定义筛选弹窗 ──
       if (this.showFilterSheet) {
         Stack({ alignContent: Alignment.Center }) {
@@ -1332,7 +1371,7 @@ struct IndexPage {
           .height(this.winWidth < 600 ? '72%' : '70%')
           // 与新建下载弹窗一致：折叠屏展开态物理高度封顶，避免大屏膨胀（云测 UX 标准）
           .constraintSize({ maxHeight: 620 })
-          .backgroundColor(this.p.materialBg)
+          .backgroundColor(this.p.surface)
           .backgroundBlurStyle(MATERIAL_BLUR)
           .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
           .borderRadius(RADIUS_SHEET)
@@ -1618,7 +1657,7 @@ struct IndexPage {
     const map: Record<string, string> = {
       'appearance': '外观', 'download': '下载设置', 'bt': 'BT 下载',
       'mcp': 'MCP 服务', 'ext': '浏览器扩展', 'queue': '下载队列',
-      'cat': '自定义分类', 'rss': 'RSS 订阅', 'huawei_account': '华为账号'
+      'cat': '自定义分类', 'rss': 'RSS 订阅', 'huawei_account': '华为账号', 'haptic': '界面显示'
     };
     return map[mode] ?? '设置';
   }
@@ -1684,17 +1723,22 @@ struct IndexPage {
         if (this.vm.visibleTasks.length > 0) {
           Row() {
             Blank()
-            Text(this.selectMode ? '取消' : '选择')
-              .fontSize(14)
-              .fontColor(this.p.primary)
-              .padding({ left: 12, right: 12, top: 4, bottom: 4 })
-              .borderRadius(8)
-              .onClick(() => {
-                this.selectMode = !this.selectMode;
-                if (!this.selectMode) {
-                  this.selectedTaskIds = new Set();
-                }
-              })
+            Row() {
+              Image(iconRes(this.selectMode ? 'x' : 'check')).width(16).height(16).fillColor(this.p.primary)
+              Text(this.selectMode ? '取消' : '选择')
+                .fontSize(14)
+                .fontColor(this.p.primary)
+                .margin({ left: 4 })
+            }
+            .padding({ left: 12, right: 12, top: 4, bottom: 4 })
+            .borderRadius(20)
+            .border({ width: 1, color: this.p.primary })
+            .onClick(() => {
+              this.selectMode = !this.selectMode;
+              if (!this.selectMode) {
+                this.selectedTaskIds = new Set();
+              }
+            })
           }
           .width('100%')
           .padding({ right: 12, bottom: 4 })
@@ -1840,9 +1884,8 @@ struct IndexPage {
           Button(`删除${this.selectedTaskIds.size > 0 ? `(${this.selectedTaskIds.size})` : ''}`)
             .type(ButtonType.Capsule)
             .fontSize(13)
-            .backgroundColor(this.selectedTaskIds.size > 0 ? '#DB371A' : Color.Transparent)
-            .backgroundBlurStyle(this.selectedTaskIds.size > 0 ? BlurStyle.COMPONENT_THIN : MATERIAL_BLUR)
-            .border({ width: MATERIAL_BORDER_WIDTH, color: this.selectedTaskIds.size > 0 ? '#80E8553B' : materialBorder(this.p.dark) })
+            .backgroundColor(this.selectedTaskIds.size > 0 ? '#E8504F' : Color.Transparent)
+            .border({ width: MATERIAL_BORDER_WIDTH, color: this.selectedTaskIds.size > 0 ? '#E8504F' : materialBorder(this.p.dark) })
             .fontColor(this.selectedTaskIds.size > 0 ? '#FFFFFF' : this.p.textSecondary)
             .enabled(this.selectedTaskIds.size > 0)
             .height(32)
@@ -1856,7 +1899,7 @@ struct IndexPage {
             })
         }
         .padding({ left: 16, right: 16, top: 8, bottom: 8 })
-        .backgroundColor(this.p.materialBg)
+        .backgroundColor(this.p.surface)
         .backgroundBlurStyle(MATERIAL_BLUR)
         .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
         .borderRadius(24)
@@ -1988,6 +2031,7 @@ struct IndexPage {
     .animation({ duration: 250, curve: Curve.EaseInOut })
     .onClick(() => {
       this.currentTab = index;
+      hapticFeedback();
       this.selectMode = false;
       this.selectedTaskIds = new Set();
       if (index === 0) {
@@ -2136,49 +2180,22 @@ struct IndexPage {
 
   /** 删除确认对话框：可选择是否保留文件。 */
   private showDeleteDialog(tasks: DownloadTask[], isBatch: boolean): void {
-    this.getUIContext().showAlertDialog(
-      {
-        title: isBatch ? '批量删除' : '删除任务',
-        message: isBatch
-          ? `确定要删除选中的 ${tasks.length} 个下载任务吗？`
-          : '确定要删除此下载任务吗？',
-        autoCancel: true,
-        alignment: DialogAlignment.Center,
-        buttons: [
-          {
-            value: '取消',
-            action: () => {},
-            fontColor: this.p.textSecondary
-          },
-          {
-            value: '仅删除任务',
-            action: () => {
-              if (isBatch) {
-                this.vm.removeTasks(tasks.map(t => t.id), true);
-                this.selectedTaskIds = new Set();
-                this.selectMode = false;
-              } else {
-                this.vm.remove(tasks[0], true);
-              }
-            },
-            fontColor: this.p.primary
-          },
-          {
-            value: '删除并删除文件',
-            action: () => {
-              if (isBatch) {
-                this.vm.removeTasks(tasks.map(t => t.id), false);
-                this.selectedTaskIds = new Set();
-                this.selectMode = false;
-              } else {
-                this.vm.remove(tasks[0], false);
-              }
-            },
-            fontColor: this.p.error
-          }
-        ]
-      }
-    );
+    this.deleteDialogTasks = tasks;
+    this.deleteDialogIsBatch = isBatch;
+    this.showDeleteConfirm = true;
+  }
+
+  private doDeleteTask(keepFile: boolean): void {
+    const tasks = this.deleteDialogTasks;
+    const isBatch = this.deleteDialogIsBatch;
+    this.showDeleteConfirm = false;
+    if (isBatch) {
+      this.vm.removeTasks(tasks.map(t => t.id), keepFile);
+      this.selectedTaskIds = new Set();
+      this.selectMode = false;
+    } else {
+      this.vm.remove(tasks[0], keepFile);
+    }
   }
 
   /** 重命名对话框。 */
@@ -2300,7 +2317,7 @@ struct IndexPage {
         .justifyContent(FlexAlign.Center)
       }
       .type(ButtonType.Capsule)
-      .backgroundColor(this.p.errorSolid)
+      .backgroundColor('#E8504F')
       .width(64)
       .height(40)
       .onClick(() => {
@@ -2319,7 +2336,7 @@ struct IndexPage {
         Checkbox()
           .select(this.selectedTaskIds.has(task.id))
           .selectedColor(this.p.primarySolid)
-          .shape(CheckBoxShape.ROUNDED_SQUARE)
+          .shape(CheckBoxShape.CIRCLE)
           .width(22)
           .height(22)
           .margin({ right: 10 })
@@ -2425,7 +2442,7 @@ struct IndexPage {
       }
     }
     .padding(12)
-    .backgroundColor(this.selectMode && this.selectedTaskIds.has(task.id) ? this.p.primaryTint : this.p.surface)
+    .backgroundColor(this.selectMode && this.selectedTaskIds.has(task.id) ? this.p.surfaceHighlight : this.p.surface)
             .borderRadius(RADIUS_CARD)
     .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
     .margin({ left: 12, right: 12, top: 6, bottom: 6 })
@@ -3025,7 +3042,6 @@ struct AddContent {
         })
 
       // ── 批量下载 ──
-      Divider().color(this.p.border).margin({ top: 24, bottom: 16 })
 
       Text('批量下载').fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.p.text)
         .margin({ bottom: 8 })
@@ -3390,15 +3406,11 @@ struct SettingsContent {
       Scroll() {
         Column() {
         // ── 外观 ──
-        if (this.mode === '' || this.mode === 'appearance') {
+        if (this.mode === 'appearance') {
         Column() {
           Row() {
             Image(iconRes('palette')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('外观').fontSize(15).fontColor(this.p.text).layoutWeight(1)
-            if (this.mode === '') {
-              Image(iconRes('chevron_right'))
-                .width(16).height(16).fillColor(this.p.textSecondary)
-            }
           }
           .width('100%')
           .padding({ left: 16, right: 16, top: 16, bottom: 16 })
@@ -3407,14 +3419,8 @@ struct SettingsContent {
           .onTouch((event: TouchEvent) => {
             this.handlePress('secAppearance', event);
           })
-          .onClick(() => {
-            if (this.mode === '') {
-              this.navStack.pushPath({ name: 'setting', param: 'appearance' });
-            }
-          })
 
-          if (this.mode !== '' || this.sectionAppearance) {
-            Divider().color(this.p.border).margin({ left: 16, right: 16 })
+          Column() {
             Column() {
               Row() {
                 Image(iconRes(this.vm.theme === 'dark' ? 'moon' : 'sun')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
@@ -3431,7 +3437,6 @@ struct SettingsContent {
               .width('100%')
               .padding({ left: 12, right: 12, bottom: 14 })
 
-              Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           Row() {
             Image(iconRes('palette')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
@@ -3514,7 +3519,6 @@ struct SettingsContent {
           }
           .padding({ left: 16, right: 16, top: 8, bottom: 16 })
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // ── 材质浓度（模糊/光感的强弱档位）──
           Row() {
@@ -3561,7 +3565,6 @@ struct SettingsContent {
           .width('100%')
           .padding({ left: 16, top: 4, bottom: 8 })
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // ── 图标着色（顶部/底部等框架图标用主题色还是中性单色）──
           Row() {
@@ -3601,6 +3604,47 @@ struct SettingsContent {
         }
 
         // ── 下载（合并卡片：下载设置 + BT下载，仅设置首页显示） ──
+        // ── 界面显示入口卡片 ──
+        if (this.mode === '') {
+        Column() {
+          Row() {
+            Image(iconRes("phone")).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+            Text('界面显示').fontSize(15).fontColor(this.p.text).layoutWeight(1)
+          }
+          .width('100%')
+          .padding({ left: 16, right: 16, top: 16, bottom: 16 })
+          // 外观入口
+          Row() {
+            Image(iconRes('palette')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+            Text('外观').fontColor(this.p.text).layoutWeight(1).fontSize(15)
+            Image(iconRes('chevron_right')).width(16).height(16).fillColor(this.p.textSecondary)
+          }
+          .width('100%')
+          .padding({ left: 16, right: 16, top: 8, bottom: 12 })
+          .onClick(() => {
+            this.navStack.pushPath({ name: 'setting', param: 'appearance' });
+          })
+          // 触感反馈入口
+          Row() {
+            Image(iconRes("zap")).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+            Text('触感反馈').fontColor(this.p.text).layoutWeight(1).fontSize(15)
+            Text(this.vm.hapticEnabled ? '已开启' : '已关闭').fontSize(13).fontColor(this.p.textSecondary).margin({ right: 4 })
+            Image(iconRes('chevron_right')).width(16).height(16).fillColor(this.p.textSecondary)
+          }
+          .width('100%')
+          .padding({ left: 16, right: 16, top: 8, bottom: 12 })
+          .onClick(() => {
+            this.navStack.pushPath({ name: 'setting', param: 'haptic' });
+          })
+        }
+        .backgroundColor(this.p.surface)
+        .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+        .borderRadius(RADIUS_CARD)
+        .margin({ left: 16, right: 16, top: 12 })
+        }
+
+
+
         if (this.mode === '') {
         Column() {
           // 下载设置入口
@@ -3616,12 +3660,11 @@ struct SettingsContent {
           .onTouch((event: TouchEvent) => { this.handlePress('menuDownload', event); })
           .onClick(() => { this.navStack.pushPath({ name: 'setting', param: 'download' }); })
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // BT下载入口
           Row() {
             Image(iconRes('magnet')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
-            Text('BT 下载').fontColor(this.p.text).layoutWeight(1).fontSize(15).padding({ left: -1 })
+           Text('BT 下载').fontColor(this.p.text).layoutWeight(1).fontSize(15)
             Image(iconRes('chevron_right')).width(16).height(16).fillColor(this.p.textSecondary)
           }
           .width('100%')
@@ -3631,7 +3674,6 @@ struct SettingsContent {
           .onTouch((event: TouchEvent) => { this.handlePress('menuBt', event); })
           .onClick(() => { this.navStack.pushPath({ name: 'setting', param: 'bt' }); })
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // 下载统计入口
           Row() {
@@ -3646,7 +3688,6 @@ struct SettingsContent {
           .onTouch((event: TouchEvent) => { this.handlePress('menuStats', event); })
           .onClick(() => { this.navStack.pushPath({ name: 'stats' }); })
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // 下载队列入口
           Row() {
@@ -3661,7 +3702,6 @@ struct SettingsContent {
           .onTouch((event: TouchEvent) => { this.handlePress('menuQueue', event); })
           .onClick(() => { this.navStack.pushPath({ name: 'setting', param: 'queue' }); })
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // 自定义分类入口
           Row() {
@@ -3692,7 +3732,6 @@ struct SettingsContent {
           .width('100%')
           .padding({ left: 16, right: 16, top: 16, bottom: 16 })
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
           Column() {
               // ── 下载统计入口 ──
               Row() {
@@ -3706,7 +3745,6 @@ struct SettingsContent {
                 this.navStack.pushPath({ name: 'stats' });
               })
 
-              Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
               Row() {
                 Image(iconRes('cpu')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
@@ -3730,7 +3768,6 @@ struct SettingsContent {
                 .padding({ left: 12, right: 12, bottom: 8 })
             .blockColor(this.p.primary).selectedColor(this.p.primary)
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           Row() {
             Image(iconRes('shield_check')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
@@ -3767,7 +3804,6 @@ struct SettingsContent {
             .padding({ left: 12, right: 12, bottom: 8 })
             .blockColor(this.p.primary).selectedColor(this.p.primary)
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // ── 下载策略（失败重试 / 文件策略 / 服务器时间） ──
           Row() {
@@ -3828,7 +3864,6 @@ struct SettingsContent {
           .width('100%')
           .padding({ left: 16, right: 16, bottom: 10 })
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           Row() {
             Image(iconRes('file_check')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
@@ -3866,7 +3901,6 @@ struct SettingsContent {
           .width('100%')
           .padding({ left: 12, right: 12, bottom: 10 })
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           Row() {
             Image(iconRes('file')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
@@ -3896,7 +3930,6 @@ struct SettingsContent {
           .width('100%')
           .padding({ left: 12, right: 12, bottom: 10 })
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           Row() {
             Image(iconRes('clock')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
@@ -3909,7 +3942,6 @@ struct SettingsContent {
           .width('100%')
           .padding(16)
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           Row() {
             Image(iconRes('shield_check')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
@@ -3925,7 +3957,6 @@ struct SettingsContent {
           .width('100%')
           .padding(16)
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // 代理
           Column() {
@@ -3946,12 +3977,11 @@ struct SettingsContent {
           .padding(16)
           .alignItems(HorizontalAlign.Start)
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // GitHub 镜像
           Column() {
             Row() {
-              Image(iconRes('code')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+              Image(iconRes("phone")).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
               Text('GitHub 下载加速').fontColor(this.p.textSecondary).fontSize(13)
             }
             // 预设镜像快速选择
@@ -3999,7 +4029,6 @@ struct SettingsContent {
           .padding(16)
           .alignItems(HorizontalAlign.Start)
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // 剪贴板监听
           Row() {
@@ -4011,7 +4040,6 @@ struct SettingsContent {
           .width('100%')
           .padding(16)
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // 完成通知
           Row() {
@@ -4023,7 +4051,6 @@ struct SettingsContent {
           .width('100%')
           .padding(16)
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // 清理失效任务
           Row() {
@@ -4058,6 +4085,32 @@ struct SettingsContent {
         }
 
         // ── BT 下载（仅在进入BT下载页时显示完整内容） ──
+        // ── 界面显示页 ──
+        if (this.mode === 'haptic') {
+        Column() {
+          Row() {
+            Text('触感反馈').fontColor(this.p.text).fontSize(15).layoutWeight(1)
+            Toggle({ type: ToggleType.Switch, isOn: this.vm.hapticEnabled })
+              .selectedColor(this.p.primary)
+              .onChange((on: boolean) => {
+                this.vm.hapticEnabled = on;
+                AppStorage.setOrCreate<boolean>('fluxdown_haptic_enabled', on);
+              })
+          }
+          .width('100%')
+          .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+          Text('开启后，点击导航栏、返回、关闭等按钮时会有触感反馈')
+            .fontSize(12)
+            .fontColor(this.p.textSecondary)
+            .width('100%')
+            .padding({ left: 16, right: 16, bottom: 12 })
+        }
+        .backgroundColor(this.p.surface)
+        .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+        .borderRadius(RADIUS_CARD)
+        .margin({ left: 16, right: 16, top: 12 })
+        }
+
         if (this.mode === 'bt') {
         if (this.vm.btSettings) {
           Column() {
@@ -4075,7 +4128,6 @@ struct SettingsContent {
             .width('100%')
             .padding({ left: 16, right: 16, top: 16, bottom: 16 })
 
-            Divider().color(this.p.border).margin({ left: 16, right: 16 })
             Column() {
             Row() {
               Text('启用 DHT').fontColor(this.p.text).layoutWeight(1).fontSize(15)
@@ -4091,7 +4143,6 @@ struct SettingsContent {
             .padding({ top: 2, bottom: 2 })
             Text('无 Tracker 时也能通过 DHT 网络发现其它做种者').fontSize(12).fontColor(this.p.textSecondary)
 
-            Divider().color(this.p.border).margin({ top: 8, bottom: 8 })
 
             Row() {
               Text('启用 UPnP').fontColor(this.p.text).layoutWeight(1).fontSize(15)
@@ -4107,7 +4158,6 @@ struct SettingsContent {
             .padding({ top: 2, bottom: 2 })
             Text('自动映射路由器端口，提高外网可连接性').fontSize(12).fontColor(this.p.textSecondary)
 
-            Divider().color(this.p.border).margin({ top: 8, bottom: 8 })
 
             Row() {
               Text('监听端口范围').fontColor(this.p.text).layoutWeight(1).fontSize(15)
@@ -4125,7 +4175,6 @@ struct SettingsContent {
             }
             .width('100%')
 
-            Divider().color(this.p.border).margin({ top: 8, bottom: 8 })
 
             Row() {
               Text('完成后自动做种').fontColor(this.p.text).layoutWeight(1).fontSize(15)
@@ -4139,7 +4188,6 @@ struct SettingsContent {
             }
             .width('100%')
 
-            Divider().color(this.p.border).margin({ top: 8, bottom: 8 })
 
             Row() {
               Text('启动时自动做种').fontColor(this.p.text).layoutWeight(1).fontSize(15)
@@ -4153,7 +4201,6 @@ struct SettingsContent {
             }
             .width('100%')
 
-            Divider().color(this.p.border).margin({ top: 8, bottom: 8 })
 
             Text('做种停止条件（0 = 不限制）').fontSize(12).fontColor(this.p.textSecondary).margin({ bottom: 6 })
 
@@ -4300,11 +4347,10 @@ struct SettingsContent {
           .width('100%')
           .padding({ left: 16, right: 16, top: 16, bottom: 16 })
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // MCP服务入口
           Row() {
-            Image(iconRes('terminal')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+            Image(iconRes('server')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
             Text('MCP 服务').fontColor(this.p.text).layoutWeight(1).fontSize(15)
             Image(iconRes('chevron_right')).width(16).height(16).fillColor(this.p.textSecondary)
           }
@@ -4315,7 +4361,6 @@ struct SettingsContent {
           .onTouch((event: TouchEvent) => { this.handlePress('menuMcp', event); })
           .onClick(() => { this.navStack.pushPath({ name: 'setting', param: 'mcp' }); })
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // 浏览器扩展入口
           Row() {
@@ -4330,7 +4375,6 @@ struct SettingsContent {
           .onTouch((event: TouchEvent) => { this.handlePress('menuExt', event); })
           .onClick(() => { this.navStack.pushPath({ name: 'setting', param: 'ext' }); })
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // RSS订阅入口
           Row() {
@@ -4361,7 +4405,6 @@ struct SettingsContent {
           .width('100%')
           .padding({ left: 16, right: 16, top: 16, bottom: 16 })
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
           Column() {
               Row() {
                 Column() {
@@ -4381,7 +4424,6 @@ struct SettingsContent {
               .width('100%')
               .padding(16)
 
-              Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
               Column() {
                 Row() {
@@ -4419,7 +4461,6 @@ struct SettingsContent {
           .width('100%')
           .padding({ left: 16, right: 16, top: 16, bottom: 16 })
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           Row() {
             Image(iconRes('link')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
@@ -4429,7 +4470,6 @@ struct SettingsContent {
           .width('100%')
           .padding({ left: 16, top: 14, bottom: 8 })
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           Row() {
             Column() {
@@ -4459,7 +4499,6 @@ struct SettingsContent {
           .padding({ left: 16, right: 16, top: 16, bottom: 16 })
 
           if (this.vm.queues.length > 0) {
-            Divider().color(this.p.border).margin({ left: 16, right: 16 })
           }
 
           ForEach(this.vm.queues, (q: DownloadQueue) => {
@@ -4574,7 +4613,7 @@ struct SettingsContent {
                   .width(36).margin({ right: 6 })
                   .onClick(() => { this.vm.moveQueue(q.id, 1); })
                 Button('删除')
-                  .fontSize(12).backgroundColor(this.p.errorSolid).fontColor('#FFFFFF').height(30)
+                  .fontSize(12).backgroundColor('#E8504F').fontColor('#FFFFFF').height(30)
                   .onClick(() => {
                     this.getUIContext().showAlertDialog({
                       title: '删除队列',
@@ -4706,7 +4745,6 @@ struct SettingsContent {
           .width('100%')
           .padding({ left: 16, right: 16, top: 16, bottom: 16 })
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
 
           // 添加分类
           Column() {
@@ -4821,7 +4859,6 @@ struct SettingsContent {
           .width('100%')
           .padding({ left: 16, right: 16, top: 16, bottom: 16 })
 
-          Divider().color(this.p.border).margin({ left: 16, right: 16 })
           Column() {
               TextInput({ text: this.rssUrl, placeholder: 'RSS 订阅地址' }).caretColor(this.p.primary)
                 .fontColor(this.p.text)
@@ -4881,7 +4918,6 @@ struct SettingsContent {
             .alignItems(HorizontalAlign.Start)
 
           if (this.vm.rssSubs.length > 0) {
-            Divider().color(this.p.border).margin({ left: 16, right: 16 })
           }
 
           ForEach(this.vm.rssSubs, (sub: RssSubscription) => {
@@ -4924,7 +4960,7 @@ struct SettingsContent {
                   })
                 Button('删除')
                   .fontSize(12)
-                  .backgroundColor(this.p.errorSolid)
+                  .backgroundColor('#E8504F')
                   .fontColor('#FFFFFF')
                   .layoutWeight(1)
                   .height(32)

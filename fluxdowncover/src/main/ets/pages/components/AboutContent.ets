@@ -1,4 +1,4 @@
-import { Palette, palette, iconRes, safeToast, RADIUS_CARD, RADIUS_SHEET, MATERIAL_BORDER_WIDTH, materialBorder } from './SharedUI';
+import { Palette, palette, iconRes, safeToast, RADIUS_CARD, RADIUS_SHEET, MATERIAL_BORDER_WIDTH, materialBorder, hapticFeedback } from './SharedUI';
 import { DownloadViewModel } from '../../viewmodel/DownloadViewModel';
 import { formatBytes, formatDateTime } from '../../utils/common';
 import { PRIVACY_APP_NAME, PRIVACY_SUMMARY, PRIVACY_SECTIONS, PRIVACY_UPDATE_DATE } from '../../utils/PrivacyPolicy';
@@ -92,6 +92,11 @@ struct AboutContent {
     return palette(this.vm.theme, this.vm.colorScheme);
   }
 
+  @Computed
+  get tintColor(): string {
+    return this.vm.iconTint === "mono" ? this.p.text : this.p.primary;
+  }
+
   build() {
     Column() {
       Scroll() {
@@ -133,12 +138,20 @@ struct AboutContent {
           .margin({ left: 16, right: 16, bottom: 12 })
 
           // ── 功能入口：每张独立卡片，图标随主题色 ──
-          this.SettingRow('update', '检查更新', 'aboutUpdate')
-          this.SettingRow('github', '访问仓库', 'aboutRepo')
-          this.SettingRow('heart', '开源致谢', 'aboutOss')
-          this.SettingRow('donate', '投喂开发者', 'aboutDonate')
-          this.SettingRow('qq', '官方交流群', 'aboutQq')
-          this.SettingRow('shield', '隐私政策', 'aboutPrivacy')
+          // ── 功能入口：合并为一个卡片 ──
+          Column() {
+            this.SettingRow('update', '检查更新', 'aboutUpdate')
+            this.SettingRow('github', '访问仓库', 'aboutRepo')
+            this.SettingRow('heart', '开源致谢', 'aboutOss')
+            this.SettingRow('donate', '投喂开发者', 'aboutDonate')
+            this.SettingRow('qq', '官方交流群', 'aboutQq')
+            this.SettingRow('shield', '隐私政策', 'aboutPrivacy')
+          }
+          .width('100%')
+          .backgroundColor(this.p.surface)
+          .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
+          .borderRadius(RADIUS_CARD)
+          .margin({ left: 16, right: 16, bottom: 12 })
 
           // ── 版权 ──
           Text('© 2026 FluxDown Cover for HarmonyOS')
@@ -179,25 +192,21 @@ struct AboutContent {
       Image(iconRes('x'))
         .width(16).height(16).fillColor(this.p.text)
     }
-    .onClick(() => { this.closeSheet(); })
+    .onClick(() => { hapticFeedback(); this.closeSheet(); })
   }
 
   /** 独立功能卡片：对齐 1.2.3.66 原版——图标18、文字16、箭头16、padding16、卡片间距16 */
   @Builder
   SettingRow(icon: string, label: string, key: string) {
     Row() {
-      Image(iconRes(icon)).width(18).height(18).objectFit(ImageFit.Contain).fillColor(this.p.primary)
+      Image(iconRes(icon)).width(18).height(18).objectFit(ImageFit.Contain).fillColor(this.tintColor)
         .margin({ right: 10 })
       Text(label).fontSize(16).fontColor(this.p.text).layoutWeight(1)
       Image(iconRes('chevron_right')).width(16).height(16).fillColor(this.p.textSecondary)
         .margin({ left: 8 })
     }
     .width('100%')
-    .padding(16)
-    .backgroundColor(this.p.surface)
-    .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })
-    .borderRadius(RADIUS_CARD)
-    .margin({ left: 16, right: 16, bottom: 16 })
+    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
     .scale({ x: this.pressScale(key), y: this.pressScale(key) })
     .animation({ duration: 120, curve: Curve.Friction })
     .onTouch((e: TouchEvent) => {
@@ -225,7 +234,7 @@ struct AboutContent {
   @Builder
   ProtocolRow(icon: string, name: string) {
     Row({ space: 12 }) {
-      Image(iconRes(icon)).width(20).height(20).fillColor(this.p.primary)
+      Image(iconRes(icon)).width(20).height(20).fillColor(this.tintColor)
       Text(name).fontSize(14).fontColor(this.p.text)
     }
     .width('100%')
