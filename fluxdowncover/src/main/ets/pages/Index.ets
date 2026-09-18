@@ -10,10 +10,12 @@ import { wantConstant } from '@kit.AbilityKit';
 import { util } from '@kit.ArkTS';
 import { pasteboard } from '@kit.BasicServicesKit';
 import fs from '@ohos.file.fs';
+import { promptAction } from '@kit.ArkUI';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
 
 import { userAuth } from "@kit.UserAuthenticationKit";
 import { DownloadViewModel } from '../viewmodel/DownloadViewModel';
+import { Aria2Engine } from '../engine/Aria2Engine';
 import { DownloadTask, Segment } from '../model/DownloadTask';
 import { TaskStatus } from '../model/TaskStatus';
 import { ProtocolType } from '../model/ProtocolType';
@@ -123,6 +125,20 @@ struct IndexPage {
   @Local filterSheetScale: number = 1;
   @Local filterSheetOpacity: number = 1;
   @Local searchMode: boolean = false;
+  // BT 资源解析弹窗
+  @Local showParseSheet: boolean = false;
+  @Local parseConnections: number = 0;
+  @Local parseName: string = '';
+  @Local parseSize: string = '';
+  @Local parseDone: boolean = false;
+  @Local parseError: string = '';
+  @Local parseFiles: Object[] = [];
+  @Local selectedFiles: number[] = [];
+  @Local parseTaskId: string = '';
+  @Local parseMagnetUrl: string = '';
+  @Local parseGid: string = ''
+  @Local parseStartTime: number = 0;
+  private parseTimer: number = 0;
   // FAB（右下角加号）在窗口中的中心坐标，用于让新建弹窗的缩放动画始终从加号位置展开
   @Local fabCenterX: number = 0;
   @Local fabCenterY: number = 0;
@@ -477,21 +493,73 @@ struct IndexPage {
   private handlePendingDeepLink(): void {
     const url = AppStorage.get<string>('pendingDownloadUrl');
     if (url && url.length > 0) {
-      // Clear immediately to avoid re-processing
       AppStorage.setOrCreate<string>('pendingDownloadUrl', '');
-      // Auto-add the download
+      // 磁力链接：先弹解析进度窗
+      if (url.startsWith('magnet:')) {
+        this.startParseSheet(url);
+        return;
+      }
       this.vm.addDownload(url).then((result: 'added' | 'duplicate' | 'pending' | 'skipped') => {
         if (result === 'duplicate') {
-          // 重复链接：显示询问对话框
           this.showDuplicateDialog();
         } else if (result === 'added') {
           safeToast(this.getUIContext(), '已从浏览器扩展接收链接，开始下载' );
         }
-        // pending：正在添加中，不显示 toast
       }).catch((e: Error) => {
         safeToast(this.getUIContext(), '链接接收失败: ' + (e?.message || String(e)) );
       });
     }
+  }
+
+  private formatFileSize(bytes: number): string {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+  }
+
+  /** 磁力链接资源解析弹窗 */
+  private startParseSheet(magnetUrl: string): void {
+    this.showParseSheet = true;
+    this.parseConnections = 0;
+    this.parseName = '';
+    this.parseSize = '';
+    this.parseDone = false;
+    this.parseStartTime = Date.now();
+    this.parseError = '';
+    this.parseGid = '';
+    this.parseMagnetUrl = magnetUrl;
+    // 只在aria2后台解析metadata，不创建UI任务
+    Aria2Engine.getInstance().parseMagnet(magnetUrl, this.getUIContext().getHostContext() as common.UIAbilityContext).then(() => {
+      if (this.parseTimer) clearInterval(this.parseTimer);
+      this.parseTimer = setInterval(() => {
+        const st = Aria2Engine.getInstance().getParsingStatus();
+        this.parseConnections = st.connections;
+        if (st.name) this.parseName = st.name;
+        if (st.totalLength > 0) {
+          const mb = st.totalLength / (1024*1024);
+          this.parseSize = mb >= 1024 ? (mb/1024).toFixed(1)+' GB' : mb.toFixed(1)+' MB';
+        }
+        if (!this.parseDone && Date.now() - this.parseStartTime > 90000) {
+          this.parseError = '解析超时，请重试';
+          Aria2Engine.getInstance().cancelParse();
+          if (this.parseTimer) { clearInterval(this.parseTimer); this.parseTimer = 0; }
+        }
+        if (st.done) {
+          this.parseDone = true;
+          this.parseGid = st.gid;
+          if (this.parseTimer) { clearInterval(this.parseTimer); this.parseTimer = 0; }
+          this.parseFiles = st.files;
+          this.selectedFiles = [];
+          for (let i = 0; i < st.files.length; i++) {
+            this.selectedFiles.push(i + 1);
+          }
+        }
+      }, 1500);
+    }).catch((e: Error) => {
+      this.parseError = e?.message || '解析失败';
+      setTimeout(() => { this.showParseSheet = false; }, 3000);
+    });
   }
 
   /** 同步窗口背景色和系统栏属性（App内手动切换主题时调用，避免底部安全区透出旧窗口背景色） */
@@ -1464,6 +1532,92 @@ struct IndexPage {
       if (this.showPrivacyPage) {
         this.PrivacyFullPage()
       }
+      // BT 资源解析弹窗
+      if (this.showParseSheet) {
+        Column() {
+          // 关闭按钮
+          Row() {
+            Blank()
+            Text('✕')
+              .fontSize(16).fontColor(this.p.textSecondary)
+              .onClick(() => { this.showParseSheet = false; })
+          }.width('100%').margin({ bottom: 8 })
+          if (!this.parseError) {
+            if (!this.parseDone) {
+              // 解析中
+              LoadingProgress().width(40).height(40).color(this.p.primary)
+              Text('正在解析资源…')
+                .fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.p.text)
+                .margin({ top: 24 })
+            } else {
+              // 文件选择列表
+              Text('选择要下载的文件')
+                .fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.p.text)
+                .margin({ bottom: 8 })
+              Scroll() {
+                Column({ space: 8 }) {
+                  ForEach(this.parseFiles, (file: Object, index: number) => {
+                    Row() {
+                      Checkbox().select(this.selectedFiles.indexOf(index + 1) >= 0)
+                        .selectedColor(this.p.primary)
+                      Column() {
+                        Text((file as Record<string, Object>).path as string || '文件' + (index + 1))
+                          .fontSize(13).fontColor(this.p.text)
+                          .maxLines(2).textOverflow({ overflow: TextOverflow.Ellipsis })
+                        Text(this.formatFileSize(((file as Record<string, Object>).length as number) || 0))
+                          .fontSize(11).fontColor(this.p.textSecondary)
+                          .margin({ top: 2 })
+                      }.layoutWeight(1).margin({ left: 10 })
+                    }
+                    .width('100%').padding({ top: 6, bottom: 6 })
+                    .onClick(() => {
+                      const idx = index + 1;
+                      const i = this.selectedFiles.indexOf(idx);
+                      if (i >= 0) { this.selectedFiles.splice(i, 1); }
+                      else { this.selectedFiles.push(idx); }
+                    })
+                  }, (file: Object, index: number) => index.toString())
+                }.width('100%')
+              }.layoutWeight(1).margin({ bottom: 12 })
+              // 底部：已选信息 + 下载按钮
+              Row() {
+                Text(`已选 ${this.selectedFiles.length}/${this.parseFiles.length} 个文件`)
+                  .fontSize(12).fontColor(this.p.textSecondary)
+                Blank()
+                Button('下载到手机')
+                  .fontSize(14).fontColor(Color.White)
+                  .backgroundColor(this.p.primary)
+                  .height(36).borderRadius(18)
+                  .onClick(() => {
+                    const indices = this.selectedFiles.join(',');
+                    // 先设置文件选择
+                    if (this.parseGid) {
+                      Aria2Engine.getInstance().setSelectedFiles(this.parseGid, indices);
+                    }
+                    // 取消parse模式，创建正式UI任务
+                    Aria2Engine.getInstance().cancelParse();
+                    this.showParseSheet = false;
+                    // 创建正式下载任务（aria2会从.torrent文件恢复）
+                    this.vm.addDownload(this.parseMagnetUrl).then(() => {
+                      console.info('[parse] task created from parsed magnet');
+                    }).catch((e: Error) => {
+                      console.error('[parse] create task failed: ' + e.message);
+                    });
+                  })
+              }.width('100%')
+            }
+          } else {
+            Text(this.parseError).fontSize(14).fontColor('#E8504F').textAlign(TextAlign.Center)
+              .onClick(() => { this.showParseSheet = false; })
+          }
+        }
+        .width('85%').constraintSize({ maxWidth: 380 })
+        .height('60%').constraintSize({ maxHeight: 500 })
+        .padding(20)
+        .backgroundColor(this.p.surface)
+        .borderRadius(20)
+        .shadow({ radius: 20, color: '#33000000', offsetY: 4 })
+      }
     }
     .width('100%')
     .height('100%')
@@ -2235,9 +2389,15 @@ struct IndexPage {
               const t = this.contextMenuTask;
               if (t) {
                 if (t.seedingStatus === 'none') {
-                  this.vm.startSeeding(t);
+                  if (t.status !== TaskStatus.Completed) {
+                    promptAction.showToast({ message: '任务未完成，无法做种', duration: 2000 });
+                  } else {
+                    this.vm.startSeeding(t);
+                    promptAction.showToast({ message: '已开始做种', duration: 2000 });
+                  }
                 } else {
                   this.vm.stopSeeding(t);
+                  promptAction.showToast({ message: '已停止做种', duration: 2000 });
                 }
               }
             })
@@ -3233,6 +3393,55 @@ const MORANDI_SCHEMES: ColorScheme[] = COLOR_SCHEMES.filter((s: ColorScheme) => 
 // ── 设置页面 ──
 @ComponentV2
 struct SettingsContent {
+  @Local cacheSizeText: string = '';
+
+  private loadCacheSize(): void {
+    try {
+      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      const cacheDir = ctx.cacheDir;
+      let totalSize = 0;
+      const list = fs.listFileSync(cacheDir);
+      for (const name of list) {
+        try {
+          const stat = fs.statSync(cacheDir + '/' + name);
+          if (stat.isFile()) totalSize += stat.size;
+        } catch (_e) {}
+      }
+      if (totalSize < 1024) {
+        this.cacheSizeText = totalSize + ' B';
+      } else if (totalSize < 1024 * 1024) {
+        this.cacheSizeText = (totalSize / 1024).toFixed(1) + ' KB';
+      } else {
+        this.cacheSizeText = (totalSize / (1024 * 1024)).toFixed(1) + ' MB';
+      }
+    } catch (_e) {
+      this.cacheSizeText = '0 B';
+    }
+  }
+
+  private clearCache(): void {
+    hapticFeedback();
+    try {
+      const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      const cacheDir = ctx.cacheDir;
+      const list = fs.listFileSync(cacheDir);
+      for (const name of list) {
+        try {
+          const path = cacheDir + '/' + name;
+          const stat = fs.statSync(path);
+          if (stat.isDirectory()) {
+            fs.rmdirSync(path);
+          } else {
+            fs.unlinkSync(path);
+          }
+        } catch (_e) {}
+      }
+      this.loadCacheSize();
+      promptAction.showToast({ message: '缓存已清除', duration: 2000 });
+    } catch (_e) {
+      promptAction.showToast({ message: '清除失败', duration: 2000 });
+    }
+  }
   @Param vm: DownloadViewModel = new DownloadViewModel();
   @Param navStack: NavPathStack = new NavPathStack();
   /** 页面模式：'' = 设置首页卡片列表；非空（appearance/download/bt/mcp/ext/queue/cat/rss）= 对应功能独立页 */
@@ -3296,6 +3505,7 @@ struct SettingsContent {
   @Local naviIndicatorHeight: number = 0;
 
   aboutToAppear(): void {
+    this.loadCacheSize();
     // 读应用锁状态
     const ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
     dataPreferences.getPreferences(ctx, 'fluxdown_settings').then((prefs) => {
@@ -3800,6 +4010,19 @@ struct SettingsContent {
           .animation({ duration: PRESS_DURATION, curve: Curve.Friction })
           .onTouch((event: TouchEvent) => { this.handlePress('menuCat', event); })
           .onClick(() => { this.navStack.pushPath({ name: 'setting', param: 'cat' }); })
+
+          // 清除缓存
+          Row() {
+            Image(iconRes('trash')).width(20).height(20).fillColor(this.tintColor).margin({ right: 12 })
+            Text('清除缓存').fontColor(this.p.text).layoutWeight(1).fontSize(15)
+            Text(this.cacheSizeText).fontColor(this.p.textSecondary).fontSize(13)
+          }
+          .width('100%')
+          .padding(16)
+          .scale({ x: this.pressScale('menuClearCache'), y: this.pressScale('menuClearCache') })
+          .animation({ duration: PRESS_DURATION, curve: Curve.Friction })
+          .onTouch((event: TouchEvent) => { this.handlePress('menuClearCache', event); })
+          .onClick(() => { this.clearCache(); })
         }
         .backgroundColor(this.p.surface)
         .border({ width: MATERIAL_BORDER_WIDTH, color: materialBorder(this.p.dark) })

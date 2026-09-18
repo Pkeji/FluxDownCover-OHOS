@@ -59,15 +59,8 @@ export async function announce(
     }
 
     return parseAnnounceResponse(new Uint8Array(body));
-  } catch (e) {
-    // announce 失败向上传播，由 TrackerManager 尝试下一个 tracker
-    throw e as Error;
   } finally {
-    try {
-      req.destroy();
-    } catch (_e) {
-      // ignore destroy error
-    }
+    req.destroy();
   }
 }
 

@@ -14,14 +14,14 @@ export const PROTO_MARKER = 0xE3;
 
 // ── Server opcodes (Client → Server) ───────────────────────────────
 export const OP_LOGIN = 0x01;
-export const OP_GETSOURCES = 0x16;
+export const OP_GETSOURCES = 0x0E; // OP_REQSOURCES
 export const OP_DISCONNECT = 0x0E;
 
 // ── Server opcodes (Server → Client) ───────────────────────────────
 export const OP_SERVERMESSAGE = 0x41;
 export const OP_SERVERSTATUS = 0x34;
 export const OP_SERVERIDENT = 0x33;
-export const OP_FOUNDSOURCES = 0x42;
+export const OP_FOUNDSOURCES = 0x0F; // OP_ANSWERSOURCES
 
 // ── Peer opcodes ───────────────────────────────────────────────────
 export const OP_HELLO = 0x01;
@@ -96,30 +96,28 @@ export function buildPacket(op: number, payload: Uint8Array): Uint8Array {
 
 // ── Specific packet builders ───────────────────────────────────────
 
-/** Build login packet for server. */
+/** Build login packet for server (OP_REQ_ID = 0x01). */
 export function buildLoginPacket(userHash: Uint8Array, clientId: number, port: number): Uint8Array {
-  // userHash(16) + clientId(4) + port(4) + tagCount(4) + tags...
-  const payload = new Uint8Array(16 + 4 + 4 + 4 + 4 + 4 + 1 + 1 + 4); // simplified
+  const payload = new Uint8Array(36);
   const view = new DataView(payload.buffer);
   payload.set(userHash, 0);
   writeU32LE(view, 16, clientId);
-  writeU32LE(view, 20, port);
-  writeU32LE(view, 24, 2); // tag count
-  // Tag 1: name (string) — tag type 0x02, tag id 0x01, length 2, "xx"
-  view.setUint8(28, 0x02); // string tag
-  view.setUint8(29, 0x01); // tag name
-  writeU32LE(view, 30, 2); // string length
-  view.setUint8(34, 0x78); // 'x'
-  view.setUint8(35, 0x78); // 'x'
+  view.setUint16(20, port & 0xFFFF, true);
+  view.setUint16(22, port & 0xFFFF, true);
+  writeU32LE(view, 24, 0x00010000);
+  writeU32LE(view, 28, 0);
+  writeU32LE(view, 32, 0);
   return buildPacket(OP_LOGIN, payload);
 }
 
-/** Build get-sources packet for a file hash. */
+/** Build get-sources packet for a file hash (OP_REQSOURCES = 0x0E). */
 export function buildGetSourcesPacket(fileHash: Uint8Array, fileSize: number): Uint8Array {
-  const payload = new Uint8Array(16 + 4);
+  const payload = new Uint8Array(28);
   const view = new DataView(payload.buffer);
   payload.set(fileHash, 0);
   writeU32LE(view, 16, fileSize);
+  writeU32LE(view, 20, 0);
+  writeU32LE(view, 24, 0);
   return buildPacket(OP_GETSOURCES, payload);
 }
 

@@ -6,6 +6,7 @@
  */
 
 import { socket } from '@kit.NetworkKit';
+import { logCollector } from '../../../utils/LogCollector';
 import { BusinessError } from '@kit.BasicServicesKit';
 import {
   OP_SERVERMESSAGE,
@@ -60,6 +61,7 @@ export async function getSourcesFromServer(
     let settled = false;
     let sources: Ed2kPeerAddr[] = [];
     let gotSources = false;
+    let loggedIn = false;
 
     const timer = setTimeout(() => {
       if (!settled) {
@@ -99,26 +101,33 @@ export async function getSourcesFromServer(
       };
 
       tcp.on('message', (info: socket.SocketReceiveInfo) => {
-        // Append received data to buffer
         const newData = new Uint8Array(info.message);
         const combined = new Uint8Array(recvBuf.length + newData.length);
         combined.set(recvBuf, 0);
         combined.set(newData, recvBuf.length);
         recvBuf = combined;
 
-        // Process all complete packets
-        while (recvBuf.length >= 6) {
-          const pkt = parsePacket(recvBuf);
-          if (!pkt) break;
+        // Log raw bytes
+        const hex = Array.from(newData.slice(0, Math.min(32, newData.length)))
+          .map(b => b.toString(16).padStart(2, '0')).join(' ');
+        logCollector.info('ED2K', `Recv ${newData.length} bytes: ${hex}`);
 
-          const consumed = 5 + 1 + pkt.payload.length;
-          recvBuf = recvBuf.subarray(consumed);
-
-          handlePacket(pkt);
+        try {
+          while (recvBuf.length >= 6) {
+            const pkt = parsePacket(recvBuf);
+            if (!pkt) break;
+            const consumed = 5 + 1 + pkt.payload.length;
+            recvBuf = recvBuf.subarray(consumed);
+            logCollector.info('ED2K', `Parsed op=0x${pkt.op.toString(16)} len=${pkt.payload.length}`);
+            handlePacket(pkt);
+          }
+        } catch (e) {
+          logCollector.error('ED2K', `Parse error: ${(e as Error).message}, buf[0]=0x${recvBuf[0]?.toString(16)}`);
         }
       });
 
       tcp.on('close', () => {
+        logCollector.info('ED2K', `Server connection closed, sources found: ${sources.length}`);
         finish();
       });
 
@@ -131,17 +140,8 @@ export async function getSourcesFromServer(
       });
 
       tcp.connect(endpoint, () => {
-        // Send login
-        const loginPkt = buildLoginPacket(userHash, clientId, CLIENT_PORT);
-        tcp!.send({ data: loginPkt.buffer }, () => {
-          // After login, request sources
-          setTimeout(() => {
-            const srcPkt = buildGetSourcesPacket(fileHash, fileSize);
-            tcp!.send({ data: srcPkt.buffer }, () => {
-              // Wait for response — will be handled in on('message')
-            });
-          }, 500);
-        });
+        logCollector.info('ED2K', `Connected to ${serverIp}:${serverPort}, waiting for server greeting`);
+        // Server sends OP_SEND_ID (0x00) on connect; handlePacket will trigger login
       });
     } catch (e) {
       cleanup();
@@ -149,13 +149,26 @@ export async function getSourcesFromServer(
     }
 
     function handlePacket(pkt: Ed2kPacket): void {
+      logCollector.info('ED2K', `handlePacket op=0x${pkt.op.toString(16)} loggedIn=${loggedIn}`);
       switch (pkt.op) {
         case OP_SERVERMESSAGE:
-          // Server welcome message — ignore
+        case 0x00: { // OP_SEND_ID — server greeting
+          if (!loggedIn) {
+            loggedIn = true;
+            const loginPkt = buildLoginPacket(userHash, clientId, CLIENT_PORT);
+            logCollector.info('ED2K', 'Sending login packet');
+            tcp!.send({ data: loginPkt.buffer }, () => {
+              setTimeout(() => {
+                const srcPkt = buildGetSourcesPacket(fileHash, fileSize);
+                logCollector.info('ED2K', 'Sending get-sources packet');
+                tcp!.send({ data: srcPkt.buffer }, () => {});
+              }, 1000);
+            });
+          }
           break;
+        }
 
         case OP_SERVERSTATUS: {
-          // Server status: userCount + fileCount
           break;
         }
 

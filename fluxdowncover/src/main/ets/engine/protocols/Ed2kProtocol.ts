@@ -39,9 +39,9 @@ const BLOCK_TIMEOUT = 30000;
 
 /** Default public eDonkey servers (fallback if link has no server hint). */
 const DEFAULT_SERVERS: Ed2kServerHint[] = [
-  { ip: '194.147.116.10', port: 4661 },
-  { ip: '5.45.85.229', port: 4661 },
-  { ip: '37.187.26.122', port: 4661 }
+  { ip: '193.187.90.12', port: 4661 },
+  { ip: '80.208.228.241', port: 8369 },
+  { ip: '176.103.48.36', port: 4184 },
 ];
 
 export async function downloadEd2k(

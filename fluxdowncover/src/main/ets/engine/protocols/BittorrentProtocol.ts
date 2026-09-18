@@ -23,6 +23,7 @@ import { PieceManager } from './bittorrent/PieceManager';
 import { parseMagnetLink } from './bittorrent/MagnetLink';
 import { downloadMetadata } from './bittorrent/MetadataExchange';
 import { BtEngine } from '../BtEngine';
+import { Aria2Engine } from "../Aria2Engine";
 
 const MAX_PEERS = 10;
 const DEFAULT_LISTEN_PORT = 6881; // fallback if BtEngine hasn't bound yet
@@ -55,6 +56,12 @@ export async function downloadBittorrent(
   ctrl: Ctrl,
   hooks: EngineHooks
 ): Promise<void> {
+  // Use libtorrent C++ engine for magnet links (more robust DHT/tracker)
+  if (task.url.toLowerCase().startsWith("magnet:")) {
+    await Aria2Engine.getInstance().addMagnet(task, ctrl, hooks);
+    return;
+  }
+
   // ── 1. Parse .torrent file ──────────────────────────────────────────
   const meta = await loadTorrentMeta(task.url);
 
@@ -252,6 +259,10 @@ async function resolveMagnetLink(uri: string): Promise<TorrentMeta> {
     throw new Error(`无效的磁力链接: ${uri}`);
   }
 
+  // 确保BtEngine监听端口和DHT已启动
+  await BtEngine.getInstance().ensureListeners();
+  console.info(`[BT] BtEngine已启动, 监听端口: ${BtEngine.getInstance().port}`);
+
   const peerId = generatePeerId();
   const displayName = magnet.displayName || `magnet_${magnet.infoHashHex.substring(0, 8)}`;
 
@@ -265,62 +276,83 @@ async function resolveMagnetLink(uri: string): Promise<TorrentMeta> {
       'udp://exodus.desync.com:6969/announce',
       'https://tracker.bt4g.com:2095/announce',
       'udp://tracker.coppersurfer.tk:6969/announce',
+      // 国内常用 tracker
+      'https://tr.burnabyhighstar.com:443/announce',
+      'http://tracker.dler.org:6969/announce',
+      'udp://tracker.dler.org:6969/announce',
+      'https://tracker.lilithraws.cf:443/announce',
+      'udp://open.demonii.com:1337/announce',
+      'udp://tracker.moeking.me:6969/announce',
     );
   }
 
-  // Try to download metadata from peers via tracker announce + BEP-9
-  const allPeers: Peer[] = [];
+  // 并行 announce 所有 tracker，收集 peers
+  const partialMeta = new TorrentMeta();
+  partialMeta.infoHash = magnet.infoHash;
+  partialMeta.infoHashHex = magnet.infoHashHex;
+  partialMeta.trackers = magnet.trackers;
+  partialMeta.name = displayName;
 
-  // Announce to all trackers to collect peers
-  for (const trackerUrl of magnet.trackers) {
+  const announcePromises = magnet.trackers.map(async (trackerUrl) => {
     try {
-      // Create a minimal meta object for announce
-      const partialMeta = new TorrentMeta();
-      partialMeta.infoHash = magnet.infoHash;
-      partialMeta.infoHashHex = magnet.infoHashHex;
-      partialMeta.trackers = magnet.trackers;
-      partialMeta.name = displayName;
-
-      const result = await announceAny(
-        [trackerUrl],
-        partialMeta,
-        peerId,
-        listenPort(),
-        0, // uploaded
-        0, // downloaded
-        1  // left (at least 1 byte, we don't know size yet)
-      );
-      for (const p of result.peers) {
-        if (!allPeers.some(ex => ex.ip === p.ip && ex.port === p.port)) {
-          allPeers.push(p);
-        }
-      }
-    } catch (_) {
-      // Try next tracker
+      return await announceAny([trackerUrl], partialMeta, peerId, listenPort(), 0, 0, 1);
+    } catch (_e) {
+      return null;
     }
+  });
+
+  const results = await Promise.all(announcePromises);
+
+  const allPeers: Peer[] = [];
+  let okTrackerCount = 0;
+  for (const result of results) {
+    if (!result) continue;
+    okTrackerCount++;
+    for (const p of result.peers) {
+      if (!allPeers.some(ex => ex.ip === p.ip && ex.port === p.port)) {
+        allPeers.push(p);
+      }
+    }
+  }
+  console.info(`[BT] tracker完成: ${okTrackerCount}/${magnet.trackers.length}个成功, 获取到${allPeers.length}个peers`);
+
+  // 通过DHT网络找peers（等15秒）
+  try {
+    const dhtPeers = await BtEngine.getInstance().findPeersViaDht(magnet.infoHash, 15000);
+    for (const p of dhtPeers) {
+      if (!allPeers.some(ex => ex.ip === p.ip && ex.port === p.port)) {
+        allPeers.push(p);
+      }
+    }
+    console.info(`[BT] 加入DHT peers后共${allPeers.length}个peers`);
+  } catch (e) {
+    console.info(`[BT] DHT找peers失败: ${(e as Error).message}`);
   }
 
   if (allPeers.length === 0) {
-    throw new Error(`无法从 tracker 获取到 peers，请检查网络或磁力链接: ${displayName}`);
+    throw new Error(`无法从 tracker/DHT 获取到 peers，请检查网络或磁力链接: ${displayName}`);
   }
 
-  // Try to download metadata from each peer using BEP-9
-  for (const peer of allPeers) {
+  // 最多试5个peer下载metadata
+  const peersToTry = allPeers.slice(0, 5);
+  console.info(`[BT] 尝试从${peersToTry.length}个peer下载metadata`);
+  for (const peer of peersToTry) {
+    console.info(`[BT] 连接peer ${peer.ip}:${peer.port}...`);
     try {
       const metaResult = await downloadMetadata(peer, magnet.infoHash, peerId, 0);
       if (metaResult) {
-        // Parse the downloaded metadata into a full TorrentMeta
         const meta = parseTorrentBytes(metaResult.rawInfo);
-        // Override trackers with the ones from the magnet link
         meta.trackers = magnet.trackers;
+        console.info(`[BT] metadata下载成功: ${meta.name}`);
         return meta;
       }
-    } catch (_) {
-      // Try next peer
+      console.info(`[BT] peer ${peer.ip}:${peer.port} 不支持metadata或下载失败`);
+    } catch (e) {
+      console.info(`[BT] peer ${peer.ip}:${peer.port} 连接失败: ${(e as Error).message}`);
     }
   }
 
-  throw new Error(`无法从 peers 下载元数据: ${displayName}`);
+  throw new Error(`无法从 peers 下载元数据（已尝试${peersToTry.length}个节点）: ${displayName}`);
 }
 
 /**

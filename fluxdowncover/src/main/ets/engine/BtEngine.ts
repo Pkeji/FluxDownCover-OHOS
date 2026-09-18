@@ -106,6 +106,29 @@ export class BtEngine {
     return this.dht?.nodeCount ?? 0;
   }
 
+  /** 通过DHT网络查找peers（用于磁力链接metadata下载阶段） */
+  async findPeersViaDht(infoHash: Uint8Array, timeoutMs: number = 15000): Promise<Peer[]> {
+    if (!this.dht) {
+      console.info('[BT] DHT未启动, 跳过DHT找peers');
+      return [];
+    }
+    const peers: Peer[] = [];
+    const ctrl = { aborted: false };
+    const timer = setTimeout(() => { ctrl.aborted = true; }, timeoutMs);
+    try {
+      const found = await this.dht.getPeers(infoHash, (p) => {
+        peers.push(p);
+        console.info(`[BT] DHT发现peer: ${p.ip}:${p.port}`);
+      }, ctrl);
+      peers.push(...found);
+    } catch (e) {
+      console.info(`[BT] DHT getPeers错误: ${(e as Error).message}`);
+    }
+    clearTimeout(timer);
+    console.info(`[BT] DHT共发现${peers.length}个peers`);
+    return peers;
+  }
+
   /** Start DHT + PeerServer + UPnP on an available port from the settings range. */
   async ensureListeners(): Promise<void> {
     if (this.listenersReady) {

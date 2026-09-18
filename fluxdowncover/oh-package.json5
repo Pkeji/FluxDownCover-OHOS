@@ -6,8 +6,8 @@
   "author": "",
   "license": "",
   "dependencies": {
-    "@tangs/components": "1.5.3"
+    "@tangs/components": "1.5.3",
+    "torrent_napi": "file:./src/main/cpp/types/torrent_napi"
   },
-  "devDependencies": {},
-  "dynamicDependencies": {}
+  "devDependencies": {}
 }

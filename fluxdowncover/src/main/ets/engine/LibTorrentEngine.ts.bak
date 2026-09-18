@@ -1,0 +1,139 @@
+/**
+ * libtorrent NAPI binding wrapper.
+ *
+ * Uses the C++ libtorrent library (libtorrent-rasterbar.so) for BT downloads,
+ * which handles DHT, trackers, peer connections, and piece verification
+ * internally — much more robust than the pure-ArkTS implementation.
+ */
+import libtorrent from 'libtorrent_napi.so';
+import { DownloadTask } from '../model/DownloadTask';
+import { TaskStatus } from '../model/TaskStatus';
+import { EngineHooks } from './EngineHooks';
+import { Ctrl } from './types';
+import { logCollector } from '../utils/LogCollector';
+
+export class LibTorrentEngine {
+  private static instance: LibTorrentEngine | null = null;
+  static getInstance(): LibTorrentEngine {
+    if (!LibTorrentEngine.instance) {
+      LibTorrentEngine.instance = new LibTorrentEngine();
+    }
+    return LibTorrentEngine.instance;
+  }
+
+  private initialized = false;
+  private pollTimer: number = 0;
+  private tasks: Map<string, { task: DownloadTask; hooks: EngineHooks; ctrl: Ctrl }> = new Map();
+
+  async init(): Promise<void> {
+    if (this.initialized) return;
+    try {
+      libtorrent.initSession();
+      this.initialized = true;
+      console.info('[libtorrent] session initialized');
+      this.startPolling();
+    } catch (e) {
+      logCollector.error('Error', `[libtorrent] init failed: ${(e as Error).message}`);
+    }
+  }
+
+  private startPolling(): void {
+    if (this.pollTimer) return;
+    this.pollTimer = setInterval(() => this.poll(), 1000) as unknown as number;
+  }
+
+  private poll(): void {
+    for (const [id, entry] of this.tasks) {
+      try {
+        const st = libtorrent.getStatus(id);
+        if (!st.found) continue;
+
+        const { task, hooks } = entry;
+        task.fileName = st.name || task.fileName;
+        task.totalBytes = st.total;
+        task.downloadedBytes = st.done;
+        task.speed = st.downloadRate;
+
+        // state: 0=queued, 1=checking, 2=downloading, 3=finished, 4=seeding, 5=allocating
+        if (st.done >= st.total && st.total > 0) {
+          task.status = TaskStatus.Completed;
+          task.speed = 0;
+          hooks.onChunk(task, 0);
+          hooks.onChunk(task, 0);
+          this.tasks.delete(id);
+          libtorrent.remove(id);
+        } else {
+          task.status = TaskStatus.Downloading;
+          hooks.onChunk(task, 0);
+        }
+      } catch (e) {
+        // ignore poll errors
+      }
+    }
+  }
+
+  async addMagnet(task: DownloadTask, ctrl: Ctrl, hooks: EngineHooks): Promise<void> {
+    await this.init();
+    if (!this.initialized) {
+      throw new Error('libtorrent not initialized');
+    }
+
+    const savePath = task.dirPath || '/data/storage/el2/base/files/downloads';
+    try {
+      const id = libtorrent.addMagnet(task.url, savePath);
+      this.tasks.set(id, { task, hooks, ctrl });
+      console.info(`[libtorrent] magnet added: ${id}`);
+
+      // Wait for metadata (up to 120 seconds)
+      let waited = 0;
+      while (waited < 120000) {
+        await new Promise(r => setTimeout(r, 1000));
+        waited += 1000;
+        const st = libtorrent.getStatus(id);
+        if (st.found && st.name && st.name.length > 0) {
+          task.fileName = st.name;
+          task.totalBytes = st.total;
+          hooks.onChunk(task, 0);
+          console.info(`[libtorrent] metadata received: ${st.name}`);
+          return;
+        }
+        if (ctrl.aborted) {
+          libtorrent.remove(id);
+          this.tasks.delete(id);
+          return;
+        }
+      }
+      throw new Error('libtorrent: timeout waiting for metadata');
+    } catch (e) {
+      throw new Error(`libtorrent addMagnet failed: ${(e as Error).message}`);
+    }
+  }
+
+  pause(taskId: string): void {
+    for (const [id, entry] of this.tasks) {
+      if (entry.task.id === taskId) {
+        libtorrent.pause(id);
+        return;
+      }
+    }
+  }
+
+  resume(taskId: string): void {
+    for (const [id, entry] of this.tasks) {
+      if (entry.task.id === taskId) {
+        libtorrent.resume(id);
+        return;
+      }
+    }
+  }
+
+  remove(taskId: string): void {
+    for (const [id, entry] of this.tasks) {
+      if (entry.task.id === taskId) {
+        libtorrent.remove(id);
+        this.tasks.delete(id);
+        return;
+      }
+    }
+  }
+}

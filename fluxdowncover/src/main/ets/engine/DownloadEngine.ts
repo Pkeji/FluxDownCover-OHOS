@@ -523,6 +523,8 @@ export class DownloadEngine implements EngineHooks {
       // handled entirely by downloadFtp
     } else if (task.protocol === ProtocolType.BITTORRENT) {
       // handled entirely by downloadBittorrent
+    } else if (task.protocol === ProtocolType.ED2K) {
+      // handled entirely by downloadEd2k — skip HTTP probe
     } else {
       if (task.totalBytes === 0 && task.segments.length === 0) {
         const info = await this.probe(task);
@@ -594,6 +596,10 @@ export class DownloadEngine implements EngineHooks {
 
       if (ctrl.aborted) {
         task.status = TaskStatus.Paused;
+      } else if (dispatchProtocol === ProtocolType.BITTORRENT) {
+        // BT/magnet tasks are managed asynchronously by Aria2Engine poll loop.
+        // Do NOT run verify/finalize here — aria2 poll will update status when done.
+        return;
       } else if (dispatchProtocol === ProtocolType.HLS || dispatchProtocol === ProtocolType.DASH) {
         // HLS/DASH：分片已在 downloadHls/downloadDash 内顺序拼装到目标文件。
         // 拼装完成即进入独立的"合并中"阶段（覆盖收尾/校验窗口），
