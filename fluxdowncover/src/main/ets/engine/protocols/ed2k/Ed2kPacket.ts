@@ -98,15 +98,26 @@ export function buildPacket(op: number, payload: Uint8Array): Uint8Array {
 
 /** Build login packet for server (OP_REQ_ID = 0x01). */
 export function buildLoginPacket(userHash: Uint8Array, clientId: number, port: number): Uint8Array {
-  const payload = new Uint8Array(36);
+  // Minimal eMule-compatible login with tags
+  // Base: userHash(16) + serverTCP(4) + port(2) = 22 bytes
+  // Tags: eMule requires version/identity tags or server ignores us
+  const tagBytes: number[] = [];
+
+  // Tag: PREVER (0x04 = int32) - eMule version 0x50A00
+  tagBytes.push(0x04, 0x01, 0x00, 0x50, 0x00, 0x00, 0x00);
+  // Tag: VERSION (0x04 = int32) - eMule version
+  tagBytes.push(0x04, 0x11, 0x00, 0x50, 0x00, 0x00, 0x00);
+  // Tag: PORT (0x02 = int16)
+  tagBytes.push(0x02, 0x0F, 0x00, port & 0xFF, (port >> 8) & 0xFF);
+  // Tag: FLAGS (0x04 = int32) - supports UPnP, etc.
+  tagBytes.push(0x04, 0x20, 0x00, 0x01, 0x00, 0x00, 0x00);
+
+  const payload = new Uint8Array(22 + tagBytes.length);
   const view = new DataView(payload.buffer);
   payload.set(userHash, 0);
-  writeU32LE(view, 16, clientId);
+  writeU32LE(view, 16, port & 0xFFFF);  // serverTCP = our port
   view.setUint16(20, port & 0xFFFF, true);
-  view.setUint16(22, port & 0xFFFF, true);
-  writeU32LE(view, 24, 0x00010000);
-  writeU32LE(view, 28, 0);
-  writeU32LE(view, 32, 0);
+  payload.set(tagBytes, 22);
   return buildPacket(OP_LOGIN, payload);
 }
 

@@ -19,4 +19,22 @@ declare module 'torrent_napi.so' {
   export function nativeStop(): boolean;
   export function nativeIsRunning(): boolean;
 }
+
+declare module 'libtorrent_bt.so' {
+  export function initSession(): boolean;
+  export function addMagnet(magnet: string, savePath: string): string;
+  export function getStatus(id: string): {
+    found: boolean;
+    name: string;
+    progress: number;
+    downloadRate: number;
+    state: number;
+    total: number;
+    done: number;
+  };
+  export function pause(id: string): boolean;
+  export function resume(id: string): boolean;
+  export function remove(id: string): boolean;
+}
+
 export {};

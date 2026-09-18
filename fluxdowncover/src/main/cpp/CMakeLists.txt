@@ -13,6 +13,7 @@ include_directories(
 # 我们自己编译的静态库
 set(ARIA2_LIBS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/aria2/lib)
 
+# ===== aria2 engine (HTTP/FTP/BT via aria2) =====
 add_library(torrent_napi SHARED
     aria2_napi.cpp
     ed2k_client.cpp
@@ -30,3 +31,29 @@ target_link_libraries(torrent_napi ace_napi.z ace_ndk.z hilog_ndk.z)
 target_link_libraries(torrent_napi pthread)
 target_link_libraries(torrent_napi z)
 target_link_libraries(torrent_napi resolv)
+
+# ===== libtorrent BT engine =====
+add_library(torrent_bt SHARED
+    torrent_napi.cpp
+)
+
+target_include_directories(torrent_bt PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/boost
+)
+
+# Link libtorrent-rasterbar.so directly
+target_link_libraries(torrent_bt
+    ${CMAKE_CURRENT_SOURCE_DIR}/libs/${OHOS_ARCH}/libtorrent-rasterbar.so
+    ace_napi.z ace_ndk.z hilog_ndk.z
+)
+target_link_libraries(torrent_bt pthread)
+target_link_libraries(torrent_bt z)
+target_link_libraries(torrent_bt resolv)
+
+# Copy libtorrent-rasterbar.so to output
+add_custom_command(TARGET torrent_bt POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+    ${CMAKE_CURRENT_SOURCE_DIR}/libs/${OHOS_ARCH}/libtorrent-rasterbar.so
+    ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libtorrent-rasterbar.so
+)

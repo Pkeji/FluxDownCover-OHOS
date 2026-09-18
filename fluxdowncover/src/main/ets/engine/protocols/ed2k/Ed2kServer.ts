@@ -140,8 +140,16 @@ export async function getSourcesFromServer(
       });
 
       tcp.connect(endpoint, () => {
-        logCollector.info('ED2K', `Connected to ${serverIp}:${serverPort}, waiting for server greeting`);
-        // Server sends OP_SEND_ID (0x00) on connect; handlePacket will trigger login
+        logCollector.info('ED2K', `Connected to ${serverIp}:${serverPort}, sending login`);
+        // Send login immediately - some servers don't send greeting first
+        const loginPkt = buildLoginPacket(userHash, clientId, CLIENT_PORT);
+        tcp!.send({ data: loginPkt.buffer }, () => {
+          setTimeout(() => {
+            const srcPkt = buildGetSourcesPacket(fileHash, fileSize);
+            logCollector.info('ED2K', 'Sending get-sources packet');
+            tcp!.send({ data: srcPkt.buffer }, () => {});
+          }, 2000);
+        });
       });
     } catch (e) {
       cleanup();

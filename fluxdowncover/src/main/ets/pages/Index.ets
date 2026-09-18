@@ -1549,6 +1549,9 @@ struct IndexPage {
               Text('正在解析资源…')
                 .fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.p.text)
                 .margin({ top: 24 })
+              Text(`已连接 ${this.parseConnections} 个节点`)
+                .fontSize(13).fontColor(this.p.textSecondary)
+                .margin({ top: 8 })
             } else {
               // 文件选择列表
               Text('选择要下载的文件')

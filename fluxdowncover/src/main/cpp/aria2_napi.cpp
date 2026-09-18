@@ -79,7 +79,6 @@ static napi_value Aria2NativeInit(napi_env env, napi_callback_info info) {
     options.emplace_back("dht-listen-port", "6881");
     options.emplace_back("listen-port", "6881");
     options.emplace_back("dht-message-timeout", "10");
-    options.emplace_back("dht-file-path", saveDir + "/dht.dat");
     // dht6 disabled
     options.emplace_back("bt-max-peers", std::to_string(maxPeers));
     options.emplace_back("bt-max-open-files", "100");
@@ -119,7 +118,26 @@ static napi_value Aria2NativeInit(napi_env env, napi_callback_info info) {
     options.emplace_back("timeout", "60");
     options.emplace_back("retry-wait", "10");
     options.emplace_back("max-tries", "5");
-    options.emplace_back("bt-tracker", trackers);
+    // Add hardcoded DHT/tracker nodes captured from working client
+    std::string extraTrackers = trackers;
+    extraTrackers += ",udp://34.66.57.33:6969/announce";
+    extraTrackers += ",udp://135.125.198.235:6969/announce";
+    extraTrackers += ",udp://37.60.249.217:6969/announce";
+    extraTrackers += ",udp://207.211.184.229:6969/announce";
+    extraTrackers += ",udp://95.216.3.28:6969/announce";
+    extraTrackers += ",udp://34.66.57.33:2710/announce";
+    extraTrackers += ",udp://135.125.198.235:2710/announce";
+    options.emplace_back("bt-tracker", extraTrackers);
+    options.emplace_back("enable-upnp", "true");
+    options.emplace_back("natpmp-port", "0");
+    // More aggressive DHT settings
+    options.emplace_back("dht-file-path", saveDir + "/dht.dat");
+    options.emplace_back("enable-peer-exchange", "true");
+    options.emplace_back("bt-enable-lpd", "true");
+    options.emplace_back("bt-request-peer-speed-limit", "0");
+    options.emplace_back("bt-max-peers", "200");
+    options.emplace_back("max-upload-limit", "0");
+    options.emplace_back("seed-ratio", "0.0");
     if (!proxy.empty()) options.emplace_back("http-proxy", proxy);
 
     aria2::SessionConfig config;
